@@ -1,0 +1,329 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wayon 教室使用 10/17</title>
+<style>
+/* 本页由 wayon_agent.py tasks 自动生成（模板在代码 ROOM_PAGE_TEMPLATE），不要手改。一屏看完：竖 = 教室，横 = 课段；课程块可拖到别的格子，格子可点开修改（只存这张表，不回写课表） */
+:root{--bg:#f3f5f4;--card:#ffffff;--fg:#17211d;--muted:#5d6b65;--line:#d6ddd9;--bad:#b3392f;--edit:#a35c00;--accent:#1f5fa8;
+  --t1:#dce9f7;--t1b:#2d6cb5;--t2:#dcefe2;--t2b:#2e7d4f;--t3:#fbe7d6;--t3b:#b5622d;--t4:#ebe1f5;--t4b:#7442a8;--t5:#e9ebea;--t5b:#6b6f6d;--hall:#f6f0dc;--hallb:#9a7b1c;
+  --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#121815;--card:#1b2420;--fg:#e7eeea;--muted:#9aaaa2;--line:#2e3a35;--bad:#f08a7e;--edit:#f0b35e;--accent:#7db4f0;
+  --t1:#1c2c40;--t1b:#7db4f0;--t2:#1c3326;--t2b:#6fcf97;--t3:#3a2a1c;--t3b:#f0a46e;--t4:#2c2240;--t4b:#b994ea;--t5:#262b29;--t5b:#aaa;--hall:#33301f;--hallb:#e0c35e;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#121815;--card:#1b2420;--fg:#e7eeea;--muted:#9aaaa2;--line:#2e3a35;--bad:#f08a7e;--edit:#f0b35e;--accent:#7db4f0;
+  --t1:#1c2c40;--t1b:#7db4f0;--t2:#1c3326;--t2b:#6fcf97;--t3:#3a2a1c;--t3b:#f0a46e;--t4:#2c2240;--t4b:#b994ea;--t5:#262b29;--t5b:#aaa;--hall:#33301f;--hallb:#e0c35e;color-scheme:dark}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;overflow:hidden}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);padding:8px;display:flex;flex-direction:column;gap:6px;height:100vh;height:100dvh;width:100%}
+.top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:clamp(12px,3.4vw,16px);min-width:0}
+.top b{font-size:clamp(16px,4.6vw,22px)}
+.days{display:inline-flex;gap:4px}
+.days button{font:inherit;font-size:clamp(12px,3.4vw,15px);border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:3px 9px;cursor:pointer;font-variant-numeric:tabular-nums}
+.days button.on{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:700}
+.miss{color:var(--bad);font-weight:700}
+.ok{color:var(--t2b);font-weight:600}.no{color:var(--bad);font-weight:700}
+.sync{color:var(--muted);font-size:11px;margin-left:auto;white-space:nowrap}
+.legend{display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:3px}
+.legend i{width:9px;height:9px;border-radius:2px;display:inline-block}
+.grid{flex:1;min-height:0;min-width:0;width:100%;display:grid;gap:3px}
+.h{font-size:clamp(11px,3vw,15px);font-weight:700;text-align:center;line-height:1.1;align-self:end;min-width:0}
+.h small{display:block;font-weight:400;color:var(--muted);font-size:.8em}
+.r{font-size:clamp(11px,3vw,15px);font-weight:700;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.1;min-width:0}
+.c{position:relative;border-radius:6px;padding:3px;display:flex;flex-direction:column;gap:3px;min-width:0;min-height:0;overflow:hidden;
+   font-size:clamp(10px,2.8vw,14px);line-height:1.2;cursor:pointer;border:1px dashed var(--line);background:transparent}
+.c:focus-visible{outline:2px solid var(--accent)}
+.c.free{color:var(--muted);align-items:center;justify-content:center;font-size:clamp(10px,2.6vw,13px)}
+.c.drop{outline:3px solid var(--accent);outline-offset:-2px;background:var(--card)}
+.k{border-radius:4px;padding:3px 5px;border-left:3px solid transparent;flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.k .w{font-weight:700;word-break:break-all}
+.hallbox{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:1px;min-width:0;min-height:0;border-radius:6px}
+.hallbox.over{outline:2px solid var(--bad)}
+.hcnt{display:block;font-size:.75em;font-weight:400;color:var(--muted)}
+.hcnt.over{color:var(--bad);font-weight:700}
+.k.chip{position:relative}
+.k.chip.pre{background:transparent!important;border:1px dashed var(--hallb);border-left-width:1px;opacity:.9}
+.k.chip .pt{font-size:.7em;color:var(--muted);line-height:1}
+.lg-pre{border:1px dashed var(--hallb);border-radius:2px;padding:0 3px}.lg-ok{background:var(--hall);border-left:2px solid var(--hallb);border-radius:2px;padding:0 3px}
+.k.chip .x{display:none;position:absolute;top:0;right:0;bottom:0;font:inherit;font-size:11px;line-height:1;border:0;background:var(--hall);color:var(--bad);cursor:pointer;padding:0 3px}
+.k.chip:hover .x,.k.chip .x:focus-visible{display:block}
+.k.chip .x:hover{color:var(--bad)}
+.hallbox.man{outline:1.5px solid var(--edit)}
+.c.seat{padding:1px;border-radius:4px}
+.c.seat.used{border-color:transparent}
+.k.chip{padding:1px 3px;font-size:.9em;justify-content:center;overflow:hidden}
+.k.chip .s{display:none}
+.k.chip .w{word-break:keep-all;white-space:nowrap;overflow:hidden;text-overflow:clip}
+@media (max-width:520px){.hallbox{grid-template-columns:repeat(2,minmax(0,1fr))}.k.chip{font-size:9px;padding:0 1px;border-left-width:2px}.k.chip .x{font-size:9px}}
+.k .s{opacity:.9;font-size:.92em;word-break:break-all}
+.k .tt{font-size:.85em;opacity:.75}
+.k.dragging{opacity:.25}
+.ghost{position:fixed;left:0;top:0;pointer-events:none;z-index:9;will-change:transform;opacity:.85;border-radius:4px;padding:3px 6px;font-size:13px;font-weight:700;box-shadow:0 6px 16px rgba(0,0,0,.25);border-left:3px solid transparent}
+.c.used{border-style:solid;border-color:transparent}
+.c.bad{border:2px solid var(--bad)}
+.c.man{border:1.5px solid var(--edit)}
+.c.man::after{content:"✎";position:absolute;top:1px;right:3px;font-size:10px;color:var(--edit)}
+.foot{font-size:11px;color:var(--muted);line-height:1.35}
+.sheet{position:fixed;inset:auto 0 0 0;background:var(--card);border-top:1px solid var(--line);padding:12px 12px max(12px,env(safe-area-inset-bottom));display:none;flex-direction:column;gap:8px;box-shadow:0 -6px 20px rgba(0,0,0,.15);z-index:10}
+.sheet.on{display:flex}
+.sheet textarea{font:inherit;font-size:16px;min-height:84px;padding:8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg)}
+.sheet .row{display:flex;gap:8px;flex-wrap:wrap}
+.sheet button{font:inherit;font-size:14px;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:7px 12px;cursor:pointer}
+.sheet .pri{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:600}
+.sheet .t{font-weight:650}
+.sheet .hint{font-size:12px;color:var(--muted)}
+</style>
+<div class="top"><b>教室使用</b><span class="days" id="days"></span><span id="cf"></span><span class="sync" id="sy"></span></div>
+<div class="legend" id="lg"></div>
+<div class="grid" id="g"></div>
+<div class="foot" id="f"></div>
+<div class="sheet" id="sh" role="dialog" aria-label="修改格子">
+  <div class="t" id="sht"></div>
+  <textarea id="sha" placeholder="一行一节：学生 科目 老师（清空 = 空闲）"></textarea>
+  <div class="row"><button class="pri" id="bs" type="button">保存</button><button id="bc" type="button">清空</button><button id="br" type="button">恢复课表原样</button><button id="bx" type="button">取消</button></div>
+  <div class="hint">只改这张表，不会改小SaaS 课表、不写备忘录。课程块可以按住拖到别的格子。</div>
+</div>
+<script>
+const ALL = ({"days": {"2026-10-16": {"iso": "2026-10-16", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], [["Ray英文综合能力提升", "读写", "徐梓淞", "16:00-18:00"]]], [[["黄号然", "自习", "", ""]], [], [], []]], "teachers": ["徐梓淞"], "online": ["George吴洋亿 SAT语法 08:30", "郭璟Jack SAT阅读 08:30"], "unknown": [], "date": "10/16"}, "2026-10-17": {"iso": "2026-10-17", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [], []], [[], [["Leo&Iven", "听力", "王银屏", ""]], [], []], [[["赖晨曦", "听力", "王银屏", ""]], [["黄子珊", "写作", "任玥蓉", ""]], [["聂彦如&陈书进", "听力", "王银屏", ""]], [["潘韬薄&苏顺平&周家琪", "口语", "梁润泽", ""]]], [[], [["丁嘉宝", "口语", "梁润泽", ""]], [], []], [[], [["Frank", "阅读", "徐梓淞", ""]], [], []], [[["黄号然", "自习", "", ""]], [["赖晨曦", "课后", "", ""]], [["赖晨曦", "课后", "", ""], ["黄子珊", "课后", "", ""], ["丁嘉宝", "课后", "", ""], ["Frank", "课后", "", ""], ["Leo", "课后", "", ""], ["Iven", "课后", "", ""]], [["赖晨曦", "课后", "", ""], ["黄子珊", "课后", "", ""], ["丁嘉宝", "课后", "", ""], ["Frank", "课后", "", ""], ["Leo", "课后", "", ""], ["Iven", "课后", "", ""], ["聂彦如", "课后", "", ""], ["陈书进", "课后", "", ""]]]], "teachers": ["任玥蓉", "徐梓淞", "梁润泽", "王银屏"], "online": [], "unknown": [], "date": "10/17"}}}).days || {};
+const $ = id => document.getElementById(id);
+const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x !== undefined) e.textContent = x; return e; };
+// 2026-10-05 Leo：今天、明天两天可切换；打开默认今天（北京时间），不记上次看的日期
+const today = new Date().toLocaleDateString("en-CA", {timeZone: "Asia/Shanghai"});
+const shiftD = (d, n) => { const t = new Date(d + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
+const tomorrow = shiftD(today, 1);
+const relD = d => (d === today ? "今天 " : d === tomorrow ? "明天 " : "");
+const mdD = d => { const p = d.split("-"); return Number(p[1]) + "/" + Number(p[2]); };
+const BASE = ALL[Object.keys(ALL).sort().pop()] || {rows: ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], segs: [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]]};
+const blank = iso => ({iso, rows: BASE.rows, segs: BASE.segs, cells: BASE.rows.map(() => BASE.segs.map(() => [])), teachers: [], online: [], unknown: [], missing: true});
+let curD = today, DATA = ALL[curD] || blank(curD);
+const R = BASE.rows, S = BASE.segs, HALL = R.length - 1;
+const PAL = ["1", "2", "3", "4"];
+let tcol = {}, LKEY = "";
+let ed = {};   // 手改过的格子：{"行-段": [[学生, 科目, 老师, 时间], …]}，每天分开存
+const norm = o => { const r = {}; Object.keys(o || {}).forEach(k => { const v = o[k];
+  r[k] = Array.isArray(v) ? v : String(v).split("\n").map(s => s.trim()).filter(Boolean).map(s => [s, "", "", ""]); }); return r; };
+const key = (ri, si) => ri + "-" + si;
+const has = k => Object.prototype.hasOwnProperty.call(ed, k);
+const SEATS = 14;   // 大厅一共 14 个座位（Leo 2026-10-05），一个学生占一个；超过 14 人照样显示并标红
+const padH = a => { const r = (a || []).slice(); while (r.length < SEATS) r.push(null); return r; };
+const seated = arr => arr.filter(Boolean).length;
+const orig = (ri, si) => ri === HALL ? padH(DATA.cells[ri][si]) : DATA.cells[ri][si];
+const items = (ri, si) => has(key(ri, si)) ? (ri === HALL ? padH(ed[key(ri, si)]) : ed[key(ri, si)]) : orig(ri, si);
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const toText = arr => arr.filter(Boolean).map(x => x.filter(Boolean).join(" ")).join("\n");
+function setCell(ri, si, arr) {
+  const k = key(ri, si);
+  if (arr === null || same(ri === HALL ? padH(arr) : arr, orig(ri, si))) delete ed[k]; else ed[k] = arr;
+}
+let undoTo = null;
+function commit(before) { render(); undoTo = before === undefined ? null : before; try { localStorage.setItem(LKEY, JSON.stringify(ed)); } catch (e) {} push(); }
+const g = $("g");
+// 2026-10-05 Leo：横竖对调——横 = 教室（最后一列大厅，宽一些），竖 = 课段
+g.style.gridTemplateColumns = "minmax(40px,.5fr) repeat(" + (R.length - 1) + ",minmax(0,1fr)) minmax(0,1.4fr)";
+g.style.gridTemplateRows = "auto repeat(" + S.length + ",minmax(0,1fr))";
+const at = (e, ri, si) => { e.style.gridRow = si + 2; e.style.gridColumn = ri + 2; return e; };
+function block(x, ri, si, idx) {
+  const hall = ri === HALL && !x[2], col = tcol[x[2]] || "5", b = el("div", "k");
+  b.style.background = hall ? "var(--hall)" : "var(--t" + col + ")";
+  b.style.borderLeftColor = hall ? "var(--hallb)" : "var(--t" + col + "b)";
+  b.append(el("div", "w", x[0] || ""));
+  const sub = [x[1], x[2]].filter(Boolean).join("·");
+  if (sub) b.append(el("div", "s", sub));
+  if (x[3]) b.append(el("div", "tt", x[3]));
+  b.addEventListener("pointerdown", e => startDrag(e, b, x, ri, si, idx));
+  return b;
+}
+function render() {
+  g.textContent = "";
+  const corner = el("div", "h", ""); corner.style.gridRow = 1; corner.style.gridColumn = 1; g.append(corner);
+  S.forEach((s, si) => { const h = el("div", "r", s[0]); h.style.flexDirection = "column"; h.append(el("span", "hcnt", s[1] + "-" + s[2])); h.style.gridRow = si + 2; h.style.gridColumn = 1; g.append(h); });
+  let bad = 0, maxHall = 0;
+  R.forEach((rn, ri) => {
+    const rl = el("div", "h", rn.replace("教室", "").replace("（自习）", ""));
+    if (ri === HALL) rl.append(el("small", "", "14 座"));
+    rl.style.gridRow = 1; rl.style.gridColumn = ri + 2;
+    g.append(rl);
+    S.forEach((s, si) => {
+      if (ri === HALL) {   // 大厅：一个课段 = 6 个小座位，空座虚线，点空座可填人，学生可拖到别的座位
+        const harr = items(ri, si), n = seated(harr);
+        const hb = el("div", "hallbox" + (has(key(ri, si)) ? " man" : "") + (n > SEATS ? " over" : ""));
+        hb.title = "大厅 " + s[0] + " 段：已坐 " + n + " / " + SEATS;
+        if (n > maxHall) maxHall = n;
+        harr.forEach((x, k) => {
+          const c = el("div", "c seat " + (x ? "used" : "free"));
+          c.dataset.ri = ri; c.dataset.si = si; c.dataset.seat = k; c.tabIndex = 0; c.setAttribute("role", "button");
+          c.setAttribute("aria-label", "大厅 " + s[0] + " 段 座位 " + (k + 1));
+          const pre = x && x[1] === "课后";   // 上完课自动放进来的 = 预占（Leo 2026-10-05），点一下改成确定
+          if (x) { const b = block(x, ri, si, k); b.classList.add("chip"); if (pre) b.classList.add("pre");   // 虚线框 = 预占（图例里写明），格子太小不另写字
+            b.title = x[0] + (pre ? "（预占：上完课，点一下改成确定）" : x[1] ? "（" + x[1] + "）" : "");
+            const del = el("button", "x", "×"); del.type = "button"; del.setAttribute("aria-label", "从这个时段的大厅删除 " + x[0]);
+            del.addEventListener("pointerdown", e => e.stopPropagation());
+            del.onclick = e => { e.stopPropagation(); const before = JSON.stringify(ed); const a2 = items(ri, si).slice(); a2[k] = null; setCell(ri, si, a2); commit(before); };
+            b.append(del); c.append(b); }
+          c.onclick = () => { if (dragged) return;
+            if (pre) { const before = JSON.stringify(ed); const a2 = items(ri, si).slice(); a2[k] = [x[0], "确定", "", x[3] || ""]; setCell(ri, si, a2); commit(before); }
+            else openSheet(ri, si, k); };
+          c.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSheet(ri, si, k); } };
+          hb.append(c);
+        });
+        g.append(at(hb, ri, si)); return;
+      }
+      const arr = items(ri, si), c = el("div", "c");
+      c.dataset.ri = ri; c.dataset.si = si; c.tabIndex = 0; c.setAttribute("role", "button");
+      if (has(key(ri, si))) c.classList.add("man");
+      if (!arr.length) { c.classList.add("free"); c.textContent = ri === HALL ? "" : "空"; }
+      else {
+        c.classList.add("used");
+        if (ri !== HALL && arr.length > 1) { c.classList.add("bad"); bad++; }
+        arr.forEach((x, i) => c.append(block(x, ri, si, i)));
+      }
+      c.onclick = () => { if (!dragged) openSheet(ri, si); };
+      c.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSheet(ri, si); } };
+      g.append(at(c, ri, si));
+    });
+  });
+  $("cf").className = DATA.missing ? "miss" : (bad || maxHall > SEATS) ? "no" : "ok";
+  $("cf").textContent = DATA.missing ? "这天还没生成" : (bad ? "⚠️ " + bad + " 处教室冲突" : "✓ 无冲突") + (maxHall > SEATS ? " · ⚠️ 大厅超员" : " · 大厅最多 " + maxHall + "/" + SEATS);
+  const dl = $("days"); dl.textContent = "";
+  [...new Set([today, tomorrow, ...Object.keys(ALL).filter(d => d >= today)])].sort().slice(0, 3).forEach(d => {
+    const b = el("button", d === curD ? "on" : "", relD(d) + mdD(d)); b.type = "button"; b.onclick = () => { if (d !== curD) useDay(d); }; dl.append(b); });
+}
+// 拖拽：按住课程块移动到别的格子（鼠标和手指都可以）；只动了一点点算点击
+let drag = null, dragged = false;
+function startDrag(e, b, x, ri, si, idx) {
+  if (e.button !== undefined && e.button !== 0) return;
+  dragged = false;
+  // 拖动开始时一次性记下所有格子的位置，移动时只做数字比较（不再每帧查 DOM，消除延迟）
+  const rects = [...g.querySelectorAll(".c")].map(c => [c, c.getBoundingClientRect()]);
+  drag = {b, x, ri, si, idx, x0: e.clientX, y0: e.clientY, px: e.clientX, py: e.clientY, ghost: null, over: null, rects, raf: 0};
+  try { b.setPointerCapture(e.pointerId); } catch (x) {}
+  b.onpointermove = moveDrag; b.onpointerup = endDrag; b.onpointercancel = cancelDrag;
+}
+function cellAt(px, py) {
+  const hit = drag && drag.rects.find(([c, r]) => px >= r.left && px <= r.right && py >= r.top && py <= r.bottom);
+  return hit ? hit[0] : null;
+}
+function paint() {
+  if (!drag || !drag.ghost) return;
+  drag.raf = 0;
+  drag.ghost.style.transform = "translate3d(" + (drag.px - drag.dx) + "px," + (drag.py - drag.dy) + "px,0)";
+  const c = cellAt(drag.px, drag.py);
+  if (c !== drag.over) { if (drag.over) drag.over.classList.remove("drop"); if (c) c.classList.add("drop"); drag.over = c; }
+}
+function moveDrag(e) {
+  if (!drag) return;
+  drag.px = e.clientX; drag.py = e.clientY;
+  if (!drag.ghost) {
+    if (Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0) < 4) return;
+    dragged = true;
+    const r = drag.b.getBoundingClientRect(), gh = drag.b.cloneNode(true);
+    gh.className = "k ghost"; gh.style.width = r.width + "px"; gh.style.height = r.height + "px";
+    drag.dx = drag.x0 - r.left; drag.dy = drag.y0 - r.top;   // 抓住块的哪个位置，影子就保持在那个位置跟手
+    document.body.append(gh); drag.ghost = gh; drag.b.classList.add("dragging");
+  }
+  if (!drag.raf) drag.raf = requestAnimationFrame(paint);
+}
+function endDrag(e) {
+  if (!drag) return;
+  const d = drag;
+  const c = d.ghost ? cellAt(e.clientX, e.clientY) : null;
+  drag = null;
+  if (d.raf) cancelAnimationFrame(d.raf);
+  d.b.onpointermove = d.b.onpointerup = d.b.onpointercancel = null;
+  if (!d.ghost) { dragged = false; return; }   // 没拖动 = 点击，交给格子的 onclick
+  d.ghost.remove(); if (d.over) d.over.classList.remove("drop");
+  setTimeout(() => { dragged = false; }, 0);
+  if (!c) { render(); return; }
+  const tr = +c.dataset.ri, ts = +c.dataset.si, tseat = c.dataset.seat === undefined ? -1 : +c.dataset.seat;
+  if (tr === d.ri && ts === d.si && (tr !== HALL || tseat === d.idx)) { render(); return; }
+  const before = JSON.stringify(ed);
+  const src = items(d.ri, d.si).slice();
+  let moving;
+  if (d.ri === HALL) { moving = [src[d.idx]]; src[d.idx] = null; } else moving = d.idx < 0 ? src.splice(0) : src.splice(d.idx, 1);
+  setCell(d.ri, d.si, src);
+  let dst = items(tr, ts).slice();
+  if (tr === HALL) {   // 放进目标座位；那个座位有人就放到这个课段第一个空座，没空座就挤在最后
+    const p = tseat >= 0 && !dst[tseat] ? tseat : dst.findIndex(x => !x);
+    if (p < 0) dst.push(...moving); else dst[p] = moving[0];
+  } else dst = dst.concat(moving.filter(Boolean));
+  setCell(tr, ts, dst);
+  commit(before);
+}
+function cancelDrag() { if (drag && drag.raf) cancelAnimationFrame(drag.raf); if (drag && drag.ghost) drag.ghost.remove(); if (drag && drag.over) drag.over.classList.remove("drop"); drag = null; dragged = false; render(); }
+function useDay(d) {   // 切换日期：换数据、换这天的手改、换图例和底部说明、换云端订阅
+  curD = d; DATA = ALL[d] || blank(d); LKEY = "wayon-rooms-" + d;
+  tcol = {}; DATA.teachers.forEach((t, i) => { tcol[t] = PAL[i] || "5"; });
+  ed = {}; try { ed = norm(JSON.parse(localStorage.getItem(LKEY) || "{}")); } catch (e) {}
+  const lg = $("lg"); lg.textContent = "";
+  DATA.teachers.forEach(t => { const s = el("span"); const i = el("i"); i.style.background = "var(--t" + (tcol[t] || "5") + "b)"; s.append(i, document.createTextNode(t)); lg.append(s); });
+  const lp = el("span"); lp.append(el("span", "lg-pre", "预占"), document.createTextNode(" 上完课自动占座，点一下改确定")); lg.append(lp);
+  const lo = el("span"); lo.append(el("span", "lg-ok", "确定"), document.createTextNode(" 自习 / 已确认")); lg.append(lo);
+  const foot = [];
+  if (DATA.online.length) foot.push("💻 线上：" + DATA.online.join("；"));
+  if (DATA.unknown.length) foot.push("❓ 教室待定：" + DATA.unknown.join("；"));
+  foot.push("按住课程块可拖到别的格子 · 点格子可修改 · ✎ = 手动改过");
+  $("f").textContent = foot.join("　");
+  render(); subscribe();
+}
+let cur = null;
+function openSheet(ri, si, seat) {
+  cur = [ri, si, seat === undefined ? -1 : seat];
+  $("sht").textContent = R[ri].replace("（自习）", "") + " · " + S[si][0] + " 段 " + S[si][1] + "-" + S[si][2] + (seat === undefined ? "" : " · 座位 " + (seat + 1));
+  $("sha").value = seat === undefined ? toText(items(ri, si)) : toText([items(ri, si)[seat]]);
+  $("br").hidden = !has(key(ri, si));
+  $("bc").textContent = seat === undefined ? "清空" : "从大厅删除";
+  $("sh").classList.add("on"); $("sha").focus();
+}
+const close = () => { $("sh").classList.remove("on"); cur = null; };
+function fromText(t) {   // 文字没改就保留原来的块（颜色、老师不丢）
+  const old = items(cur[0], cur[1]);
+  if (t.trim() === toText(old).trim()) return old;
+  return t.split("\n").map(s => s.trim()).filter(Boolean).map(s => {
+    const hit = old.find(x => x.filter(Boolean).join(" ") === s);
+    if (hit) return hit;
+    const p = s.split(/\s+/), tch = DATA.teachers.find(n => p.includes(n));
+    return tch ? [p.filter(w => w !== tch).slice(0, 1).join(" "), p.filter(w => w !== tch).slice(1).join(" "), tch, ""] : [s, "", "", ""];
+  });
+}
+function seatSet(v) {   // 大厅座位：写名字 / 清空这一个座位
+  const arr = items(cur[0], cur[1]).slice(), old = arr[cur[2]], t = (v || "").trim();
+  arr[cur[2]] = !t ? null : (old && toText([old]) === t ? old : [t, "自习", "", ""]);
+  setCell(cur[0], cur[1], arr);
+}
+$("bs").onclick = () => { if (cur[2] >= 0) seatSet($("sha").value); else setCell(cur[0], cur[1], fromText($("sha").value)); close(); commit(); };
+$("bc").onclick = () => { if (cur[2] >= 0) seatSet(""); else setCell(cur[0], cur[1], []); close(); commit(); };
+$("br").onclick = () => { setCell(cur[0], cur[1], null); close(); commit(); };
+$("bx").onclick = close;
+document.addEventListener("keydown", e => { if (e.key === "Escape" && cur) close(); });
+// 云端同步（同任务清单，第 39 条）：集合 wayon_rooms，文档 = 日期，字段 edits（JSON 字符串）。本地打开时只存这台浏览器。
+let DB = null, wq = Promise.resolve(), wt = 0;
+const setSy = t => { $("sy").textContent = t; };
+setSy("仅本机");
+function push() {
+  if (!DB) return;
+  const body = {edits: JSON.stringify(ed), at: new Date().toISOString()};
+  clearTimeout(wt);
+  wt = setTimeout(() => { wq = wq.then(() => DB.doc("wayon_rooms/" + curD).set(body)).then(() => { undoTo = null; setSy("☁️ 已同步"); }, e => {
+    setSy("⚠️ 云端保存失败（" + ((e && e.code) || "unknown") + "），已撤回这一步");
+    if (undoTo !== null) { try { ed = JSON.parse(undoTo); } catch (x) {} undoTo = null; try { localStorage.setItem(LKEY, JSON.stringify(ed)); } catch (x) {} render(); }
+  }); }, 150);
+}
+let unsub = null;
+function subscribe() {
+  if (!DB) return;
+  if (unsub) unsub();
+  const day = curD;
+  unsub = DB.doc("wayon_rooms/" + day).onSnapshot(snap => {
+      if (day !== curD) return;
+      if (!snap.exists) { if (Object.keys(ed).length) push(); return; }
+      if (snap.metadata && snap.metadata.hasPendingWrites) return;
+      let ne = {}; try { ne = norm(JSON.parse((snap.data() || {}).edits || "{}")); } catch (e) {}
+      if (same(ne, ed)) return;
+      if (cur || drag) return;   // 正在编辑 / 拖动时不打断
+      ed = ne; try { localStorage.setItem(LKEY, JSON.stringify(ed)); } catch (e) {}
+      render();
+    }, e => setSy("⚠️ 同步中断（" + ((e && e.code) || "unknown") + "）"));
+}
+if (typeof claude !== "undefined" && claude && claude.use) {
+  claude.use("db").then(db => { if (!db) return; DB = db; setSy("☁️ 云端同步"); subscribe(); }, () => {});
+}
+useDay(today);
+</script>

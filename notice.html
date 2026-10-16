@@ -1,0 +1,127 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wayon 课程通知 10/17</title>
+<style>
+/* 本页由 wayon_agent.py sync-notes 自动生成（模板在代码 NOTICE_PAGE_TEMPLATE），不要手改 */
+:root{
+  --bg:#f3f5f4; --card:#ffffff; --fg:#17211d; --muted:#5d6b65; --line:#d6ddd9;
+  --accent:#1f5fa8; --done:#1d7a4c; --done-bg:#e3f3ea; --code-bg:#f0f3f1;
+  --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
+  --mono:"SF Mono",Menlo,Consolas,"PingFang SC","Microsoft YaHei",monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#121815; --card:#1b2420; --fg:#e7eeea; --muted:#9aaaa2; --line:#2e3a35;
+  --accent:#7db4f0; --done:#63cf97; --done-bg:#1c3529; --code-bg:#151c19; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#121815; --card:#1b2420; --fg:#e7eeea; --muted:#9aaaa2; --line:#2e3a35;
+  --accent:#7db4f0; --done:#63cf97; --done-bg:#1c3529; --code-bg:#151c19; color-scheme:dark }
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 40px}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header{display:flex;flex-direction:column;gap:10px}
+h1{font-size:22px;margin:0;font-weight:650}
+.sub{color:var(--muted);font-size:13px}
+.bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.track{flex:1;min-width:140px;height:10px;border-radius:5px;background:var(--line);overflow:hidden}
+.fill{height:100%;background:var(--done);width:0;transition:width .25s}
+.count{font-variant-numeric:tabular-nums;font-weight:650;font-size:16px}
+button{font:inherit;cursor:pointer;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:6px 12px}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.list{display:flex;flex-direction:column;gap:10px}
+.item{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.item.done{background:var(--done-bg);border-color:var(--done)}
+.head{display:flex;align-items:center;justify-content:space-between;gap:8px 10px;flex-wrap:wrap}
+.name{font-weight:700;font-size:16px;line-height:1.4;flex:1 1 100%;min-width:0;word-break:break-word}
+.time{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;flex:1 1 auto;margin-right:auto}
+.state{font-size:12px;color:var(--done);font-weight:600;white-space:nowrap}
+.copy{background:var(--accent);border-color:var(--accent);color:#ffffff;font-weight:600;white-space:nowrap;padding:6px 12px}
+.item.done .copy{background:transparent;color:var(--done);border-color:var(--done)}
+.undo{font-size:12px;padding:4px 8px;color:var(--muted);white-space:nowrap}
+pre{margin:0;background:var(--code-bg);border-radius:6px;padding:10px 12px;font-family:var(--mono);font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-word;user-select:all}
+@media (min-width: 640px){.name{flex:1 1 auto;min-width:260px}}
+@media (max-width: 480px){body{padding-inline:12px;padding-block:14px 32px}.item{padding:10px 12px}h1{font-size:20px}}
+@media (prefers-reduced-motion: reduce){.fill{transition:none}}
+</style>
+<div class="wrap">
+  <header>
+    <div>
+      <h1>明日课程提醒 · <span id="d"></span></h1>
+      <div class="sub">点「复制」后卡片变绿并记下时间。</div>
+      <div class="sub">📌 课程通知已并入任务清单（第四个页签「明日课程通知」）：<a href="https://claude.ai/artifact/PCoRATLBtRCTnS5XHyuYDy" target="_blank" rel="noopener">打开任务清单</a></div>
+      <div class="sub" id="sync"></div>
+    </div>
+    <div class="bar">
+      <div class="track"><div class="fill" id="fill"></div></div>
+      <div class="count" id="count"></div>
+      <button id="reset" type="button">全部重置</button>
+    </div>
+  </header>
+  <div class="list" id="list"></div>
+</div>
+<script>
+const DATE = "2026/10/17";
+const ROWS = [["赖晨曦", "08:30-10:30", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 08:30-10:30\n课程： 听力\n老师： 王银屏\n学生： 赖晨曦\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["黄子珊", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 写作\n老师： 任玥蓉\n学生： 黄子珊\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["丁嘉宝", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 口语\n老师： 梁润泽\n学生： 丁嘉宝\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 5号教室"], ["Frank", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 阅读\n老师： 徐梓淞\n学生： Frank\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["Leo&Iven", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 听力\n老师： 王银屏\n学生： Leo/Iven\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["聂彦如&陈书进", "13:30-15:30", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 13:30-15:30\n课程： 听力\n老师： 王银屏\n学生： 聂彦如/陈书进\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["周家琪/潘韬薄/苏顺平", "15:40-17:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 15:40-17:40\n课程： 口语\n老师： 梁润泽\n学生： 周家琪/潘韬薄/苏顺平\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"]]; // [卡片名, 上课时间, 通知全文]
+const KEY = "wayon-copied-" + DATE;
+let st = {};
+try { st = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e) {} push(); };
+const list = document.getElementById("list");
+document.getElementById("d").textContent = DATE;
+function render(){
+  list.textContent = "";
+  let n = 0;
+  ROWS.forEach((r, i) => {
+    const done = st[r[0]]; if (done) n++;
+    const el = document.createElement("div"); el.className = "item" + (done ? " done" : "");
+    const head = document.createElement("div"); head.className = "head";
+    const name = document.createElement("div"); name.className = "name"; name.textContent = (i+1) + ".【" + r[0] + "】";
+    const time = document.createElement("div"); time.className = "time"; time.textContent = r[1];
+    head.append(name, time);
+    if (done){ const s = document.createElement("div"); s.className = "state"; s.textContent = "✓ 已复制 " + done; head.append(s); }
+    const pre = document.createElement("pre"); pre.textContent = r[2];
+    const b = document.createElement("button"); b.type = "button"; b.className = "copy"; b.id = "copy-" + i;
+    b.textContent = done ? "再复制一次" : "复制";
+    b.onclick = () => {
+      const mark = () => { st[r[0]] = new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"}); save(); render(); };
+      const sel = () => { const g = getSelection(), rg = document.createRange(); rg.selectNodeContents(pre); g.removeAllRanges(); g.addRange(rg); b.textContent = "已选中，按 ⌘C 复制"; };
+      try { navigator.clipboard.writeText(r[2]).then(mark, sel); } catch(e) { sel(); }
+    };
+    head.append(b);
+    if (done){ const u = document.createElement("button"); u.type = "button"; u.className = "undo"; u.textContent = "撤销"; u.onclick = () => { delete st[r[0]]; save(); render(); }; head.append(u); }
+    el.append(head, pre); list.append(el);
+  });
+  document.getElementById("count").textContent = n + " / " + ROWS.length + " 已复制";
+  document.getElementById("fill").style.width = (ROWS.length ? n / ROWS.length * 100 : 0) + "%";
+}
+document.getElementById("reset").onclick = () => { st = {}; save(); render(); };
+render();
+// 云端同步（2026-10-05）：在 claude.ai 打开时「已复制」存到 artifact 数据库（集合 wayon_notice，文档 = 日期），多设备同一份。
+let DB = null, wq = Promise.resolve(), wt = 0;
+const DOC = "wayon_notice/" + DATE.split("/").join("-");
+const syncEl = document.getElementById("sync");
+const setSync = t => { syncEl.textContent = t; };
+setSync("「已复制」状态只保存在这台设备的浏览器里。");
+function push(){
+  if (!DB) return;
+  const body = {copied: JSON.stringify(st), at: new Date().toISOString()};
+  clearTimeout(wt);
+  wt = setTimeout(() => {
+    wq = wq.then(() => DB.doc(DOC).set(body))
+      .then(() => setSync("☁️ 已同步到云端：手机、电脑打开都是同一份。"),
+            e => setSync("⚠️ 云端保存失败（" + ((e && e.code) || "unknown") + "），这台设备上已保存。"));
+  }, 300);
+}
+if (typeof claude !== "undefined" && claude && claude.use) {
+  claude.use("db").then(db => {
+    if (!db) return;
+    DB = db; setSync("☁️ 云端同步已开启：手机、电脑打开都是同一份。");
+    DB.doc(DOC).onSnapshot(snap => {
+      if (!snap.exists) { if (Object.keys(st).length) push(); return; }
+      if (snap.metadata && snap.metadata.hasPendingWrites) return;
+      let ns = {}; try { ns = JSON.parse((snap.data() || {}).copied || "{}") || {}; } catch(e) {}
+      if (JSON.stringify(ns) === JSON.stringify(st)) return;
+      st = ns; try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e) {}
+      render();
+    }, e => setSync("⚠️ 云端同步中断（" + ((e && e.code) || "unknown") + "），刷新页面可重连。"));
+  }, () => {});
+}
+</script>
