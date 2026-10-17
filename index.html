@@ -992,7 +992,7 @@ const ICON = {ok:"✅", no:"❌"};
 const openEditors = new Set();
 const getTasks = (name, defTasks) => {
   const s = get(name);
-  if (Array.isArray(s.tk) && s.tk.length) {
+  if (Array.isArray(s.tk)) {
     return s.tk.map((txt, idx) => [txt, s.m[idx] || "", s.n[idx] || ""]);
   }
   return defTasks || [];
@@ -1029,7 +1029,7 @@ const pload = () => { ps = {}; try { ps = JSON.parse(localStorage.getItem(pkey()
 const psave = () => { try { localStorage.setItem(pkey(), JSON.stringify(ps)); } catch(e) {} push(); };
 const ptext = p => {
   const s = get(p[0]);
-  const tasks = (Array.isArray(s.tk) && s.tk.length) ? s.tk : (p[3] || []);
+  const tasks = (Array.isArray(s.tk)) ? s.tk : (p[3] || []);
   return p[2] + "\n\n" + tasks.map((t,i) => (i+1) + "、" + (typeof t === "string" ? t : t[0])).join("\n");
 };
 const hhmm = () => new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"});
@@ -1490,8 +1490,12 @@ function render(){
       tx.value = t[0];
       tx.title = "点击可直接编辑修改任务";
       tx.onchange = () => {
+        const next = tx.value.trim() || t[0];
+        if (next === t[0]) return;
         if (!Array.isArray(s.tk)) s.tk = currentTasks.map(x => x[0]);
-        s.tk[i] = tx.value.trim() || t[0];
+        s.tk[i] = next;
+        if (s.m) delete s.m[i];
+        if (s.n) delete s.n[i];
         s.c = ""; save(); pre.textContent = text(r); summary(rows);
       };
       const note = document.createElement("input"); note.className = "note"; note.id = "n-" + ri + "-" + i; note.placeholder = "备注（可不填）"; note.value = nt(s, t, i);
@@ -1547,7 +1551,7 @@ function taskKeys(day, doneOverride) {
   for(const r of DATA[day] || []) {
     const seen = {};
     const d = done[r[0]];
-    const tasks = (d && Array.isArray(d.tk) && d.tk.length) ? d.tk.map(x => [x, '', '']) : (r[3] || []);
+    const tasks = (d && Array.isArray(d.tk)) ? d.tk.map(x => [x, '', '']) : (r[3] || []);
     tasks.forEach((t, i) => {
       const occurrence = seen[t[0]] || 0; seen[t[0]] = occurrence + 1;
       const classIds = ((DATA._cids || {})[day] || {})[r[0]] || [];
@@ -1568,7 +1572,7 @@ function captureChecks(day) {
   }
   for(const [name,d] of Object.entries(done)) {
     if(d.c) out[JSON.stringify(['done-copy',name])]=d.c;
-    if(Array.isArray(d.tk) && d.tk.length) out[JSON.stringify(['student-tasks',name])]=d.tk;
+    if(Array.isArray(d.tk)) out[JSON.stringify(['student-tasks',name])]=d.tk;
   }
   for(const [name,t] of Object.entries(plan)) if(t) out[JSON.stringify(['plan-copy',name])]=t;
   for(const [name,q] of Object.entries(quiz)) for(const part of ['pre','post'])
