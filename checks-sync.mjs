@@ -19,16 +19,6 @@ export class CheckSync {
     this.days = new Map(); this.running=false;
   }
   storageKey(day) {return `wayon-cloud-v1:${this.owner}:${day}`;}
-  recoveryKey(day) {return this.storageKey(day)+':recovery';}
-  preserveLocal(day,fields) {
-    if(!Object.keys(fields).length) return;
-    const key=this.recoveryKey(day),raw=this.storage.getItem(key);
-    const backup=raw ? JSON.parse(raw) : {schema:1,owner:this.owner,day,snapshots:[]};
-    if(backup.schema!==1 || backup.owner!==this.owner || backup.day!==day || !Array.isArray(backup.snapshots)) throw Error('RECOVERY_INVALID');
-    if(same(backup.snapshots.at(-1)?.fields,fields)) return;
-    backup.snapshots.push({captured_at:new Date().toISOString(),fields});
-    this.storage.setItem(key,JSON.stringify(backup));
-  }
   persist(day) {this.storage.setItem(this.storageKey(day),JSON.stringify(this.days.get(day).queue));}
   async read(day) {
     const {data,error}=await this.client.from('wayon_days').select('day,fields,revision').eq('owner_id',this.owner).eq('day',day).maybeSingle();
@@ -50,9 +40,6 @@ export class CheckSync {
         for(const [k,v] of Object.entries(draft)) v.before=current[k] ?? null;
         s.queue.push({id:this.uuid(),patch:draft});this.persist(day);
       }
-      // Reconnecting a previously disabled build must not destroy unuploaded local input.
-      // Keep a recovery copy; do not silently apply old marks to current tasks or upload them.
-      this.preserveLocal(day,this.capture(day));
       this.show(day);await this.flush();
     } catch(e) {this.status('云端读取失败；本机输入保留，请重试');this.days.delete(day);}
   }
@@ -108,38 +95,7 @@ export async function passwordLogin({client,emailInput,passwordInput,status,conn
     return (await connect(data.session)) !== false;
   } catch(e) {status('登录暂不可用，请重试');return false;}
 }
-export async function readChasingHistory(client,owner,through) {
-  const rows=[],seen=new Set(),stops={};
-  for(let offset=0;offset<100000;offset+=100){
-    const {data,error}=await client.from('wayon_days').select('owner_id,day,fields').eq('owner_id',owner).lte('day',through).order('day',{ascending:false}).range(offset,offset+99);
-    if(error || !Array.isArray(data))throw Error('HISTORY_UNKNOWN');
-    for(const row of data){
-      if(row.owner_id!==owner || typeof row.day!=='string' || row.day>through || seen.has(row.day) || !row.fields || typeof row.fields!=='object')throw Error('HISTORY_SCOPE');
-      seen.add(row.day);rows.push(row);
-    }
-    if(data.length<100){
-      rows.sort((a,b)=>b.day.localeCompare(a.day));
-      for(const row of rows)for(const [raw,value] of Object.entries(row.fields)){
-        let k;try{k=JSON.parse(raw);}catch(e){continue;}
-        if(k?.[0]==='chasing-stop' && k.length===2 && !Object.hasOwn(stops,k[1])){
-          const ids=Array.isArray(value)?value:value?.stopped_ids;if(!Array.isArray(ids))throw Error('STOP_UNKNOWN');
-          stops[k[1]]={stopped_ids:ids.map(String)};
-        }
-      }
-      const manual=[];
-      for(const row of rows)for(const [raw,value] of Object.entries(row.fields)){
-        if(value!=='no')continue;let k;try{k=JSON.parse(raw);}catch(e){continue;}
-        if(!Array.isArray(k)||k.length!==7||k[0]!=='task'||k.at(-1)!=='mark')continue;
-        const bytes=new TextEncoder().encode(JSON.stringify([row.day,...k.slice(0,-1)]));
-        const digest=await crypto.subtle.digest('SHA-256',bytes);
-        manual.push({name:k[1],id:'manual:'+Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join(''),title:k[4],date:row.day,source:'manual'});
-      }
-      return {stops,manual};
-    }
-  }
-  throw Error('HISTORY_LIMIT');
-}
-export async function boot({config,capture,apply,status,currentDay,hydrate}) {
+export async function boot({config,capture,apply,status,currentDay}) {
   if(!config.enabled) {status('本机已保存；云端保存尚未配置');return null;}
   const panel=document.createElement('div');panel.className='sub';
   const email=document.createElement('input');email.type='email';email.placeholder='你的登录邮箱';email.autocomplete='email';
@@ -155,10 +111,8 @@ export async function boot({config,capture,apply,status,currentDay,hydrate}) {
     if(engine && confirm('将当前设备保留的修改保存到云端？其他未修改项目保持原样。')) await engine.resolve(currentDay());
   });
   const legacy=button('下载旧本机记录',()=>{
-    const day=currentDay(),old=localStorage.getItem('wayon-before-cloud-'+day);
-    const recovery=engine && localStorage.getItem(engine.recoveryKey(day));
-    if(!old && !recovery){status('当天没有旧本机恢复副本');return;}
-    const raw=JSON.stringify({legacy:old ? JSON.parse(old) : null,cloud_recovery:recovery ? JSON.parse(recovery) : null});
+    const day=currentDay(),raw=localStorage.getItem('wayon-before-cloud-'+day);
+    if(!raw){status('当天没有旧本机恢复副本');return;}
     const a=document.createElement('a'),url=URL.createObjectURL(new Blob([raw],{type:'application/json'}));
     a.href=url;a.download=`wayon-local-backup-${day}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   });
@@ -171,7 +125,6 @@ export async function boot({config,capture,apply,status,currentDay,hydrate}) {
     if(user && user!==session.user.id) {location.reload();return;}
     user=session.user.id;
     if(!engine) {
-      if(hydrate) await hydrate(client,user);
       engine=new CheckSync({client,owner:user,storage:localStorage,capture,apply,status,uuid:()=>crypto.randomUUID()});
       email.hidden=password.hidden=login.hidden=true;
       await engine.open(currentDay());
