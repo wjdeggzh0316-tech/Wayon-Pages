@@ -3,7 +3,7 @@
 <title>Wayon 任务清单 10/17</title>
 <style>
 /* ========================================================
-   Wayon Workbench — Apple & Claude Hybrid Design System
+   Wayon Workbench — Modern Dashboard with Responsive Sidebar
    ======================================================== */
 :root {
   --bg: #f5f5f7;
@@ -36,8 +36,8 @@
   
   --code-bg: #f5f5f7;
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.03);
-  --shadow-card: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
-  --shadow-hover: 0 8px 30px -4px rgba(0, 0, 0, 0.08);
+  --shadow-card: 0 4px 18px -2px rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+  --shadow-hover: 0 8px 26px -4px rgba(0, 0, 0, 0.08);
   
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
 }
@@ -110,101 +110,18 @@ body {
   background: var(--bg);
   color: var(--fg);
   font-family: var(--sans);
-  font-size: 15px;
+  font-size: 14.5px;
   line-height: 1.5;
-  padding-inline: 20px;
-  padding-block: 28px 56px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-.wrap {
-  max-width: 760px;
-  margin: 0 auto;
+.app-layout {
   display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-body[data-mode="classroom"] .wrap {
-  max-width: 1140px;
+  min-height: 100vh;
+  width: 100%;
 }
 
-header {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  margin-bottom: 4px;
-}
-
-h1 {
-  font-size: 30px;
-  margin: 0;
-  font-weight: 750;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-  color: var(--fg);
-}
-h1 #d {
-  font-weight: 500;
-  color: var(--muted);
-  font-size: 0.85em;
-  letter-spacing: -0.01em;
-}
-
-.sub {
-  color: var(--muted);
-  font-size: 13.5px;
-  line-height: 1.45;
-}
-
-#sync {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--muted);
-  background: var(--card);
-  border: 1px solid var(--line);
-  padding: 4px 12px;
-  border-radius: 9999px;
-  width: fit-content;
-  margin-top: 4px;
-  box-shadow: var(--shadow-sm);
-}
-
-#schedule-health {
-  margin-top: 2px;
-}
-
-/* Category Navigation Strip (Apple Store Style) */
-#tabs {
-  display: flex;
-  gap: 8px;
-  overflow-x: auto;
-  padding: 4px 2px 8px;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-#tabs::-webkit-scrollbar { display: none; }
-
-#tabs button {
-  border-radius: 9999px;
-  font-size: 13.5px;
-  font-weight: 500;
-  padding: 8px 18px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  color: var(--fg-secondary);
-  box-shadow: var(--shadow-sm);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  white-space: nowrap;
-  flex: none;
-  cursor: pointer;
-}
 #tab-plan::before { content: "📋 "; }
 #tab-done::before { content: "✅ "; }
 #tab-quiz::before { content: "📝 "; }
@@ -212,171 +129,485 @@ h1 #d {
 #tab-chasing::before { content: "⚡ "; }
 #tab-classroom::before { content: "🏫 "; }
 
-#tabs button:hover {
-  border-color: var(--line-strong);
-  color: var(--fg);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-}
-#tabs button.on {
-  background: var(--accent);
-  color: #ffffff;
-  border-color: var(--accent);
-  font-weight: 600;
-  box-shadow: 0 4px 14px rgba(0, 113, 227, 0.35);
+@media (min-width: 860px) {
+  .sidebar {
+    width: 250px;
+    flex: none;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+    background: var(--card);
+    border-right: 1px solid var(--line);
+    padding: 24px 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    box-shadow: 1px 0 0 rgba(0, 0, 0, 0.02);
+  }
+
+  .sidebar-top {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .brand-title {
+    font-size: 28px;
+    margin: 0;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 1.1;
+    color: var(--fg);
+  }
+
+  .brand-sub {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: -0.01em;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 8px;
+    padding-left: 6px;
+  }
+
+  #tabs {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  #tabs button {
+    width: 100%;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 8px 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--fg-secondary);
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  #tabs button:hover {
+    background: rgba(0, 0, 0, 0.04);
+    color: var(--fg);
+  }
+
+  #tabs button.on {
+    background: var(--accent);
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0, 113, 227, 0.28);
+  }
+
+  #days {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 2px 4px;
+  }
+
+  #days button {
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid transparent;
+    color: var(--fg-secondary);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  #days button:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: var(--fg);
+  }
+
+  #days button.on {
+    background: var(--fg);
+    color: var(--bg);
+    font-weight: 600;
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+
+  .bar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 12px;
+  }
+
+  .bar-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .bar-lbl {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .count {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .track {
+    width: 100%;
+    height: 6px;
+    border-radius: 9999px;
+    background: rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+  }
+
+  .fill {
+    height: 100%;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, #34c759, #30b0c7);
+    width: 0;
+    transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  #reset {
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+
+  #reset:hover {
+    color: var(--bad);
+    border-color: var(--bad);
+    background: var(--bad-bg);
+  }
+
+  #sync {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    padding: 4px 8px;
+    border-radius: 9999px;
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid var(--line);
+    white-space: nowrap;
+    width: fit-content;
+  }
+
+  .main-content {
+    flex: 1;
+    min-width: 0;
+    padding: 24px 32px 64px;
+    overflow-y: auto;
+  }
+
+  #schedule-health {
+    margin-bottom: 16px;
+  }
+
+  .list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    align-items: start;
+  }
 }
 
-/* Date Switcher Strip (Apple Segmented Style) */
-#days {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 2px 2px 6px;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-#days::-webkit-scrollbar { display: none; }
-
-#days button {
-  border-radius: 9999px;
-  font-size: 13px;
-  font-weight: 500;
-  padding: 5px 14px;
-  background: rgba(0, 0, 0, 0.04);
-  border: 1px solid transparent;
-  color: var(--fg-secondary);
-  font-variant-numeric: tabular-nums;
-  transition: all 0.15s ease;
-  white-space: nowrap;
-  cursor: pointer;
-}
-@media (prefers-color-scheme: dark) {
-  #days button { background: rgba(255, 255, 255, 0.08); }
-}
-#days button:hover {
-  background: rgba(0, 0, 0, 0.08);
-  color: var(--fg);
-}
-#days button.on {
-  background: var(--fg);
-  color: var(--bg);
-  font-weight: 600;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+@media (min-width: 1340px) {
+  .list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
 }
 
-/* Progress & Metric Bar */
-.bar {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: 16px;
-  padding: 12px 18px;
-  box-shadow: var(--shadow-sm);
-  flex-wrap: wrap;
+@media (max-width: 859px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    padding: 16px 16px 12px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .sidebar-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .brand-title {
+    font-size: 24px;
+    margin: 0;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--fg);
+  }
+
+  .brand-sub {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .section-label {
+    display: none;
+  }
+
+  #tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 2px 2px 6px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  #tabs::-webkit-scrollbar { display: none; }
+
+  #tabs button {
+    border-radius: 9999px;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 14px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    color: var(--fg-secondary);
+    white-space: nowrap;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+  }
+
+  #tabs button.on {
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  #days {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 2px 2px 6px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  #days::-webkit-scrollbar { display: none; }
+
+  #days button {
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 12px;
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid transparent;
+    color: var(--fg-secondary);
+    white-space: nowrap;
+    flex: none;
+    cursor: pointer;
+  }
+
+  #days button.on {
+    background: var(--fg);
+    color: var(--bg);
+    font-weight: 600;
+  }
+
+  .sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 8px 14px;
+    flex-wrap: wrap;
+  }
+
+  .bar-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .bar-lbl {
+    display: none;
+  }
+
+  .track {
+    flex: 1;
+    min-width: 100px;
+    height: 6px;
+    border-radius: 9999px;
+    background: rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+  }
+
+  .fill {
+    height: 100%;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, #34c759, #30b0c7);
+    width: 0;
+  }
+
+  .count {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--fg);
+    white-space: nowrap;
+  }
+
+  #reset {
+    font-size: 11.5px;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  #sync {
+    font-size: 11px;
+    color: var(--muted);
+    padding: 3px 8px;
+    border-radius: 9999px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    width: fit-content;
+  }
+
+  .main-content {
+    padding: 12px 14px 48px;
+  }
+
+  .list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
 }
 
-.track {
-  flex: 1;
-  min-width: 140px;
-  height: 8px;
-  border-radius: 9999px;
-  background: rgba(0, 0, 0, 0.06);
-  overflow: hidden;
-}
-@media (prefers-color-scheme: dark) {
-  .track { background: rgba(255, 255, 255, 0.12); }
-}
-
-.fill {
-  height: 100%;
-  border-radius: 9999px;
-  background: linear-gradient(90deg, #34c759, #30b0c7);
-  width: 0;
-  transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.count {
-  font-variant-numeric: tabular-nums;
-  font-weight: 700;
-  font-size: 15px;
-  color: var(--fg);
-  white-space: nowrap;
-}
-
-#reset {
+#schedule-health {
   font-size: 12.5px;
-  font-weight: 500;
-  padding: 5px 12px;
-  border-radius: 9999px;
-  border: 1px solid var(--line);
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  transition: all 0.15s;
+  line-height: 1.4;
 }
-#reset:hover {
-  color: var(--bad);
-  border-color: var(--bad);
-  background: var(--bad-bg);
+#schedule-health:empty {
+  display: none;
 }
-
-button:focus-visible, input:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 2px;
+#schedule-health:not(:empty) {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  border-radius: 10px;
+  padding: 8px 14px;
 }
-
-/* Card List & Items (Apple Store Style) */
-.list {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+@media (prefers-color-scheme: dark) {
+  #schedule-health:not(:empty) {
+    background: #2d2412;
+    border-color: #634311;
+    color: #fde68a;
+  }
 }
 
 .item {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 20px 22px;
+  border-radius: 16px;
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
   box-shadow: var(--shadow-card);
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
 .item:hover {
   box-shadow: var(--shadow-hover);
 }
 .item.copied {
-  border-color: rgba(52, 199, 89, 0.45);
+  border-color: rgba(52, 199, 89, 0.4);
 }
 .item.folded {
   flex-direction: row;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 18px;
+  padding: 10px 16px;
   background: var(--done-bg);
   border-color: var(--done-border);
   color: var(--done-dark);
   font-weight: 600;
-  border-radius: 14px;
+  border-radius: 12px;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
+  grid-column: 1 / -1;
 }
 
 .head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px 12px;
+  gap: 8px 10px;
   flex-wrap: wrap;
 }
 
 .name {
   font-weight: 700;
-  font-size: 18.5px;
-  line-height: 1.35;
+  font-size: 16.5px;
+  line-height: 1.3;
   color: var(--fg);
   letter-spacing: -0.015em;
   flex: 1 1 100%;
@@ -386,7 +617,7 @@ button:focus-visible, input:focus-visible {
 
 .meta {
   color: var(--muted);
-  font-size: 13.5px;
+  font-size: 12.5px;
   font-variant-numeric: tabular-nums;
   flex: 1 1 auto;
   margin-right: auto;
@@ -394,12 +625,12 @@ button:focus-visible, input:focus-visible {
 }
 
 .state {
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 600;
   color: var(--done-dark);
   background: var(--done-bg);
   border: 1px solid var(--done-border);
-  padding: 3px 10px;
+  padding: 2px 8px;
   border-radius: 9999px;
   white-space: nowrap;
 }
@@ -409,18 +640,17 @@ button:focus-visible, input:focus-visible {
   border: none;
   color: #ffffff;
   font-weight: 600;
-  font-size: 13.5px;
+  font-size: 12.5px;
   border-radius: 9999px;
   white-space: nowrap;
-  padding: 7px 18px;
-  box-shadow: 0 2px 8px rgba(0, 113, 227, 0.25);
+  padding: 6px 14px;
+  box-shadow: 0 2px 6px rgba(0, 113, 227, 0.22);
   cursor: pointer;
-  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: all 0.15s ease;
 }
 .copy:hover {
   filter: brightness(1.08);
   transform: scale(1.02);
-  box-shadow: 0 4px 12px rgba(0, 113, 227, 0.35);
 }
 .copy:active {
   transform: scale(0.98);
@@ -433,9 +663,9 @@ button:focus-visible, input:focus-visible {
 }
 
 .small {
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 500;
-  padding: 6px 14px;
+  padding: 5px 10px;
   border-radius: 9999px;
   border: 1px solid var(--line);
   background: var(--card);
@@ -450,30 +680,26 @@ button:focus-visible, input:focus-visible {
   background: var(--code-bg);
 }
 
-/* Tasks Inside Card */
 .tasks {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-top: 4px;
+  gap: 6px;
+  margin-top: 2px;
 }
 
 .task {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
-  border-radius: 12px;
-  padding: 6px 10px;
+  border-radius: 10px;
+  padding: 5px 8px;
   background: rgba(0, 0, 0, 0.015);
   border: 1px solid transparent;
   transition: all 0.15s;
 }
 @media (prefers-color-scheme: dark) {
   .task { background: rgba(255, 255, 255, 0.03); }
-}
-.task:hover {
-  background: rgba(0, 0, 0, 0.035);
 }
 .task.ok {
   background: var(--done-bg);
@@ -485,14 +711,14 @@ button:focus-visible, input:focus-visible {
 }
 
 .mark {
-  width: 88px;
-  height: 32px;
+  width: 78px;
+  height: 28px;
   flex: none;
   padding: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   border-radius: 9999px;
   border: 1px solid var(--line);
@@ -509,28 +735,22 @@ button:focus-visible, input:focus-visible {
   background: #34c759;
   border-color: #34c759;
   color: #ffffff;
-  box-shadow: 0 2px 6px rgba(52, 199, 89, 0.35);
 }
 .task.no .mark {
   background: #ff3b30;
   border-color: #ff3b30;
   color: #ffffff;
-  box-shadow: 0 2px 6px rgba(255, 59, 48, 0.35);
 }
 
-.txt {
-  flex: 1;
-  min-width: 140px;
-}
 .task input.txt {
   flex: 1;
-  min-width: 140px;
+  min-width: 120px;
   font: inherit;
-  font-size: 14.5px;
+  font-size: 13.5px;
   font-weight: 450;
-  padding: 6px 10px;
+  padding: 4px 8px;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: 6px;
   background: transparent;
   color: var(--fg);
   transition: all 0.15s;
@@ -542,39 +762,36 @@ button:focus-visible, input:focus-visible {
 .task input.txt:focus {
   border-color: var(--accent);
   background: var(--card);
-  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.15);
   outline: none;
 }
 
 .note {
   flex: 1;
-  min-width: 140px;
+  min-width: 110px;
   font: inherit;
-  font-size: 13px;
-  padding: 6px 10px;
+  font-size: 12px;
+  padding: 4px 8px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 6px;
   background: rgba(0, 0, 0, 0.02);
   color: var(--fg);
   transition: all 0.15s;
 }
-@media (prefers-color-scheme: dark) {
-  .note { background: rgba(255, 255, 255, 0.04); }
-}
 .note:focus {
   border-color: var(--accent);
   background: var(--card);
-  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.15);
   outline: none;
 }
 
 .del-btn {
-  width: 26px;
-  height: 26px;
-  line-height: 24px;
+  width: 22px;
+  height: 22px;
+  line-height: 20px;
   padding: 0;
   text-align: center;
-  font-size: 16px;
+  font-size: 15px;
   color: var(--muted);
   background: rgba(0, 0, 0, 0.04);
   border: none;
@@ -583,90 +800,78 @@ button:focus-visible, input:focus-visible {
   flex: none;
   transition: all 0.15s;
 }
-@media (prefers-color-scheme: dark) {
-  .del-btn { background: rgba(255, 255, 255, 0.08); }
-}
 .del-btn:hover {
   color: #ffffff;
   background: #ff3b30;
-  transform: scale(1.08);
 }
 
 .add-btn {
   width: 100%;
-  border: 1.5px dashed var(--line);
-  border-radius: 12px;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
   background: transparent;
   color: var(--accent);
   font-weight: 600;
-  font-size: 13.5px;
-  padding: 10px;
+  font-size: 12.5px;
+  padding: 8px;
   text-align: center;
   cursor: pointer;
   transition: all 0.15s;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 .add-btn:hover {
   border-color: var(--accent);
   background: var(--accent-subtle);
 }
 
-/* Claude-Inspired Warm Task Editor Drawer */
 .task-editor {
   background: var(--claude-bg);
   border: 1px solid var(--claude-border);
-  border-radius: 16px;
-  padding: 14px 16px;
-  margin: 6px 0 10px;
-  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.02);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 4px 0 8px;
 }
 .editor-area {
   width: 100%;
   box-sizing: border-box;
   font-family: var(--sans);
-  font-size: 13.5px;
-  line-height: 1.5;
-  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 8px 10px;
   border: 1px solid var(--line-strong);
-  border-radius: 10px;
+  border-radius: 8px;
   background: var(--card);
   color: var(--fg);
   resize: vertical;
-  transition: all 0.15s;
-}
-.editor-area:focus {
-  border-color: var(--claude-warm);
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(217, 119, 87, 0.18);
 }
 
 pre {
   margin: 0;
   background: var(--code-bg);
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 12px 14px;
-  font-size: 13px;
-  line-height: 1.45;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
   user-select: all;
   color: var(--fg-secondary);
 }
 
-/* Quiz Section */
 .quiz {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: 20px;
-  padding: 20px 22px;
+  border-radius: 16px;
+  padding: 16px 18px;
   display: flex;
   flex-direction: column;
   gap: 12px;
   box-shadow: var(--shadow-card);
+  grid-column: 1 / -1;
 }
 .quiz h2 {
-  font-size: 18px;
+  font-size: 17px;
   margin: 0;
   font-weight: 700;
   line-height: 1.3;
@@ -677,16 +882,13 @@ pre {
   flex-direction: column;
   gap: 4px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 12px;
   padding: 8px 10px;
   background: rgba(0, 0, 0, 0.01);
 }
-@media (prefers-color-scheme: dark) {
-  .qgroup { background: rgba(255, 255, 255, 0.02); }
-}
 .qhead {
   font-weight: 700;
-  font-size: 15px;
+  font-size: 14.5px;
   padding: 4px 6px;
   color: var(--fg);
 }
@@ -700,196 +902,25 @@ pre {
 .qrow {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
-  border-radius: 10px;
-  padding: 6px 8px;
+  border-radius: 8px;
+  padding: 5px 8px;
 }
 .qrow.ok { background: var(--done-bg); }
 .qrow.no { background: var(--bad-bg); }
-.qname { font-weight: 650; min-width: 72px; flex: 1; }
-.qrange { color: var(--muted); font-size: 13px; min-width: 92px; font-variant-numeric: tabular-nums; }
-.qcourse { font-weight: 400; color: var(--muted); font-size: 13.5px; }
-.qsub { margin-left: 14px; border-left: 2px solid var(--line); border-radius: 0 8px 8px 0; }
-.qinfo { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; column-gap: 10px; align-items: baseline; }
-.qsub .mark { width: auto; padding: 5px 12px; white-space: nowrap; }
+.qname { font-weight: 650; min-width: 70px; flex: 1; }
+.qrange { color: var(--muted); font-size: 12.5px; min-width: 88px; font-variant-numeric: tabular-nums; }
+.qcourse { font-weight: 400; color: var(--muted); font-size: 13px; }
+.qsub { margin-left: 12px; border-left: 2px solid var(--line); border-radius: 0 6px 6px 0; }
+.qinfo { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; column-gap: 8px; align-items: baseline; }
+.qsub .mark { width: auto; padding: 4px 10px; white-space: nowrap; }
 .qchk.on {
   border-color: #34c759;
   color: #ffffff;
   background: #34c759;
-  box-shadow: 0 2px 6px rgba(52, 199, 89, 0.35);
-}
-.qerr {
-  width: 72px;
-  flex: none;
-  font: inherit;
-  font-size: 13px;
-  padding: 6px 8px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--code-bg);
-  color: var(--fg);
 }
 
-@media (min-width: 640px) {
-  .name { flex: 1 1 auto; min-width: 260px; }
-  .quiz h2 { flex: 1 1 auto; min-width: 220px; }
-}
-@media (max-width: 480px) {
-  body { padding-inline: 14px; padding-block: 16px 36px; }
-  .wrap { gap: 14px; }
-  .item { padding: 14px 16px; border-radius: 16px; }
-  .quiz { padding: 14px 16px; border-radius: 16px; }
-  h1 { font-size: 24px; }
-  #tabs button { font-size: 12.5px; padding: 6px 14px; }
-  #days button { font-size: 12px; padding: 4px 10px; }
-  .mark { width: 80px; font-size: 12px; height: 30px; }
-  .qsub { margin-left: 8px; }
-}
-@media (prefers-reduced-motion: reduce) {
-  .fill { transition: none; }
-  * { transition: none !important; }
-}
-
-/* Brand Bar & Logo */
-.brand-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.brand-left {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-.brand-logo {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  background: #ffffff;
-  object-fit: cover;
-  flex: none;
-  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.brand-logo:hover {
-  transform: scale(1.06);
-}
-@media (prefers-color-scheme: dark) {
-  .brand-logo {
-    border-color: rgba(255, 255, 255, 0.15);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  }
-}
-.brand-title {
-  font-size: 32px;
-  margin: 0;
-  font-weight: 800;
-  letter-spacing: -0.035em;
-  line-height: 1.1;
-  color: var(--fg);
-}
-@media (min-width: 768px) {
-  .brand-title {
-    font-size: 36px;
-  }
-}
-.brand-sub {
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--muted);
-  margin-top: 3px;
-  letter-spacing: -0.01em;
-}
-.brand-right {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-#sync {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11.5px;
-  font-weight: 500;
-  color: var(--muted);
-  background: var(--card);
-  border: 1px solid var(--line);
-  padding: 4px 12px;
-  border-radius: 9999px;
-  box-shadow: var(--shadow-sm);
-  white-space: nowrap;
-}
-
-#schedule-health {
-  font-size: 12.5px;
-  line-height: 1.4;
-  margin-top: -4px;
-}
-#schedule-health:empty {
-  display: none;
-}
-#schedule-health:not(:empty) {
-  background: #fffbeb;
-  border: 1px solid #fde68a;
-  color: #92400e;
-  border-radius: 12px;
-  padding: 8px 14px;
-}
-@media (prefers-color-scheme: dark) {
-  #schedule-health:not(:empty) {
-    background: #2d2412;
-    border-color: #634311;
-    color: #fde68a;
-  }
-}
-
-.ctrl-row {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-@media (min-width: 768px) {
-  .ctrl-row {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .ctrl-row .bar {
-    margin-left: auto;
-    min-width: 340px;
-  }
-}
-
-/* Multi-Column Responsive Grid */
-.list {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 16px;
-}
-@media (min-width: 768px) {
-  .wrap {
-    max-width: 1400px;
-    padding-inline: 36px;
-    padding-block: 32px 64px;
-  }
-  .list {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 20px;
-  }
-}
-@media (min-width: 1240px) {
-  .list {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 24px;
-  }
-}
-
-/* Full-width elements in multi-column layout */
 .item.folded,
 .quiz,
 #classroom-frame,
@@ -897,37 +928,44 @@ pre {
   grid-column: 1 / -1;
 }
 body[data-mode="classroom"] .list {
-  display: flex;
-  flex-direction: column;
+  display: block;
 }
 </style>
-<div class="wrap">
-  <header>
-    <div class="brand-bar">
-      <div class="brand-left">
-        <img src="./logo.jpg" alt="Wayon Logo" class="brand-logo" width="46" height="46">
-        <div>
-          <h1 class="brand-title">Wayon</h1>
-          <div class="brand-sub"><span id="ttl"></span> · <span id="d"></span></div>
-        </div>
-      </div>
-      <div class="brand-right">
-        <div class="sync-pill" id="sync"></div>
-      </div>
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <h1 class="brand-title">Wayon</h1>
+      <div class="brand-sub"><span id="ttl"></span> · <span id="d"></span></div>
     </div>
-    <div class="sub" id="sub" style="display:none"></div>
-    <div class="health-box" id="schedule-health" role="status"></div>
-    <div class="days" id="tabs"></div>
-    <div class="ctrl-row">
+    
+    <div class="nav-section">
+      <div class="section-label">工作板块</div>
+      <div class="nav-tabs" id="tabs"></div>
+    </div>
+
+    <div class="nav-section date-section">
+      <div class="section-label">日期切换</div>
       <div class="days" id="days"></div>
+    </div>
+
+    <div class="sidebar-footer">
       <div class="bar">
+        <div class="bar-top">
+          <span class="bar-lbl">完成进度</span>
+          <div class="count" id="count"></div>
+        </div>
         <div class="track"><div class="fill" id="fill"></div></div>
-        <div class="count" id="count"></div>
         <button id="reset" type="button">重置这一天</button>
       </div>
+      <div class="sync-pill" id="sync"></div>
     </div>
-  </header>
-  <div class="list" id="list"></div>
+  </aside>
+
+  <main class="main-content">
+    <div class="sub" id="sub" style="display:none"></div>
+    <div class="health-box" id="schedule-health" role="status"></div>
+    <div class="list" id="list"></div>
+  </main>
 </div>
 <script>
 const DATA = {"2026-10-07": [["Dana", "08:30-10:30", "Dana", [["课堂生词抽背", "", ""], ["系统内单词", "", ""], ["一套阅读", "", ""], ["一套听力", "", ""], ["口语课", "", ""], ["口语课后任务", "", ""], ["一套写作", "", ""]], "Dana-托福1v1"], ["聂彦如", "09:00-10:30", "聂彦如", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["阅读课", "", ""], ["阅读课后任务", "", ""]], "聂彦如-雅思1v1"], ["郭璟Jack", "10:00-12:00", "郭璟Jack-SAT", [["课堂生词抽背", "", ""], ["GRE数学课", "", ""], ["GRE数学课后任务", "", ""]], "郭璟Jack-SAT"], ["李子熙", "13:30-15:30", "李子熙", [["课堂生词抽背", "", ""], ["SAT阅读预备课", "", ""], ["SAT阅读预备课后任务", "", ""]], "李子熙"], ["王子居", "19:00-21:00", "王子居", [["课堂生词抽背", "", ""], ["SAT阅读课", "", ""], ["SAT阅读课后任务", "", ""]], "王子居&Andy-SAT"], ["Andy", "19:00-21:00", "Andy", [["课堂生词抽背", "", ""], ["SAT阅读课", "", ""], ["SAT阅读课后任务", "", ""]], "王子居&Andy-SAT"], ["马浩岚", "自习", "马浩岚", [["系统内单词任务（听力*50+阅读*50）", "", ""], ["2、口语任务：", "", ""], ["1️⃣背诵两篇口语Part 2，在Leo这里检查 2️⃣录一篇新的Part1", "", ""], ["听力测试（错题分析+生词本+跟读）", "", ""], ["阅读测试（错题分析 +生词本）", "", ""]], "马浩岚-雅思1v1（自习）"], ["黄号然", "自习", "黄号然", [["系统内50个单词", "", ""], ["一套口语", "", ""], ["一套听力（错题分析+跟读）", "", ""], ["一套阅读（错题分析+完形填空错题背诵）", "", ""], ["一套写作", "", ""]], "黄号然-托福1v1"]], "2026-10-14": [], "2026-10-15": [], "2026-10-16": [], "2026-10-17": [["赖晨曦", "08:30-10:30", "赖晨曦", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "赖晨曦雅思一对一"], ["黄子珊", "10:40-12:40", "黄子珊", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["写作课", "", ""], ["写作课后任务", "", ""]], "黄子珊-雅思1v1"], ["Leo", "10:40-12:40", "Leo", [["课堂生词抽背", "", ""], ["系统内托福单词100个（50*2）", "", ""], ["5篇完形填空", "", ""], ["托福口语一套", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""], ["一套听力（错题分析+跟读）", "", ""], ["一套阅读（错题分析+完形填空错题背诵）", "", ""], ["一套写作", "", ""]], "【Leo&Iven】托福强化课程 2026暑假"], ["Iven", "10:40-12:40", "Iven", [["课堂生词抽背", "", ""], ["系统内单词任务（新托福词汇*50）", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "【Leo&Iven】托福强化课程 2026暑假"], ["丁嘉宝", "10:40-12:40", "丁嘉宝", [["课堂生词抽背", "", ""], ["口语课", "", ""], ["口语课后任务", "", ""]], "丁嘉宝-英语能力提升"], ["Frank", "10:40-12:40", "Frank", [["课堂生词抽背", "", ""], ["托福词汇*两组", "", ""], ["每天5篇完形", "", ""], ["每天一套口语任务", "", ""], ["一套听力+错题分析", "", ""], ["阅读课", "", ""], ["阅读课后任务", "", ""]], "Frank-托福1v1"], ["陈书进", "13:30-15:30", "陈书进", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "【聂彦如&陈书进】雅思强化课程"], ["聂彦如", "13:30-15:30", "聂彦如", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "【聂彦如&陈书进】雅思强化课程"], ["潘韬薄", "15:40-17:40", "潘韬薄", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["口语课", "", ""], ["口语课后任务", "", ""]], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"], ["周家琪", "15:40-17:40", "周家琪", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["口语课", "", ""], ["口语课后任务", "", ""]], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"], ["苏顺平", "15:40-17:40", "苏顺平", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["口语课", "", ""], ["口语课后任务", "", ""]], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"]], "2026-10-18": [["Amy", "09:00-10:30", "Amy", [["课堂生词抽背", "", ""], ["系统内单词任务（四级词汇*两组，每组30词）", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "Amy"], ["赵梓轩", "10:40-12:40", "赵梓轩", [["课堂生词抽背", "", ""], ["阅读写作课", "", ""], ["阅读写作课后任务", "", ""]], "赵梓轩"], ["朱宸萱", "13:30-15:30", "朱宸萱", [["课堂生词抽背", "", ""], ["系统内单词任务（新托福词汇*50）", "", ""], ["阅读课", "", ""], ["阅读课后任务", "", ""]], "朱宸萱"], ["代佳鸣", "14:00-15:30", "代佳鸣", [["课堂生词抽背", "", ""], ["词汇与语言应用课", "", ""], ["词汇与语言应用课后任务", "", ""]], "代佳鸣"], ["李洪睿John", "15:00-17:00", "李洪睿John", [["课堂生词抽背", "", ""], ["语法课", "", ""], ["语法课后任务", "", ""]], "李洪睿John"], ["王明泽", "15:40-17:40", "王明泽", [["课堂生词抽背", "", ""], ["SAT阅读课", "", ""], ["SAT阅读课后任务", "", ""]], "王明泽&李子熙"], ["李子熙", "15:40-17:40", "李子熙", [["课堂生词抽背", "", ""], ["SAT阅读课", "", ""], ["SAT阅读课后任务", "", ""]], "王明泽&李子熙"]], "_chasing": [{"name": "岳璐宇", "task_title": "岳璐宇-雅思考前自动补齐", "prev_date": "2026-10-16", "deadline": "2026-11-27", "is_urgent": false, "countdown_tag": "（11/27 考试在即 · 仅剩 41 天）", "uncompleted": ["CIT-C16-T3/阅读", "CIT-C15-T3/听力", "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)", "王陆807(课程)-英译英中"], "uncompleted_ids": ["14593801", "14593800", "14593798", "14593797"], "uncompleted_details": [{"id": "14593801", "title": "CIT-C16-T3/阅读", "date": "2026-10-16", "elapsed_days": 1}, {"id": "14593800", "title": "CIT-C15-T3/听力", "date": "2026-10-16", "elapsed_days": 1}, {"id": "14593798", "title": "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)", "date": "2026-10-16", "elapsed_days": 1}, {"id": "14593797", "title": "王陆807(课程)-英译英中", "date": "2026-10-16", "elapsed_days": 1}], "stopped": false, "copy_text": "【岳璐宇 任务催交提醒】（11/27 考试在即 · 仅剩 41 天）\n\n岳璐宇 同学，系统内 2026-10-16 布置的作业尚有未完成科目，请尽快集中攻坚补齐提交：\n1. CIT-C16-T3/阅读\n2. CIT-C15-T3/听力\n3. 雅思阅读词汇真经(List 1 自然地理)-英译中(选择)\n4. 王陆807(课程)-英译英中\n\n完成后请在群里回复！💪"}, {"name": "Dana", "task_title": "Dana-托福1v1", "prev_date": "2026-10-10", "deadline": "2026-10-17", "is_urgent": true, "countdown_tag": "（今日 10/17 考试冲刺 · 仅剩当天）", "uncompleted": ["2026年7月第1套/听力", "完形填空练习7", "【新托福】阅读填空题常考500词(社会学 经济学)-英译英中"], "uncompleted_ids": ["14507568", "14507567", "14507565"], "uncompleted_details": [{"id": "14507568", "title": "2026年7月第1套/听力", "date": "2026-10-10", "elapsed_days": 7}, {"id": "14507567", "title": "完形填空练习7", "date": "2026-10-10", "elapsed_days": 7}, {"id": "14507565", "title": "【新托福】阅读填空题常考500词(社会学 经济学)-英译英中", "date": "2026-10-10", "elapsed_days": 7}], "stopped": false, "copy_text": "【Dana 任务催交提醒】（今日 10/17 考试冲刺 · 仅剩当天）\n\nDana 同学，系统内 2026-10-10 布置的作业尚有未完成科目，请尽快集中攻坚补齐提交：\n1. 2026年7月第1套/听力\n2. 完形填空练习7\n3. 【新托福】阅读填空题常考500词(社会学 经济学)-英译英中\n\n考试临近，请抓紧时间全力冲刺！💪"}, {"name": "Frank", "task_title": "Frank-托福1v1", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["【新托福】听力高频800词(健康话题+校园政策+地球科学)-英译英中", "【重做】【新托福】听力高频800词(环境科学)-英译英中", "完形填空练习1", "2026年3月第8套/口语/Listen and Repeat", "【重录5+】2026年3月第8套/口语/Listen and Repeat", "2026年3月第8套/口语/Take an Interview"], "uncompleted_ids": ["14609717", "14609731", "14609803", "14609852", "14609865", "14609879"], "uncompleted_details": [{"id": "14609717", "title": "【新托福】听力高频800词(健康话题+校园政策+地球科学)-英译英中", "date": "2026-10-17", "elapsed_days": 0}, {"id": "14609731", "title": "【重做】【新托福】听力高频800词(环境科学)-英译英中", "date": "2026-10-17", "elapsed_days": 0}, {"id": "14609803", "title": "完形填空练习1", "date": "2026-10-17", "elapsed_days": 0}, {"id": "14609852", "title": "2026年3月第8套/口语/Listen and Repeat", "date": "2026-10-17", "elapsed_days": 0}, {"id": "14609865", "title": "【重录5+】2026年3月第8套/口语/Listen and Repeat", "date": "2026-10-17", "elapsed_days": 0}, {"id": "14609879", "title": "2026年3月第8套/口语/Take an Interview", "date": "2026-10-17", "elapsed_days": 0}], "stopped": false, "copy_text": "【Frank 任务催交提醒】\n\nFrank 同学，系统内 2026-10-17 布置的作业尚有未完成科目，请尽快集中攻坚补齐提交：\n1. 【新托福】听力高频800词(健康话题+校园政策+地球科学)-英译英中\n2. 【重做】【新托福】听力高频800词(环境科学)-英译英中\n3. 完形填空练习1\n4. 2026年3月第8套/口语/Listen and Repeat\n5. 【重录5+】2026年3月第8套/口语/Listen and Repeat\n6. 2026年3月第8套/口语/Take an Interview\n\n完成后请在群里回复！💪"}, {"name": "Charlotte", "task_title": "Charlotte-SAT", "prev_date": "2026-10-12", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["SAT CMP 2025‑J10‑NA‑01"], "uncompleted_ids": ["14542849"], "uncompleted_details": [{"id": "14542849", "title": "SAT CMP 2025‑J10‑NA‑01", "date": "2026-10-12", "elapsed_days": 5}], "stopped": false, "copy_text": "【Charlotte 任务催交提醒】\n\nCharlotte 同学，系统内 2026-10-12 布置的作业尚有未完成科目，请尽快集中攻坚补齐提交：\n1. SAT CMP 2025‑J10‑NA‑01\n\n完成后请在群里回复！💪"}, {"name": "Leo", "task_title": "Leo-托福1v1", "prev_date": "2026-10-11", "deadline": "2026-10-31", "is_urgent": false, "countdown_tag": "（10/31 考试在即 · 仅剩 14 天）", "uncompleted": ["2026年3月第3套(0315)/写作/Build a Sentence+Write an Email+Write for an Academic Discussion"], "uncompleted_ids": ["14521237"], "uncompleted_details": [{"id": "14521237", "title": "2026年3月第3套(0315)/写作/Build a Sentence+Write an Email+Write for an Academic Discussion", "date": "2026-10-11", "elapsed_days": 6}], "stopped": false, "copy_text": "【Leo 任务催交提醒】（10/31 考试在即 · 仅剩 14 天）\n\nLeo 同学，系统内 2026-10-11 布置的作业尚有未完成科目，请尽快集中攻坚补齐提交：\n1. 2026年3月第3套(0315)/写作/Build a Sentence+Write an Email+Write for an Academic Discussion\n\n完成后请在群里回复！💪"}, {"name": "何昊隆", "task_title": "何昊隆-托福1v1", "prev_date": "2026-10-01", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["2026年5月第5套/口语/Take an Interview"], "uncompleted_ids": ["14375175"], "uncompleted_details": [{"id": "14375175", "title": "2026年5月第5套/口语/Take an Interview", "date": "2026-10-01", "elapsed_days": 16}], "stopped": false, "copy_text": "【何昊隆 任务催交提醒】\n\n何昊隆 同学，系统内 2026-10-01 布置的作业尚有未完成科目，请尽快集中攻坚补齐提交：\n1. 2026年5月第5套/口语/Take an Interview\n\n完成后请在群里回复！💪"}, {"name": "赖晨曦雅思一对一", "task_title": "今日实际发布台账", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["王陆807(课程)-英译英中", "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)"], "uncompleted_ids": ["14609559", "14609565"], "uncompleted_details": [{"id": "14609559", "title": "王陆807(课程)-英译英中", "date": "2026-10-17", "elapsed_days": 0}, {"id": "14609565", "title": "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)", "date": "2026-10-17", "elapsed_days": 0}], "stopped": false, "copy_text": "【赖晨曦雅思一对一 任务催交提醒】\n\n赖晨曦雅思一对一 同学，系统内 2026-10-17 布置的作业尚有未完成科目，请尽快集中攻坚补齐提交：\n1. 王陆807(课程)-英译英中\n2. 雅思阅读词汇真经(List 1 自然地理)-英译中(选择)\n\n完成后请在群里回复！💪"}, {"name": "聂彦如&陈书进", "task_title": "今日实际发布台账", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["王陆807(课程)-英译英中"], "uncompleted_ids": ["14610155"], "uncompleted_details": [{"id": "14610155", "title": "王陆807(课程)-英译英中", "date": "2026-10-17", "elapsed_days": 0}], "stopped": false, "copy_text": "【聂彦如&陈书进 任务催交提醒】\n\n聂彦如&陈书进 同学，系统内 2026-10-17 布置的作业尚有未完成科目，请尽快集中攻坚补齐提交：\n1. 王陆807(课程)-英译英中\n\n完成后请在群里回复！💪"}, {"name": "雅思三人基础班", "task_title": "今日实际发布台账", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["王陆807(普通用词（二）)-英译英中", "雅思阅读词汇真经(List 7 文化历史+List 8 语言演化)-英译中(选择)"], "uncompleted_ids": ["14610336", "14610345"], "uncompleted_details": [{"id": "14610336", "title": "王陆807(普通用词（二）)-英译英中", "date": "2026-10-17", "elapsed_days": 0}, {"id": "14610345", "title": "雅思阅读词汇真经(List 7 文化历史+List 8 语言演化)-英译中(选择)", "date": "2026-10-17", "elapsed_days": 0}], "stopped": false, "copy_text": "【雅思三人基础班 任务催交提醒】\n\n雅思三人基础班 同学，系统内 2026-10-17 布置的作业尚有未完成科目，请尽快集中攻坚补齐提交：\n1. 王陆807(普通用词（二）)-英译英中\n2. 雅思阅读词汇真经(List 7 文化历史+List 8 语言演化)-英译中(选择)\n\n完成后请在群里回复！💪"}], "_chasing_errors": [{"name": "戴荧/汤馨然", "task_title": "戴荧&汤馨然-雅思强化班", "msg": "缺少可确认归属的发布台账；未查询其他老师或系统历史"}], "_chasing_status": "error", "_chasing_unknown": true, "_plan": {"2026-10-07": [["Dana", "08:30-10:30", "【Dana-托福】 10月7日任务安排🖊️", ["课堂生词抽背", "系统内单词", "一套阅读", "一套听力", "口语课", "口语课后任务", "一套写作"], "Dana-托福1v1"], ["聂彦如", "09:00-10:30", "【聂彦如-雅思】 10月7日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "阅读课", "阅读课后任务"], "聂彦如-雅思1v1"], ["郭璟Jack", "10:00-12:00", "【郭璟Jack-SAT】 10月7日任务安排🖊️", ["课堂生词抽背", "GRE数学课", "GRE数学课后任务"], "郭璟Jack-SAT"], ["李子熙", "13:30-15:30", "【李子熙-SAT】 10月7日任务安排🖊️", ["课堂生词抽背", "SAT阅读预备课", "SAT阅读预备课后任务"], "李子熙"], ["王子居&Andy", "19:00-21:00", "【王子居&Andy】-SAT 10月7日任务安排🖊️", ["课堂生词抽背", "SAT阅读课", "SAT阅读课后任务"], "王子居&Andy-SAT"], ["马浩岚", "自习", "【马浩岚-雅思】 10月7日任务安排🖊️", ["系统内单词任务（听力*50+阅读*50）", "2、口语任务：", "1️⃣背诵两篇口语Part 2，在Leo这里检查 2️⃣录一篇新的Part1", "听力测试（错题分析+生词本+跟读）", "阅读测试（错题分析 +生词本）"], "马浩岚-雅思1v1（自习）"], ["黄号然", "自习", "【黄号然-托福】 10月7日任务安排🖊️", ["系统内50个单词", "一套口语", "一套听力（错题分析+跟读）", "一套阅读（错题分析+完形填空错题背诵）", "一套写作"], "黄号然-托福1v1"]], "2026-10-14": [], "2026-10-15": [], "2026-10-16": [], "2026-10-17": [["赖晨曦", "08:30-10:30", "【赖晨曦】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "听力课", "听力课后任务"], "赖晨曦雅思一对一"], ["黄子珊", "10:40-12:40", "【黄子珊】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "写作课", "写作课后任务"], "黄子珊-雅思1v1"], ["Leo", "10:40-12:40", "【Leo】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内托福单词100个（50*2）", "5篇完形填空", "托福口语一套", "听力课", "听力课后任务", "一套听力（错题分析+跟读）", "一套阅读（错题分析+完形填空错题背诵）", "一套写作"], "【Leo&Iven】托福强化课程 2026暑假"], ["Iven", "10:40-12:40", "【Iven】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（新托福词汇*50）", "听力课", "听力课后任务"], "【Leo&Iven】托福强化课程 2026暑假"], ["丁嘉宝", "10:40-12:40", "【丁嘉宝】 10月17日任务安排🖊️", ["课堂生词抽背", "口语课", "口语课后任务"], "丁嘉宝-英语能力提升"], ["Frank", "10:40-12:40", "【Frank】 10月17日任务安排🖊️", ["课堂生词抽背", "托福词汇*两组", "每天5篇完形", "每天一套口语任务", "一套听力+错题分析", "阅读课", "阅读课后任务"], "Frank-托福1v1"], ["陈书进", "13:30-15:30", "【陈书进】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "听力课", "听力课后任务"], "【聂彦如&陈书进】雅思强化课程"], ["聂彦如", "13:30-15:30", "【聂彦如】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "听力课", "听力课后任务"], "【聂彦如&陈书进】雅思强化课程"], ["潘韬薄", "15:40-17:40", "【潘韬薄】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "口语课", "口语课后任务"], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"], ["周家琪", "15:40-17:40", "【周家琪】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "口语课", "口语课后任务"], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"], ["苏顺平", "15:40-17:40", "【苏顺平】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "口语课", "口语课后任务"], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"]], "2026-10-18": [["Amy", "09:00-10:30", "【Amy-雅思基础】 10月18日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（四级词汇*两组，每组30词）", "听力课", "听力课后任务"], "Amy"], ["赵梓轩", "10:40-12:40", "【赵梓轩-高中同步】 10月18日任务安排🖊️", ["课堂生词抽背", "阅读写作课", "阅读写作课后任务"], "赵梓轩"], ["朱宸萱", "13:30-15:30", "【朱宸萱-托福】 10月18日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（新托福词汇*50）", "阅读课", "阅读课后任务"], "朱宸萱"], ["代佳鸣", "14:00-15:30", "【代佳鸣-高中同步】 10月18日任务安排🖊️", ["课堂生词抽背", "词汇与语言应用课", "词汇与语言应用课后任务"], "代佳鸣"], ["李洪睿John", "15:00-17:00", "【李洪睿John】 10月18日任务安排🖊️", ["课堂生词抽背", "语法课", "语法课后任务"], "李洪睿John"], ["王明泽&李子熙", "15:40-17:40", "【王明泽&李子熙】-SAT阅读强化班 10月18日任务安排🖊️", ["课堂生词抽背", "SAT阅读课", "SAT阅读课后任务"], "王明泽&李子熙"]]}, "_cids": {"2026-10-07": {"聂彦如-雅思1v1": [297506], "Dana-托福1v1": [273328], "郭璟Jack-SAT": [272323], "李子熙": [272144], "王子居&Andy-SAT": [302325]}, "2026-10-14": {}, "2026-10-15": {}, "2026-10-16": {}, "2026-10-17": {"赖晨曦-雅思 1v1": [290722], "黄子珊-雅思1v1": [244187], "丁嘉宝": [258115], "Frank": [289544], "Leo&Ivan": [290341], "聂彦如&陈书进": [303091], "周家琪/潘韬薄/苏顺平-雅思基础班": [274331]}, "2026-10-18": {"Amy": [310785], "赵梓轩": [244773], "朱宸萱": [305273], "代佳鸣": [270115], "李洪睿John": [308836], "王明泽&李子熙": [299838]}}, "_notice": {"2026-10-06": [["Dana", "08:30-10:30", "【明日课程提醒】2026/10/6⏰\n\n时间： 10月6日 08:30-10:30\n课程： 写作\n老师： 徐梓淞\n学生： Dana\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["黄子珊", "10:40-12:40", "【明日课程提醒】2026/10/6⏰\n\n时间： 10月6日 10:40-12:40\n课程： 阅读\n老师： 徐梓淞\n学生： 黄子珊\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["戴荧&汤馨然", "10:40-15:30", "【明日课程提醒】2026/10/6⏰\n\n1️⃣\n时间： 10月6日 10:40-12:40\n课程： 听力\n老师： 王银屏\n学生： 戴荧/汤馨然\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室\n2️⃣\n时间： 10月6日 13:30-15:30\n课程： 写作\n老师： 任玥蓉\n学生： 戴荧/汤馨然\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 1号教室"], ["黄号然", "13:30-15:30", "【明日课程提醒】2026/10/6⏰\n\n时间： 10月6日 13:30-15:30\n课程： 写作\n老师： 徐梓淞\n学生： 黄号然\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["李洪睿John", "15:40-17:40", "【明日课程提醒】2026/10/6⏰\n\n时间： 10月6日 15:40-17:40\n课程： 语法\n老师： 任玥蓉\n学生： 李洪睿John\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 1号教室"]], "2026-10-07": [["Dana", "08:30-10:30", "【明日课程提醒】2026/10/7⏰\n\n时间： 10月7日 08:30-10:30\n课程： 口语\n老师： 王银屏\n学生： Dana\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["聂彦如", "09:00-10:30", "【明日课程提醒】2026/10/7⏰\n\n时间： 10月7日 09:00-10:30\n课程： 阅读\n老师： 徐梓淞\n学生： 聂彦如\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["郭璟Jack-SAT", "10:00-12:00", "【明日课程提醒】2026/10/7⏰\n\n时间： 10月7日 10:00-12:00（北京时间）\n美东时间： 10月6日 22:00-00:00\n课程： GRE数学\n老师： 钟美娟\n学生： 郭璟Jack-SAT\n形式： 线上"], ["李子熙", "13:30-15:30", "【明日课程提醒】2026/10/7⏰\n\n时间： 10月7日 13:30-15:30\n课程： SAT阅读预备\n老师： 元园\n学生： 李子熙\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 1号教室"], ["王子居&Andy", "19:00-21:00", "【明日课程提醒】2026/10/7⏰\n\n时间： 10月7日 19:00-21:00\n课程： SAT阅读\n老师： 元园\n学生： 王子居/Andy\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"]], "2026-10-15": [["George吴洋亿SAT一对一", "07:30-09:30", "【明日课程提醒】2026/10/15⏰\n\n时间： 10月15日 07:30-09:30（北京时间）\n美东时间： 10月14日 19:30-21:30\n课程： SAT语法\n老师： 邓凯帆\n学生： George吴洋亿SAT一对一\n形式： 线上"]], "2026-10-16": [["George吴洋亿", "08:30-10:30", "【明日课程提醒】2026/10/16⏰\n\n时间：\n10月16日 08:30-10:30（北京时间）\n10月15日 20:30-22:30（美东时间）\n课程： SAT语法\n老师： 胡亮宇\n学生： George吴洋亿\n形式： 线上"], ["郭璟Jack-SAT", "08:30-10:30", "【明日课程提醒】2026/10/16⏰\n\n时间：\n10月16日 08:30-10:30（北京时间）\n10月15日 20:30-22:30（美东时间）\n课程： SAT阅读\n老师： 元园\n学生： 郭璟Jack-SAT\n形式： 线上"], ["Ray英文综合能力提升", "16:00-18:00", "【明日课程提醒】2026/10/16⏰\n\n时间： 10月16日 16:00-18:00\n课程： 读写\n老师： 徐梓淞\n学生： Ray英文综合能力提升\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"]], "2026-10-17": [["赖晨曦", "08:30-10:30", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 08:30-10:30\n课程： 听力\n老师： 王银屏\n学生： 赖晨曦\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["黄子珊", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 写作\n老师： 任玥蓉\n学生： 黄子珊\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["丁嘉宝", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 口语\n老师： 梁润泽\n学生： 丁嘉宝\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 5号教室"], ["Frank", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 阅读\n老师： 徐梓淞\n学生： Frank\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["Leo&Iven", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 听力\n老师： 王银屏\n学生： Leo/Iven\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["聂彦如&陈书进", "13:30-15:30", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 13:30-15:30\n课程： 听力\n老师： 王银屏\n学生： 聂彦如/陈书进\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["周家琪/潘韬薄/苏顺平", "15:40-17:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 15:40-17:40\n课程： 口语\n老师： 梁润泽\n学生： 周家琪/潘韬薄/苏顺平\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"]], "2026-10-18": [["Amy", "09:00-10:30", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 09:00-10:30\n课程： 听力\n老师： 王银屏\n学生： Amy\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["赵梓轩", "10:40-12:40", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 10:40-12:40\n课程： 阅读写作\n老师： 徐梓淞\n学生： 赵梓轩\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["朱宸萱", "13:30-15:30", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 13:30-15:30\n课程： 阅读\n老师： 徐梓淞\n学生： 朱宸萱\n形式： 线上"], ["代佳鸣", "14:00-15:30", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 14:00-15:30\n课程： 词汇与语言应用\n老师： 王银屏\n学生： 代佳鸣\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["李洪睿John", "15:00-17:00", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 15:00-17:00\n课程： 语法\n老师： 任玥蓉\n学生： 李洪睿John\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 1号教室"], ["王明泽&李子熙", "15:40-17:40", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 15:40-17:40\n课程： SAT阅读\n老师： 元园\n学生： 王明泽/李子熙\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 5号教室"]]}, "_sess": {"2026-10-05": [["Dana", "08:30-10:30", "听力", "王银屏"], ["郭璟Jack", "08:30-10:30", "SAT阅读", "元园"], ["赵梓轩", "10:40-12:40", "阅读写作", "徐梓淞"], ["刘芝彬", "10:40-12:40", "雅思写作", "任玥蓉"], ["戴荧&汤馨然", "10:40-12:40", "听力", "王银屏"], ["黄号然", "13:30-15:30", "口语", "王银屏"], ["黄子珊", "13:30-15:30", "写作", "任玥蓉"], ["戴荧&汤馨然", "13:30-15:30", "阅读", "徐梓淞"], ["苏顺平", "15:40-17:40", "写作", "任玥蓉"], ["王明泽&李子熙", "15:40-17:40", "SAT阅读", "元园"], ["丁嘉宝", "17:00-19:00", "读写", "徐梓淞"]], "2026-10-06": [["Dana", "08:30-10:30", "写作", "徐梓淞"], ["黄子珊", "10:40-12:40", "阅读", "徐梓淞"], ["戴荧&汤馨然", "10:40-12:40", "听力", "王银屏"], ["黄号然", "13:30-15:30", "写作", "徐梓淞"], ["戴荧&汤馨然", "13:30-15:30", "写作", "任玥蓉"], ["李洪睿John", "15:40-17:40", "语法", "任玥蓉"]], "2026-10-07": [["Dana", "08:30-10:30", "口语", "王银屏"], ["彦如", "09:00-10:30", "阅读", "徐梓淞"], ["JACK", "10:00-12:00", "GRE数学", "钟美娟"], ["李子熙", "13:30-15:30", "SAT阅读预备", "元园"], ["王子居&Andy", "19:00-21:00", "SAT阅读", "元园"]], "2026-10-14": [], "2026-10-15": [], "2026-10-16": [["George吴洋亿", "08:30-10:30", "SAT语法", "胡亮宇"], ["郭璟Jack", "08:30-10:30", "SAT阅读", "元园"], ["Ray英文综合能力提升", "16:00-18:00", "读写", "徐梓淞"]], "2026-10-17": [["赖晨曦", "08:30-10:30", "听力", "王银屏", "线下"], ["黄子珊", "10:40-12:40", "写作", "任玥蓉", "线下"], ["丁嘉宝", "10:40-12:40", "口语", "梁润泽", "线下"], ["Frank", "10:40-12:40", "阅读", "徐梓淞", "线下"], ["Leo&Iven", "10:40-12:40", "听力", "王银屏", "线下"], ["聂彦如&陈书进", "13:30-15:30", "听力", "王银屏", "线下"], ["潘韬薄&苏顺平&周家琪", "15:40-17:40", "口语", "梁润泽", "线下"]], "2026-10-18": [["Amy徐畅", "09:00-10:30", "听力", "王银屏", "线下"], ["赵梓轩", "10:40-12:40", "阅读写作", "徐梓淞", "线下"], ["朱宸萱", "13:30-15:30", "阅读", "徐梓淞", "线上"], ["代佳鸣", "14:00-15:30", "词汇与语言应用", "王银屏", "线下"], ["李洪睿John", "15:00-17:00", "语法", "任玥蓉", "线下"], ["王明泽&李子熙", "15:40-17:40", "SAT阅读", "元园", "线下"]]}, "_schedule_status": {"2026-10-16": {"status": "error", "checked_at": "2026-10-17T16:43:24.433717+08:00", "message": "2026-10-16 课表读取失败（登录或连接未成功）；未确认是否有课；今天的任务刷新和自动布置暂停。", "last_success_at": null}, "2026-10-17": {"status": "verified", "checked_at": "2026-10-17T18:12:11.484296+08:00", "last_success_at": "2026-10-17T18:12:11.484296+08:00"}, "2026-10-18": {"status": "verified", "checked_at": "2026-10-17T18:12:11.484296+08:00", "last_success_at": "2026-10-17T18:12:11.484296+08:00"}}, "_deployment": {"2026-10-17": {"潘韬薄": ["系统内单词任务（听力*50+阅读*50）：计划，尚未布置", "系统内单词任务（听力*50+阅读*50）：计划，尚未布置"], "陈书进": ["系统内单词任务（听力*50+阅读*50）：计划，尚未布置", "系统内单词任务（听力*50+阅读*50）：计划，尚未布置"], "黄子珊": ["系统内单词任务（听力*50+阅读*50）：计划，尚未布置", "系统内单词任务（听力*50+阅读*50）：计划，尚未布置"], "周家琪": ["系统内单词任务（听力*50+阅读*50）：计划，尚未布置", "系统内单词任务（听力*50+阅读*50）：计划，尚未布置"], "聂彦如": ["系统内单词任务（听力*50+阅读*50）：计划，尚未布置", "系统内单词任务（听力*50+阅读*50）：计划，尚未布置"], "Leo": ["系统内托福单词100个（50*2）：计划，尚未布置", "5篇完形填空：计划，尚未布置", "托福口语一套：计划，尚未布置", "一套阅读（错题分析+完形填空错题背诵）：计划，尚未布置", "一套写作：计划，尚未布置"], "Iven": ["系统内单词任务（新托福词汇*50）：计划，尚未布置"], "赖晨曦": ["系统内单词任务（听力*50+阅读*50）：计划，尚未布置", "系统内单词任务（听力*50+阅读*50）：计划，尚未布置"], "丁嘉宝": ["- 今日无需要系统自动布置的任务。"], "苏顺平": ["系统内单词任务（听力*50+阅读*50）：计划，尚未布置", "系统内单词任务（听力*50+阅读*50）：计划，尚未布置"], "Frank": ["托福词汇*两组：计划，尚未布置", "每天5篇完形：计划，尚未布置", "每天一套口语任务：计划，尚未布置", "一套听力+错题分析：计划，尚未布置"]}}}; // {"YYYY-MM-DD": [[卡片名, 时间, 标题里的名字, [[任务, 备忘录里已有的标记, 备忘录里已有的备注]…], 备忘录名], …]}
