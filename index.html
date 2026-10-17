@@ -396,75 +396,68 @@ function render(){
 }
 document.getElementById("reset").onclick = () => { if (mode === "notice") { nc = {}; nsave(); } else if (mode === "quiz") { qz = {}; qsave(); } else if (mode === "plan") { ps = {}; psave(); } else if (mode === "chasing") { ch = {}; chsave(); } else { st = {}; save(); } render(); };
 load(); pload(); render();
-// 云端同步（2026-10-05）：在 claude.ai 打开时，打勾/备注/已复制 存到 artifact 数据库（集合 wayon_tasks，文档 = 日期），
-// 手机和电脑看到同一份，Claude 也能读；本地双击打开时没有 claude，照旧只存这台浏览器。
-let DB = null, unsub = null, wq = Promise.resolve();
-const wts = {};
-const syncEl = document.getElementById("sync");
-const setSync = t => { syncEl.textContent = t; };
-setSync("打勾状态只保存在这台设备的浏览器里。");
-function push(){
-  if (!DB) return;
-  if (qzDay !== cur) qload();
-  const day = cur, body = {done: JSON.stringify(st), plan: JSON.stringify(ps), quiz: JSON.stringify(qz), at: new Date().toISOString()};
-  clearTimeout(wts[day]);
-  wts[day] = setTimeout(() => {
-    wq = wq.then(() => DB.doc("wayon_tasks/" + day).set(body))
-      .then(() => setSync("☁️ 已同步到云端：手机、电脑打开都是同一份。"),
-            e => setSync("⚠️ 云端保存失败（" + ((e && e.code) || "unknown") + "），这台设备上已保存。"));
-  }, 500);
+// Manual checks use semantic task keys; array order never identifies a mark.
+let checkCloud = null;
+const readLocal = (k) => {try{return JSON.parse(localStorage.getItem(k)||'{}')||{};}catch(e){return {};}};
+function taskKeys(day) {
+  const result=[];
+  for(const r of DATA[day]||[]) {
+    const seen={};
+    (r[3]||[]).forEach((t,i)=>{
+      const occurrence=seen[t[0]]||0;seen[t[0]]=occurrence+1;
+      const classIds=((DATA._cids||{})[day]||{})[r[0]]||[];
+      result.push({name:r[0],i,key:['task',r[0],r[1],JSON.stringify(classIds.slice().sort()),t[0],occurrence]});
+    });
+  }
+  return result;
 }
-function watch(){
-  if (!DB) return;
-  if (unsub) unsub();
-  const day = cur;
-  unsub = DB.doc("wayon_tasks/" + day).onSnapshot(snap => {
-    if (day !== cur) return;
-    if (!snap.exists) {   // 云端还没有：把这台设备以前标的传上去
-      let had = false; try { had = !!(localStorage.getItem(key()) || localStorage.getItem(pkey()) || localStorage.getItem(qkey(day))); } catch(e) {}
-      if (had) push();
-      return;
-    }
-    if (snap.metadata && snap.metadata.hasPendingWrites) return;
-    const d = snap.data() || {}; let ns = {}, np = {}, nq = {};
-    try { ns = JSON.parse(d.done || "{}") || {}; } catch(e) {}
-    try { np = JSON.parse(d.plan || "{}") || {}; } catch(e) {}
-    try { nq = JSON.parse(d.quiz || "{}") || {}; } catch(e) {}
-    if (qzDay !== cur) qload();
-    if (JSON.stringify(ns) === JSON.stringify(st) && JSON.stringify(np) === JSON.stringify(ps) && JSON.stringify(nq) === JSON.stringify(qz)) return;
-    const a = document.activeElement;
-    if (a && a.classList && a.classList.contains("note")) return;   // 正在写备注时不打断
-    st = ns; ps = np; qz = nq; qzDay = day;
-    try { localStorage.setItem(key(), JSON.stringify(st)); localStorage.setItem(pkey(), JSON.stringify(ps)); localStorage.setItem(qkey(day), JSON.stringify(qz)); } catch(e) {}
-    render();
-  }, e => setSync("⚠️ 云端同步中断（" + ((e && e.code) || "unknown") + "），刷新页面可重连。"));
+function captureChecks(day) {
+  const done=day===cur ? st : readLocal('wayon-done-'+day);
+  const quiz=day===cur && qzDay===cur ? qz : readLocal(qkey(day));
+  const plan=day===cur ? ps : readLocal('wayon-plan-'+day);
+  const out={};
+  for(const {name,i,key:k} of taskKeys(day)) {
+    const d=done[name];if(!d) continue;
+    if(Object.hasOwn(d.m||{},i)) out[JSON.stringify([...k,'mark'])]=d.m[i];
+    if(Object.hasOwn(d.n||{},i)) out[JSON.stringify([...k,'note'])]=d.n[i];
+  }
+  for(const [name,d] of Object.entries(done)) if(d.c) out[JSON.stringify(['done-copy',name])]=d.c;
+  for(const [name,t] of Object.entries(plan)) if(t) out[JSON.stringify(['plan-copy',name])]=t;
+  for(const [name,q] of Object.entries(quiz)) for(const part of ['pre','post'])
+    if(q[part]===true) out[JSON.stringify(['quiz',name,part])]=true;
+  return out;
 }
-function npush(){
-  if (!DB) return;
-  const id = nId(curN), body = {copied: JSON.stringify(nc), at: new Date().toISOString()};
-  clearTimeout(nwt);
-  nwt = setTimeout(() => { nq = nq.then(() => DB.doc("wayon_notice/" + id).set(body)).then(() => setSync("☁️ 已同步到云端：手机、电脑打开都是同一份。"),
-    e => setSync("⚠️ 云端保存失败（" + ((e && e.code) || "unknown") + "），这台设备上已保存。")); }, 300);
+function applyChecks(day, fields) {
+  const done={},quiz={},plan={};
+  const tasks=new Map(taskKeys(day).map(x=>[JSON.stringify(x.key),x]));
+  for(const [raw,value] of Object.entries(fields)) {
+    let k;try{k=JSON.parse(raw);}catch(e){continue;}
+    if(k[0]==='task') {
+      const part=k.pop(), match=tasks.get(JSON.stringify(k));if(!match)continue;
+      const d=done[match.name] ||= {m:{},n:{},c:''};
+      if(part==='mark' && ['', 'ok','no'].includes(value))d.m[match.i]=value;
+      if(part==='note' && typeof value==='string')d.n[match.i]=value;
+    } else if(k[0]==='quiz' && ['pre','post'].includes(k[2]) && value===true) {
+      (quiz[k[1]] ||= {pre:false,post:false})[k[2]]=true;
+    } else if(k[0]==='plan-copy' && typeof value==='string')plan[k[1]]=value;
+    else if(k[0]==='done-copy' && typeof value==='string')(done[k[1]] ||= {m:{},n:{},c:''}).c=value;
+  }
+  // Retain the legacy device snapshot once; never silently upload old index-based marks.
+  const backup='wayon-before-cloud-'+day;
+  if(!localStorage.getItem(backup))localStorage.setItem(backup,JSON.stringify({done:readLocal('wayon-done-'+day),quiz:readLocal(qkey(day)),plan:readLocal('wayon-plan-'+day)}));
+  localStorage.setItem('wayon-done-'+day,JSON.stringify(done));
+  localStorage.setItem(qkey(day),JSON.stringify(quiz));
+  localStorage.setItem('wayon-plan-'+day,JSON.stringify(plan));
+  if(day===cur) {st=done;ps=plan;qz=quiz;qzDay=day;render();}
 }
-function nwatch(){
-  if (!DB) return;
-  if (unsubN) unsubN();
-  const day = curN;
-  unsubN = DB.doc("wayon_notice/" + nId(day)).onSnapshot(snap => {
-    if (day !== curN) return;
-    if (ncDay !== curN) nload();
-    if (!snap.exists) { if (Object.keys(nc).length) npush(); return; }
-    if (snap.metadata && snap.metadata.hasPendingWrites) return;
-    let x = {}; try { x = JSON.parse((snap.data() || {}).copied || "{}") || {}; } catch(e) {}
-    if (JSON.stringify(x) === JSON.stringify(nc)) return;
-    nc = x; try { localStorage.setItem(nkey(day), JSON.stringify(nc)); } catch(e) {}
-    if (mode === "notice") render();
-  }, e => setSync("⚠️ 云端同步中断（" + ((e && e.code) || "unknown") + "），刷新页面可重连。"));
-}
-if (typeof claude !== "undefined" && claude && claude.use) {
-  claude.use("db").then(db => {
-    if (!db) return;
-    DB = db; setSync("☁️ 云端同步已开启：手机、电脑打开都是同一份。"); watch(); nwatch();
-  }, () => {});
-}
+const syncEl=document.getElementById('sync');
+const setSync=t=>{syncEl.textContent=t;};
+function push(){checkCloud?.observe(cur);}
+function watch(){void checkCloud?.open(cur);}
+// Course-notice copying remains device-local; it is not a study-completion mark.
+function npush(){}
+function nwatch(){}
+setSync('本机已保存；正在检查云端配置…');
+import('./checks-sync.mjs').then(m=>m.boot({config:{"enabled": true, "url": "https://qcjyllyatiawkftwqfjf.supabase.co", "key": "sb_publishable_ljy3uwM1zNach70iWxqWdA_QYVGLvEo"},capture:captureChecks,apply:applyChecks,status:setSync,currentDay:()=>cur}))
+.then(x=>{checkCloud=x;watch();}).catch(()=>setSync('云端组件不可用，本机记录保留；请重试'));
 </script>
