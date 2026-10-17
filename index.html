@@ -1624,6 +1624,6 @@ function watch(){void checkCloud?.open(cur);}
 // function npush(){ checkCloud?.observe(cur); }
 function nwatch(){ void checkCloud?.open(cur); }
 setSync('本机已保存；正在检查云端配置…');
-import('./checks-sync.mjs').then(m=>m.boot({config:{"enabled": false},capture:captureChecks,apply:applyChecks,status:setSync,currentDay:()=>cur}))
+import('./checks-sync.mjs').then(m=>m.boot({config:{"enabled": true, "url": "https://qcjyllyatiawkftwqfjf.supabase.co", "key": "sb_publishable_ljy3uwM1zNach70iWxqWdA_QYVGLvEo"},capture:captureChecks,apply:applyChecks,status:setSync,currentDay:()=>cur}))
 .then(x=>{checkCloud=x;watch();}).catch(()=>setSync('云端组件不可用，本机记录保留；请重试'));
 </script>

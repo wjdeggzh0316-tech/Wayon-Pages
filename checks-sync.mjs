@@ -19,6 +19,16 @@ export class CheckSync {
     this.days = new Map(); this.running=false;
   }
   storageKey(day) {return `wayon-cloud-v1:${this.owner}:${day}`;}
+  recoveryKey(day) {return this.storageKey(day)+':recovery';}
+  preserveLocal(day,fields) {
+    if(!Object.keys(fields).length) return;
+    const key=this.recoveryKey(day),raw=this.storage.getItem(key);
+    const backup=raw ? JSON.parse(raw) : {schema:1,owner:this.owner,day,snapshots:[]};
+    if(backup.schema!==1 || backup.owner!==this.owner || backup.day!==day || !Array.isArray(backup.snapshots)) throw Error('RECOVERY_INVALID');
+    if(same(backup.snapshots.at(-1)?.fields,fields)) return;
+    backup.snapshots.push({captured_at:new Date().toISOString(),fields});
+    this.storage.setItem(key,JSON.stringify(backup));
+  }
   persist(day) {this.storage.setItem(this.storageKey(day),JSON.stringify(this.days.get(day).queue));}
   async read(day) {
     const {data,error}=await this.client.from('wayon_days').select('day,fields,revision').eq('owner_id',this.owner).eq('day',day).maybeSingle();
@@ -40,6 +50,9 @@ export class CheckSync {
         for(const [k,v] of Object.entries(draft)) v.before=current[k] ?? null;
         s.queue.push({id:this.uuid(),patch:draft});this.persist(day);
       }
+      // Reconnecting a previously disabled build must not destroy unuploaded local input.
+      // Keep a recovery copy; do not silently apply old marks to current tasks or upload them.
+      this.preserveLocal(day,this.capture(day));
       this.show(day);await this.flush();
     } catch(e) {this.status('云端读取失败；本机输入保留，请重试');this.days.delete(day);}
   }
@@ -111,8 +124,10 @@ export async function boot({config,capture,apply,status,currentDay}) {
     if(engine && confirm('将当前设备保留的修改保存到云端？其他未修改项目保持原样。')) await engine.resolve(currentDay());
   });
   const legacy=button('下载旧本机记录',()=>{
-    const day=currentDay(),raw=localStorage.getItem('wayon-before-cloud-'+day);
-    if(!raw){status('当天没有旧本机恢复副本');return;}
+    const day=currentDay(),old=localStorage.getItem('wayon-before-cloud-'+day);
+    const recovery=engine && localStorage.getItem(engine.recoveryKey(day));
+    if(!old && !recovery){status('当天没有旧本机恢复副本');return;}
+    const raw=JSON.stringify({legacy:old ? JSON.parse(old) : null,cloud_recovery:recovery ? JSON.parse(recovery) : null});
     const a=document.createElement('a'),url=URL.createObjectURL(new Blob([raw],{type:'application/json'}));
     a.href=url;a.download=`wayon-local-backup-${day}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   });
