@@ -108,7 +108,38 @@ export async function passwordLogin({client,emailInput,passwordInput,status,conn
     return (await connect(data.session)) !== false;
   } catch(e) {status('登录暂不可用，请重试');return false;}
 }
-export async function boot({config,capture,apply,status,currentDay}) {
+export async function readChasingHistory(client,owner,through) {
+  const rows=[],seen=new Set(),stops={};
+  for(let offset=0;offset<100000;offset+=100){
+    const {data,error}=await client.from('wayon_days').select('owner_id,day,fields').eq('owner_id',owner).lte('day',through).order('day',{ascending:false}).range(offset,offset+99);
+    if(error || !Array.isArray(data))throw Error('HISTORY_UNKNOWN');
+    for(const row of data){
+      if(row.owner_id!==owner || typeof row.day!=='string' || row.day>through || seen.has(row.day) || !row.fields || typeof row.fields!=='object')throw Error('HISTORY_SCOPE');
+      seen.add(row.day);rows.push(row);
+    }
+    if(data.length<100){
+      rows.sort((a,b)=>b.day.localeCompare(a.day));
+      for(const row of rows)for(const [raw,value] of Object.entries(row.fields)){
+        let k;try{k=JSON.parse(raw);}catch(e){continue;}
+        if(k?.[0]==='chasing-stop' && k.length===2 && !Object.hasOwn(stops,k[1])){
+          const ids=Array.isArray(value)?value:value?.stopped_ids;if(!Array.isArray(ids))throw Error('STOP_UNKNOWN');
+          stops[k[1]]={stopped_ids:ids.map(String)};
+        }
+      }
+      const manual=[];
+      for(const row of rows)for(const [raw,value] of Object.entries(row.fields)){
+        if(value!=='no')continue;let k;try{k=JSON.parse(raw);}catch(e){continue;}
+        if(!Array.isArray(k)||k.length!==7||k[0]!=='task'||k.at(-1)!=='mark')continue;
+        const bytes=new TextEncoder().encode(JSON.stringify([row.day,...k.slice(0,-1)]));
+        const digest=await crypto.subtle.digest('SHA-256',bytes);
+        manual.push({name:k[1],id:'manual:'+Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join(''),title:k[4],date:row.day,source:'manual'});
+      }
+      return {stops,manual};
+    }
+  }
+  throw Error('HISTORY_LIMIT');
+}
+export async function boot({config,capture,apply,status,currentDay,hydrate}) {
   if(!config.enabled) {status('本机已保存；云端保存尚未配置');return null;}
   const panel=document.createElement('div');panel.className='sub';
   const email=document.createElement('input');email.type='email';email.placeholder='你的登录邮箱';email.autocomplete='email';
@@ -140,6 +171,7 @@ export async function boot({config,capture,apply,status,currentDay}) {
     if(user && user!==session.user.id) {location.reload();return;}
     user=session.user.id;
     if(!engine) {
+      if(hydrate) await hydrate(client,user);
       engine=new CheckSync({client,owner:user,storage:localStorage,capture,apply,status,uuid:()=>crypto.randomUUID()});
       email.hidden=password.hidden=login.hidden=true;
       await engine.open(currentDay());

@@ -1214,13 +1214,27 @@ const noticeSignature = r => JSON.stringify(r.slice(0,3));
 const noticeCopied = r => { const v=nc[noticeKey(r)]; return v && v.signature===noticeSignature(r) ? v.copied_at : ""; };
 const nload = () => { ncDay = curN; nc = readLocal(nkey(curN)); };
 const nsave = () => { try { localStorage.setItem(nkey(curN), JSON.stringify(nc)); } catch(e) {} npush(); };
-const CHASING = DATA._chasing || [];
+let CHASING = DATA._chasing || [];
 let ch = {}, chDay = "", cstops = {};
 const chkey = d => "wayon-chasing-" + d;
 const cskey = "wayon-chasing-stops";
 const chload = () => { ch = {}; chDay = today; try { ch = JSON.parse(localStorage.getItem(chkey(today)) || "{}") || {}; } catch(e) {} try { cstops = JSON.parse(localStorage.getItem(cskey) || "{}") || {}; } catch(e) { cstops = {}; } };
 const chsave = () => { try { localStorage.setItem(chkey(today), JSON.stringify(ch)); } catch(e) {} };
-const cssave = () => { try { localStorage.setItem(cskey, JSON.stringify(cstops)); } catch(e) {} push(); };
+const cssave = () => { try { localStorage.setItem(cskey, JSON.stringify(cstops)); } catch(e) {} checkCloud?.observe(today); };
+function chasingText(r,stoppedIds){
+  const items=(r.uncompleted_details||[]).filter(d=>!stoppedIds.includes(String(d.id)));
+  return items.length ? ["【"+r.name+" 任务催交提醒】",...items.map((d,i)=>(i+1)+". "+d.title+"（"+d.date+"）"),"请完成后回复，谢谢！"].join("\n") : "当前没有需要催交的项目。";
+}
+async function hydrateChasing(m,client,owner){
+  const backup="wayon-stops-before-cloud";if(!localStorage.getItem(backup))localStorage.setItem(backup,localStorage.getItem(cskey)||"{}");
+  const h=await m.readChasingHistory(client,owner,today);cstops=h.stops;localStorage.setItem(cskey,JSON.stringify(cstops));chDay=today;
+  CHASING=JSON.parse(JSON.stringify(DATA._chasing||[]));
+  for(const item of h.manual){
+    let row=CHASING.find(x=>x.name===item.name);if(!row){row={name:item.name,uncompleted_details:[],uncompleted_ids:[],uncompleted:[]};CHASING.push(row);}
+    item.elapsed_days=Math.max(0,Math.floor((Date.parse(today+"T00:00:00+08:00")-Date.parse(item.date+"T00:00:00+08:00"))/86400000));
+    row.uncompleted_details.push(item);row.uncompleted_ids.push(item.id);row.uncompleted.push(item.title);
+  }
+}
 function renderChasing(){
   if (chDay !== today) chload();
   const isErr = (DATA._chasing_status === "error" || DATA._chasing_unknown);
@@ -1243,7 +1257,7 @@ function renderChasing(){
   rows.forEach((r, i) => {
     const sname = r.name || ("学员" + (i+1));
     const done = ch[sname];
-    const uids = (r.uncompleted_details || []).map(x => String(x.id)) || (r.uncompleted_ids || []).map(String);
+    const uids = r.uncompleted_details?.length ? r.uncompleted_details.map(x=>String(x.id)) : (r.uncompleted_ids || []).map(String);
     const stInfo = cstops[sname];
     const stoppedIds = Array.isArray(stInfo) ? stInfo.map(String) : (stInfo && Array.isArray(stInfo.stopped_ids) ? stInfo.stopped_ids.map(String) : []);
     const isStopped = stoppedIds.length > 0 && uids.length > 0 && uids.every(id => stoppedIds.includes(id));
@@ -1253,23 +1267,23 @@ function renderChasing(){
     name.textContent = (i+1) + ".【" + sname + "】" + (r.countdown_tag ? (" " + r.countdown_tag) : "") + (isStopped ? " [已停止催缴]" : "");
     if (r.is_urgent && !isStopped) name.style.color = "var(--bad)";
     const meta = document.createElement("div"); meta.className = "meta";
-    meta.textContent = (r.prev_date ? r.prev_date + "布置 · " : "") + "欠交 " + ((r.uncompleted && r.uncompleted.length) || 0) + " 项" + (isStopped ? " (老师已停止催缴，不阻断独立新发)" : "");
+    meta.textContent = (r.prev_date ? r.prev_date + "布置 · " : "") + "欠交 " + ((r.uncompleted && r.uncompleted.length) || 0) + " 项" + (isStopped ? " (已停止提醒；布置门禁保持)" : "");
     head.append(name, meta);
     if (done && !isStopped) { const x = document.createElement("div"); x.className = "state"; x.textContent = "✓ 已复制 " + done; head.append(x); }
-    const pre = document.createElement("pre"); pre.textContent = r.copy_text || "";
+    const pre = document.createElement("pre"); pre.textContent = chasingText(r,stoppedIds);
     const b = document.createElement("button"); b.type = "button"; b.className = "copy"; b.id = "chcopy-" + i;
     b.textContent = done ? "再复制一次" : "复制催交信息";
     b.onclick = () => {
       const ok = () => { ch[sname] = hhmm(); chsave(); render(); };
       const fail = () => { b.textContent = "复制失败，请重试"; };
-      try { navigator.clipboard.writeText(r.copy_text).then(ok, fail); } catch(e) { fail(); }
+      try { navigator.clipboard.writeText(chasingText(r,stoppedIds)).then(ok, fail); } catch(e) { fail(); }
     };
     head.append(b);
     const stopBtn = document.createElement("button"); stopBtn.type = "button"; stopBtn.className = "small";
     stopBtn.textContent = isStopped ? "恢复催缴" : "停止催缴";
     stopBtn.onclick = () => {
-      if (isStopped) { delete cstops[sname]; }
-      else { cstops[sname] = { stopped_ids: uids }; }
+      if (isStopped) { cstops[sname] = {stopped_ids:[],changed_at:new Date().toISOString()}; }
+      else { cstops[sname] = { stopped_ids: [...new Set([...stoppedIds,...uids])],changed_at:new Date().toISOString() }; }
       cssave(); render();
     };
     head.append(stopBtn);
@@ -1282,7 +1296,7 @@ function renderChasing(){
     if (r.uncompleted_details && r.uncompleted_details.length) {
       r.uncompleted_details.forEach(item => {
         const dRow = document.createElement("div"); dRow.className = "task no";
-        const dTag = document.createElement("div"); dTag.className = "mark"; dTag.textContent = "欠交" + item.elapsed_days + "天";
+        const dTag = document.createElement("div"); dTag.className = "mark"; dTag.textContent = stoppedIds.includes(String(item.id)) ? "已停止" : "欠交" + item.elapsed_days + "天";
         const dTxt = document.createElement("div"); dTxt.className = "txt"; dTxt.textContent = item.title + " (ID: " + item.id + ")";
         dRow.append(dTag, dTxt); listDetails.append(dRow);
       });
@@ -1293,7 +1307,7 @@ function renderChasing(){
   bottomC.forEach(e => list.append(e));
   if (!isErr) {
     const active = rows.filter(r => {
-      const uids = (r.uncompleted_details || []).map(x => String(x.id)) || (r.uncompleted_ids || []).map(String);
+      const uids = r.uncompleted_details?.length ? r.uncompleted_details.map(x=>String(x.id)) : (r.uncompleted_ids || []).map(String);
       const stInfo = cstops[r.name];
       const sids = Array.isArray(stInfo) ? stInfo.map(String) : (stInfo && Array.isArray(stInfo.stopped_ids) ? stInfo.stopped_ids.map(String) : []);
       return !(sids.length > 0 && uids.length > 0 && uids.every(id => sids.includes(id)));
@@ -1388,7 +1402,7 @@ load(); pload(); render(); watch(); } };
     : mode === "plan"
     ? "每人一份当天计划，点「复制」贴到群里。系统是否已布置见卡片提示，完成情况另行记录。"
     : mode === "chasing"
-    ? "Notion 任务频率表 10 人实时欠交清单，点「复制催交信息」贴到群里催缴，复制后卡片自动收纳到底部。"
+    ? "本系统发布台账与老师明确未完成的任务催缴清单，点「复制催交信息」贴到群里催缴，复制后卡片自动收纳到底部。"
     : mode === "classroom"
     ? "各教室排课与自习占用情况（支持点击格子修改、拖拽排课与时间重叠两两冲突检测）。"
     : "点每条任务左边的按钮切换 未标 → ✅ → ❌；需要说明就写在备注里。标完点「复制」，贴到群里。任务以备忘录里的最新内容为准。";
@@ -1583,8 +1597,8 @@ function captureChecks(day) {
   for(const [name,t] of Object.entries(plan)) if(t) out[JSON.stringify(['plan-copy',name])]=t;
   for(const [name,q] of Object.entries(quiz)) for(const part of ['pre','post'])
     if(q[part]===true) out[JSON.stringify(['quiz',name,part])]=true;
-  for(const [name,val] of Object.entries(cstops)) {
-    if(val && (Array.isArray(val) ? val.length : (val.stopped_ids && val.stopped_ids.length)))
+  for(const [name,val] of Object.entries(day===today ? cstops : {})) {
+    if(val && (Array.isArray(val) || Array.isArray(val.stopped_ids)))
       out[JSON.stringify(['chasing-stop',name])]=val;
   }
   const notices = day===ncDay ? nc : readLocal(nkey(day));
@@ -1642,6 +1656,6 @@ function npush(){checkCloud?.observe(curN);}
 function nwatch(){if(checkCloud && !noticeOpened.has(curN)){noticeOpened.add(curN);void checkCloud.open(curN);}}
 function currentCloudDay(){return mode==='notice' ? curN : mode==='chasing' ? today : cur;}
 setSync('本机已保存；正在检查云端配置…');
-import('./checks-sync.mjs').then(m=>m.boot({config:{"enabled": true, "url": "https://qcjyllyatiawkftwqfjf.supabase.co", "key": "sb_publishable_ljy3uwM1zNach70iWxqWdA_QYVGLvEo"},capture:captureChecks,apply:applyChecks,status:setSync,currentDay:currentCloudDay}))
+import('./checks-sync.mjs').then(m=>m.boot({config:{"enabled": true, "url": "https://qcjyllyatiawkftwqfjf.supabase.co", "key": "sb_publishable_ljy3uwM1zNach70iWxqWdA_QYVGLvEo"},capture:captureChecks,apply:applyChecks,status:setSync,currentDay:currentCloudDay,hydrate:(client,owner)=>hydrateChasing(m,client,owner)}))
 .then(x=>{checkCloud=x;if(mode==='notice')nwatch();else watch();}).catch(()=>setSync('云端组件不可用，本机记录保留；请重试'));
 </script>
