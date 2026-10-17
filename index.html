@@ -1139,17 +1139,11 @@ const qkey = d => "wayon-quiz-" + d;
 const qload = () => { qz = {}; qzDay = cur; try { qz = JSON.parse(localStorage.getItem(qkey(cur)) || "{}") || {}; } catch(e) {} };
 const qsave = () => { try { localStorage.setItem(qkey(cur), JSON.stringify(qz)); } catch(e) {} push(); };
 const qget = n => (qz[n] = qz[n] || {pre: false, post: false});
-const qk = r => {   // 键 = 「学生 上课时间」；拆班之前按「班级 时间」打过的勾，拆开后每个学生都带上
-  const k = r[0] + " " + r[1];
-  if (!qz[k] && r[4] && r[4] !== r[0] && qz[r[4] + " " + r[1]]) { const o = qz[r[4] + " " + r[1]]; qz[k] = {pre: !!o.pre, post: !!o.post}; }
-  return k;
-};
+const qk = r => r[0] + " " + r[1]; // Individual evidence only; never spread legacy group marks.
 const isQuiz = t => /抽背|默写/.test(t);
 const SESS = DATA._sess || {};   // {"YYYY-MM-DD": [[学生 / 班级, "08:30-10:30", 课程, 老师], …]}（tasks 时按课表记下）
 function quizRows(rows){   // 仅限今日线下课，班课拆成每人一行（Leo 2026-10-05）
-  let src = (SESS[cur] || []).filter(s => !(s[4] === "线上" || (s[2] && s[2].includes("线上")) || (s[0] && s[0].includes("线上"))));
-  if (!src.length && !(SESS[cur] || []).length) src = (PLAN[cur] || []).filter(x => !x[0].includes("线上")).map(x => [x[0], x[1], "", ""]);
-  if (!src.length && !(SESS[cur] || []).length && !(PLAN[cur] || []).length) src = rows.filter(r => !r[0].includes("线上")).map(r => [r[0], r[1], "", ""]);
+  const src=(SESS[cur]||[]).filter(s=>s.length>=5 && s[4]==="线下");
   const out = [];
   src.slice().sort((a, b) => a[1].localeCompare(b[1])).forEach(s => {
     String(s[0]).split(/[&＆/／、]/).map(x => x.trim()).filter(Boolean).forEach(n => out.push([n, s[1], s[2] || "", s[3] || "", s[0]]));
@@ -1429,10 +1423,10 @@ load(); pload(); render(); watch(); } };
   if (mode === "notice") { renderNotice(); return; }
   if (mode === "plan") { renderPlan(); return; }
   if (mode === "chasing") { renderChasing(); return; }
-  if (!rows.length) { const e = document.createElement("div"); e.className = "sub"; e.textContent = (cur in DATA) ? ("🎉 " + rel(cur) + mdOf(cur) + " 暂无排课与自习任务，全天无任务安排。") : ("这天还没生成（" + rel(cur) + mdOf(cur) + " 的任务清单要先跑 tasks / sync-notes）。"); list.append(e); summary(rows); return; }
   if (mode === "quiz") { renderQuiz(rows); const qr = quizRows(rows), n = qr.filter(r => qget(qk(r)).pre && qget(qk(r)).post).length;
     document.getElementById("count").textContent = n + " / " + qr.length + " 课前课后都抽了";
     document.getElementById("fill").style.width = (qr.length ? n / qr.length * 100 : 0) + "%"; return; }
+  if (!rows.length) { const e = document.createElement("div"); e.className = "sub"; e.textContent = (cur in DATA) ? ("🎉 " + rel(cur) + mdOf(cur) + " 暂无排课与自习任务，全天无任务安排。") : ("这天还没生成（" + rel(cur) + mdOf(cur) + " 的任务清单要先跑 tasks / sync-notes）。"); list.append(e); summary(rows); return; }
   const bottomD = [];
   rows.forEach((r, ri) => {
     const s = get(r[0]);
