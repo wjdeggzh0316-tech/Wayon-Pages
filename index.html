@@ -1208,8 +1208,11 @@ function renderQuiz(rows){
 // 明日课程通知（2026-10-05 并入）：已复制状态按课程日期存，本地键与原课程通知页相同；云端用原来的集合 wayon_notice（文档 id = YYYY-M-D）
 let nc = {}, ncDay = "", unsubN = null, nwt = 0, nq = Promise.resolve();
 const nId = d => { const p = d.split("-"); return Number(p[0]) + "-" + Number(p[1]) + "-" + Number(p[2]); };
-const nkey = d => "wayon-copied-" + nId(d).split("-").join("/");
-const nload = () => { nc = {}; ncDay = curN; const initC = (DATA._notice_copied || {})[curN] || {}; try { nc = Object.assign({}, initC, JSON.parse(localStorage.getItem(nkey(curN)) || "{}") || {}); } catch(e) { nc = Object.assign({}, initC); } };
+const nkey = d => "wayon-notice-v2-" + d;
+const noticeKey = r => JSON.stringify([r[0],r[1]]);
+const noticeSignature = r => JSON.stringify(r.slice(0,3));
+const noticeCopied = r => { const v=nc[noticeKey(r)]; return v && v.signature===noticeSignature(r) ? v.copied_at : ""; };
+const nload = () => { ncDay = curN; nc = readLocal(nkey(curN)); };
 const nsave = () => { try { localStorage.setItem(nkey(curN), JSON.stringify(nc)); } catch(e) {} npush(); };
 const CHASING = DATA._chasing || [];
 let ch = {}, chDay = "", cstops = {};
@@ -1335,11 +1338,12 @@ function renderClassroom(){
 }
 function renderNotice(){
   if (ncDay !== curN) nload();
+  nwatch();
   const rows = NOTICE[curN] || [];
   if (!rows.length) { const e = document.createElement("div"); e.className = "sub"; e.textContent = "这天还没生成（" + rel(curN) + mdOf(curN) + " 的课程通知要先跑 sync-notes，或这天没有课）。"; list.append(e); }
   const bottomN = [];
   rows.forEach((r, i) => {
-    const done = nc[r[0]];
+    const done = noticeCopied(r);
     const el = document.createElement("div"); el.className = "item" + (done ? " copied" : "");
     const head = document.createElement("div"); head.className = "head";
     const name = document.createElement("div"); name.className = "name"; name.textContent = (i+1) + ".【" + r[0] + "】";
@@ -1349,15 +1353,15 @@ function renderNotice(){
     const pre = document.createElement("pre"); pre.textContent = r[2];
     const b = document.createElement("button"); b.type = "button"; b.className = "copy"; b.id = "ncopy-" + i;
     b.textContent = done ? "再复制一次" : "复制";
-    b.onclick = () => { const ok = () => { nc[r[0]] = hhmm(); nsave(); render(); }; const fail = () => { b.textContent = "复制失败，请重试"; };
+    b.onclick = () => { const ok = () => { nc[noticeKey(r)] = {copied_at:hhmm(),signature:noticeSignature(r)}; nsave(); render(); }; const fail = () => { b.textContent = "复制失败，请重试"; };
       try { navigator.clipboard.writeText(r[2]).then(ok, fail); } catch(e) { fail(); } };
     head.append(b);
-    if (done) { const u = document.createElement("button"); u.type = "button"; u.className = "small"; u.textContent = "撤销"; u.onclick = () => { delete nc[r[0]]; nsave(); render(); }; head.append(u); }
+    if (done) { const u = document.createElement("button"); u.type = "button"; u.className = "small"; u.textContent = "撤销"; u.onclick = () => { delete nc[noticeKey(r)]; nsave(); render(); }; head.append(u); }
     el.append(head, pre);
     placeCard(el, !!done, "notice:" + curN + ":" + r[0], (i+1) + ".【" + r[0] + "】", done, bottomN);
   });
   bottomN.forEach(e => list.append(e));
-  const n = rows.filter(r => nc[r[0]]).length;
+  const n = rows.filter(r => noticeCopied(r)).length;
   document.getElementById("count").textContent = n + " / " + rows.length + " 已复制";
   document.getElementById("fill").style.width = (rows.length ? n / rows.length * 100 : 0) + "%";
 }
@@ -1370,7 +1374,8 @@ function render(){
   dlist.forEach(d => { const b = document.createElement("button"); b.type = "button"; b.id = "day-" + d;
     b.textContent = rel(d) + mdOf(d);
     if (d === shown) b.className = "on";
-    b.onclick = () => { if (mode === "notice") { curN = d; nload(); render(); nwatch(); } else { cur = d; load(); pload(); render(); watch(); } };
+    b.onclick = () => { if (mode === "notice") { curN = d; nload(); render(); nwatch(); } else { cur = d; let checkCloud=null;const noticeOpened=new Set();
+load(); pload(); render(); watch(); } };
     days.append(b); });
   const tabs = document.getElementById("tabs"); tabs.textContent = "";
   [["plan","任务安排（早上发群）"],["done","完成情况（下班反馈）"],["quiz","单词抽背情况"],["notice","明日课程通知"],["chasing","线上催缴"],["classroom","教室使用"]].forEach(m => { const b = document.createElement("button"); b.type = "button"; b.id = "tab-" + m[0];
@@ -1541,9 +1546,10 @@ function render(){
   summary(rows);
 }
 document.getElementById("reset").onclick = () => { if (mode === "notice") { nc = {}; nsave(); } else if (mode === "quiz") { qz = {}; qsave(); } else if (mode === "plan") { ps = {}; psave(); } else if (mode === "chasing") { ch = {}; chsave(); } else { st = {}; save(); } render(); };
+let checkCloud=null;const noticeOpened=new Set();
 load(); pload(); render();
 // Manual checks use semantic task keys; array order never identifies a mark.
-let checkCloud = null;
+
 const readLocal = (k) => {try{return JSON.parse(localStorage.getItem(k)||'{}')||{};}catch(e){return {};}};
 function taskKeys(day, doneOverride) {
   const done = doneOverride || (day === cur ? st : readLocal('wayon-done-' + day));
@@ -1581,12 +1587,15 @@ function captureChecks(day) {
     if(val && (Array.isArray(val) ? val.length : (val.stopped_ids && val.stopped_ids.length)))
       out[JSON.stringify(['chasing-stop',name])]=val;
   }
-  const nlocal = (DATA._notice_copied || {})[curN] || {};
-  for(const [name, when] of Object.entries(Object.assign({}, nlocal, readLocal(nkey(curN))))) if(when) out[JSON.stringify(['notice-copy', curN, name])] = when;
+  const notices = day===ncDay ? nc : readLocal(nkey(day));
+  for(const [id, value] of Object.entries(notices)) {
+    let k; try{k=JSON.parse(id);}catch(e){continue;}
+    if(Array.isArray(k) && k.length===2 && value?.copied_at && typeof value.signature==='string') out[JSON.stringify(['notice-copy-v2',day,...k])]=value;
+  }
   return out;
 }
 function applyChecks(day, fields) {
-  const done={},quiz={},plan={};
+  const done={},quiz={},plan={},notices={};
   for(const [raw,value] of Object.entries(fields)) {
     let k;try{k=JSON.parse(raw);}catch(e){continue;}
     if(k[0]==='student-tasks' && Array.isArray(value)) {
@@ -1608,10 +1617,12 @@ function applyChecks(day, fields) {
     else if(k[0]==='chasing-stop') {
       if(value && (typeof value==='object' || Array.isArray(value))) cstops[k[1]]=value;
       else if(value===null) delete cstops[k[1]];
-    } else if(k[0]==='notice-copy' && typeof value==='string') {
-      const nDay=k[1], sName=k[2]; const local=readLocal(nkey(nDay)); local[sName]=value; localStorage.setItem(nkey(nDay), JSON.stringify(local)); if(nDay===curN) nc[sName]=value;
+    } else if(k[0]==='notice-copy-v2' && k[1]===day && k.length===4 && value && typeof value.signature==='string' && value.copied_at) {
+      notices[JSON.stringify(k.slice(2))]=value;
     }
   }
+  localStorage.setItem(nkey(day),JSON.stringify(notices));
+  if(day===ncDay) nc=notices;
   localStorage.setItem(cskey, JSON.stringify(cstops));
   // Retain the legacy device snapshot once; never silently upload old index-based marks.
   const backup='wayon-before-cloud-'+day;
@@ -1619,15 +1630,18 @@ function applyChecks(day, fields) {
   localStorage.setItem('wayon-done-'+day,JSON.stringify(done));
   localStorage.setItem(qkey(day),JSON.stringify(quiz));
   localStorage.setItem('wayon-plan-'+day,JSON.stringify(plan));
-  if(day===cur) {st=done;ps=plan;qz=quiz;qzDay=day;render();}
+  if(day===cur) {st=done;ps=plan;qz=quiz;qzDay=day;}
+  if(day===cur || (mode==='notice' && day===curN)) render();
 }
 const syncEl=document.getElementById('sync');
 const setSync=t=>{syncEl.textContent=t;};
 function push(){checkCloud?.observe(cur);}
 function watch(){void checkCloud?.open(cur);}
-// function npush(){ checkCloud?.observe(cur); }
-function nwatch(){ void checkCloud?.open(cur); }
+function npush(){checkCloud?.observe(curN);}
+
+function nwatch(){if(checkCloud && !noticeOpened.has(curN)){noticeOpened.add(curN);void checkCloud.open(curN);}}
+function currentCloudDay(){return mode==='notice' ? curN : mode==='chasing' ? today : cur;}
 setSync('本机已保存；正在检查云端配置…');
-import('./checks-sync.mjs').then(m=>m.boot({config:{"enabled": true, "url": "https://qcjyllyatiawkftwqfjf.supabase.co", "key": "sb_publishable_ljy3uwM1zNach70iWxqWdA_QYVGLvEo"},capture:captureChecks,apply:applyChecks,status:setSync,currentDay:()=>cur}))
-.then(x=>{checkCloud=x;watch();}).catch(()=>setSync('云端组件不可用，本机记录保留；请重试'));
+import('./checks-sync.mjs').then(m=>m.boot({config:{"enabled": true, "url": "https://qcjyllyatiawkftwqfjf.supabase.co", "key": "sb_publishable_ljy3uwM1zNach70iWxqWdA_QYVGLvEo"},capture:captureChecks,apply:applyChecks,status:setSync,currentDay:currentCloudDay}))
+.then(x=>{checkCloud=x;if(mode==='notice')nwatch();else watch();}).catch(()=>setSync('云端组件不可用，本机记录保留；请重试'));
 </script>
