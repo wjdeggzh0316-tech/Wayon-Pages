@@ -16,6 +16,7 @@
   --accent:#7db4f0; --done:#63cf97; --done-bg:#1c3529; --bad:#f08a7e; --bad-bg:#3a201d; --code-bg:#151c19; color-scheme:dark }
 body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 40px}
 .wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+body[data-mode="classroom"] .wrap{max-width:1080px}
 header{display:flex;flex-direction:column;gap:10px}
 h1{font-size:22px;margin:0;font-weight:650}
 .sub{color:var(--muted);font-size:13px}
@@ -434,6 +435,39 @@ function renderChasing(){
     document.getElementById("fill").style.width = (active.length ? n / active.length * 100 : 100) + "%";
   }
 }
+function renderClassroom(){
+  document.querySelector(".bar").style.display = "none";
+  document.getElementById("days").style.display = "none";
+  const topBar = document.createElement("div");
+  topBar.style.display = "flex";
+  topBar.style.justifyContent = "space-between";
+  topBar.style.alignItems = "center";
+  topBar.style.marginBottom = "8px";
+  topBar.style.flexWrap = "wrap";
+  topBar.style.gap = "8px";
+  const tip = document.createElement("div");
+  tip.className = "sub";
+  tip.textContent = "🏫 教室排课与自习占用表（支持横向滚动、点击格子修改与拖拽调课）：";
+  const fullLink = document.createElement("a");
+  fullLink.href = "./classroom.html";
+  fullLink.target = "_blank";
+  fullLink.style.fontSize = "13px";
+  fullLink.style.color = "var(--accent)";
+  fullLink.style.textDecoration = "none";
+  fullLink.style.fontWeight = "600";
+  fullLink.textContent = "全屏新窗口打开 ↗";
+  topBar.append(tip, fullLink);
+  const frame = document.createElement("iframe");
+  frame.id = "classroom-frame";
+  frame.src = "./classroom.html";
+  frame.style.width = "100%";
+  frame.style.height = "85vh";
+  frame.style.minHeight = "720px";
+  frame.style.border = "1px solid var(--line)";
+  frame.style.borderRadius = "8px";
+  frame.style.background = "var(--card)";
+  list.append(topBar, frame);
+}
 function renderNotice(){
   if (ncDay !== curN) nload();
   const rows = NOTICE[curN] || [];
@@ -474,9 +508,9 @@ function render(){
     b.onclick = () => { if (mode === "notice") { curN = d; nload(); render(); nwatch(); } else { cur = d; load(); pload(); render(); watch(); } };
     days.append(b); });
   const tabs = document.getElementById("tabs"); tabs.textContent = "";
-  [["plan","任务安排（早上发群）"],["done","完成情况（下班反馈）"],["quiz","单词抽背情况"],["notice","明日课程通知"],["chasing","线上催缴"]].forEach(m => { const b = document.createElement("button"); b.type = "button"; b.id = "tab-" + m[0];
+  [["plan","任务安排（早上发群）"],["done","完成情况（下班反馈）"],["quiz","单词抽背情况"],["notice","明日课程通知"],["chasing","线上催缴"],["classroom","教室使用"]].forEach(m => { const b = document.createElement("button"); b.type = "button"; b.id = "tab-" + m[0];
     b.textContent = m[1]; if (m[0] === mode) b.className = "on"; b.onclick = () => { mode = m[0]; render(); }; tabs.append(b); });
-  document.getElementById("ttl").textContent = mode === "plan" ? "任务安排" : mode === "quiz" ? "单词抽背情况" : mode === "notice" ? "课程通知" : mode === "chasing" ? "线上催缴" : "任务完成情况";
+  document.getElementById("ttl").textContent = mode === "plan" ? "任务安排" : mode === "quiz" ? "单词抽背情况" : mode === "notice" ? "课程通知" : mode === "chasing" ? "线上催缴" : mode === "classroom" ? "教室使用" : "任务完成情况";
   document.getElementById("sub").textContent = mode === "notice"
     ? "每个有课的学生一张卡片（默认显示明天的课）。点「复制」发给学生 / 家长，卡片记下已复制时间。"
     : mode === "quiz"
@@ -485,6 +519,8 @@ function render(){
     ? "每人一份当天计划，点「复制」贴到群里。系统是否已布置见卡片提示，完成情况另行记录。"
     : mode === "chasing"
     ? "Notion 任务频率表 10 人实时欠交清单，点「复制催交信息」贴到群里催缴，复制后卡片自动收纳到底部。"
+    : mode === "classroom"
+    ? "各教室排课与自习占用情况（支持点击格子修改、拖拽排课与时间重叠两两冲突检测）。"
     : "点每条任务左边的按钮切换 未标 → ✅ → ❌；需要说明就写在备注里。标完点「复制」，贴到群里。任务以备忘录里的最新内容为准。";
   list.textContent = "";
   const healthDay = mode === "notice" ? curN : cur;
@@ -500,6 +536,11 @@ function render(){
     warning.textContent = "读取或刷新失败，无法确认是否有课／有任务；没有可显示的旧记录。";
     list.append(warning); document.getElementById("count").textContent = "状态未知";
     document.getElementById("fill").style.width = "0%"; return;
+  }
+  document.body.setAttribute("data-mode", mode);
+  if (mode === "classroom") { renderClassroom(); return; } else {
+    document.querySelector(".bar").style.display = "";
+    document.getElementById("days").style.display = "";
   }
   if (mode === "notice") { renderNotice(); return; }
   if (mode === "plan") { renderPlan(); return; }
