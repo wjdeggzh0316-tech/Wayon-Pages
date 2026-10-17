@@ -750,21 +750,181 @@ pre {
   .fill { transition: none; }
   * { transition: none !important; }
 }
+
+/* Brand Bar & Logo */
+.brand-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.brand-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.brand-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  background: #ffffff;
+  object-fit: cover;
+  flex: none;
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.brand-logo:hover {
+  transform: scale(1.06);
+}
+@media (prefers-color-scheme: dark) {
+  .brand-logo {
+    border-color: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  }
+}
+.brand-title {
+  font-size: 32px;
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.1;
+  color: var(--fg);
+}
+@media (min-width: 768px) {
+  .brand-title {
+    font-size: 36px;
+  }
+}
+.brand-sub {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-top: 3px;
+  letter-spacing: -0.01em;
+}
+.brand-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px solid var(--line);
+  padding: 4px 12px;
+  border-radius: 9999px;
+  box-shadow: var(--shadow-sm);
+  white-space: nowrap;
+}
+
+#schedule-health {
+  font-size: 12.5px;
+  line-height: 1.4;
+  margin-top: -4px;
+}
+#schedule-health:empty {
+  display: none;
+}
+#schedule-health:not(:empty) {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  border-radius: 12px;
+  padding: 8px 14px;
+}
+@media (prefers-color-scheme: dark) {
+  #schedule-health:not(:empty) {
+    background: #2d2412;
+    border-color: #634311;
+    color: #fde68a;
+  }
+}
+
+.ctrl-row {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+@media (min-width: 768px) {
+  .ctrl-row {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ctrl-row .bar {
+    margin-left: auto;
+    min-width: 340px;
+  }
+}
+
+/* Multi-Column Responsive Grid */
+.list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 16px;
+}
+@media (min-width: 768px) {
+  .wrap {
+    max-width: 1400px;
+    padding-inline: 36px;
+    padding-block: 32px 64px;
+  }
+  .list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+@media (min-width: 1240px) {
+  .list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+  }
+}
+
+/* Full-width elements in multi-column layout */
+.item.folded,
+.quiz,
+#classroom-frame,
+.list > .sub {
+  grid-column: 1 / -1;
+}
+body[data-mode="classroom"] .list {
+  display: flex;
+  flex-direction: column;
+}
 </style>
 <div class="wrap">
   <header>
-    <div>
-      <h1><span id="ttl"></span> · <span id="d"></span></h1>
-      <div class="sub" id="sub"></div>
-      <div class="sub" id="sync"></div>
-      <div class="sub" id="schedule-health" role="status"></div>
+    <div class="brand-bar">
+      <div class="brand-left">
+        <img src="./logo.jpg" alt="Wayon Logo" class="brand-logo" width="46" height="46">
+        <div>
+          <h1 class="brand-title">Wayon</h1>
+          <div class="brand-sub"><span id="ttl"></span> · <span id="d"></span></div>
+        </div>
+      </div>
+      <div class="brand-right">
+        <div class="sync-pill" id="sync"></div>
+      </div>
     </div>
+    <div class="sub" id="sub" style="display:none"></div>
+    <div class="health-box" id="schedule-health" role="status"></div>
     <div class="days" id="tabs"></div>
-    <div class="days" id="days"></div>
-    <div class="bar">
-      <div class="track"><div class="fill" id="fill"></div></div>
-      <div class="count" id="count"></div>
-      <button id="reset" type="button">重置这一天</button>
+    <div class="ctrl-row">
+      <div class="days" id="days"></div>
+      <div class="bar">
+        <div class="track"><div class="fill" id="fill"></div></div>
+        <div class="count" id="count"></div>
+        <button id="reset" type="button">重置这一天</button>
+      </div>
     </div>
   </header>
   <div class="list" id="list"></div>
