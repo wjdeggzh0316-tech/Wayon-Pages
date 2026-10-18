@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wayon</title>
+<style>body{margin:48px;font:16px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;color:#1d1d1f;background:#f5f5f7}h1{font-size:56px;letter-spacing:-.06em}button{padding:10px 18px;border:0;border-radius:10px;background:#0071e3;color:white;font:inherit}</style>
+<h1>Wayon</h1><p id="loading" role="status">Loading the latest workspace…</p>
+<button id="retry" hidden>Retry</button>
+<script>
+// Data-free entry point: retrieve the existing same-origin page and version its shared module.
+// No credentials, teaching data or saved state are embedded or transmitted to another host.
+(() => {
+  const load=async()=>{
+    try {
+      const response=await fetch('./index.html?release='+Date.now(),{cache:'no-store'});
+      if(!response.ok)throw Error('PAGE_UNAVAILABLE');
+      const source=await response.text();
+      const pattern=/import\(\s*(['"])\.\/checks-sync\.mjs(?:\?[^'"]*)?\1\s*\)/g;
+      let replacements=0;
+      const next=source.replace(pattern,()=>{replacements++;return "import('./checks-sync.mjs?release="+Date.now()+"')";});
+      if(replacements!==1)throw Error('ENTRY_CHANGED');
+      document.open();document.write(next);document.close();
+    } catch {
+      document.getElementById('loading').textContent='Could not load the workspace. Your saved records are unchanged.';
+      document.getElementById('retry').hidden=false;
+    }
+  };
+  document.getElementById('retry').onclick=load;void load();
+})();
+</script>
+</html>
