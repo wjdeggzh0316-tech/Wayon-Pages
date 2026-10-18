@@ -141,7 +141,8 @@ export async function readChasingHistory(client,owner,through) {
 }
 export async function boot({config,capture,apply,status,currentDay,hydrate}) {
   if(!config.enabled) {status('本机已保存；云端保存尚未配置');return null;}
-  const panel=document.createElement('div');panel.className='sub';
+  const panel=document.createElement('details');panel.className='cloud-panel';panel.open=true;
+  const heading=document.createElement('summary');heading.textContent='账户与连接';
   const email=document.createElement('input');email.type='email';email.placeholder='你的登录邮箱';email.autocomplete='email';
   const password=document.createElement('input');password.type='password';password.placeholder='你的工作台密码';password.autocomplete='current-password';
   const button=(label,action)=>{const b=document.createElement('button');b.textContent=label;b.type='button';b.onclick=()=>Promise.resolve(action()).catch(()=>status('操作失败，请重试'));return b;};
@@ -163,17 +164,17 @@ export async function boot({config,capture,apply,status,currentDay,hydrate}) {
     a.href=url;a.download=`wayon-local-backup-${day}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   });
   const logout=button('退出',async()=>{await client.auth.signOut();location.reload();});
-  panel.append(email,password,login,retry,conflict,legacy,logout);document.getElementById('sync').after(panel);
+  panel.append(heading,email,password,login,retry,conflict,legacy,logout);document.getElementById('sync').after(panel);
   async function connect(session) {
-    if(!session) {engine=null;email.hidden=password.hidden=login.hidden=false;status('请登录以保存云端记录；现有本机记录保留');return false;}
+    if(!session) {panel.open=true;engine=null;email.hidden=password.hidden=login.hidden=false;status('请登录以保存云端记录；现有本机记录保留');return false;}
     const {data,error}=await client.from('wayon_owner').select('user_id');
-    if(error || data?.length!==1 || data[0].user_id!==session.user.id) {engine=null;email.hidden=password.hidden=login.hidden=false;status('此账号没有工作台权限');return false;}
+    if(error || data?.length!==1 || data[0].user_id!==session.user.id) {panel.open=true;engine=null;email.hidden=password.hidden=login.hidden=false;status('此账号没有工作台权限');return false;}
     if(user && user!==session.user.id) {location.reload();return;}
     user=session.user.id;
     if(!engine) {
       if(hydrate) await hydrate(client,user);
       engine=new CheckSync({client,owner:user,storage:localStorage,capture,apply,status,uuid:()=>crypto.randomUUID()});
-      email.hidden=password.hidden=login.hidden=true;
+      email.hidden=password.hidden=login.hidden=true;panel.open=false;
       await engine.open(currentDay());
     }
   }
