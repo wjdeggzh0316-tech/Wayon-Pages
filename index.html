@@ -509,7 +509,7 @@ function renderChasing(){
       r.uncompleted_details.forEach(item => {
         const dRow = document.createElement("div"); dRow.className = "task no";
         const dTag = document.createElement("div"); dTag.className = "mark"; dTag.textContent = stoppedIds.includes(String(item.id)) ? "已停止" : "欠交" + item.elapsed_days + "天";
-        const dTxt = document.createElement("div"); dTxt.className = "txt"; dTxt.textContent = item.title + " (ID: " + item.id + ")";
+        const dTxt = document.createElement("div"); dTxt.className = "txt"; dTxt.textContent = item.title;
         dRow.append(dTag, dTxt); listDetails.append(dRow);
       });
     }
