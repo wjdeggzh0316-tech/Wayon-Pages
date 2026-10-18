@@ -227,6 +227,7 @@ export async function boot({config,capture,apply,status,currentDay,hydrate}) {
   if(typeof document==='undefined'||globalThis.wayonIconControls)return;
   globalThis.wayonIconControls=true;
   const paths={
+    clock:'M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0 M12 5v7l-4 4',books:'M3 3h4v18H3z M10 3h4v18h-4z M17 3h4v18h-4z',
     copy:'M8 8h12v12H8z M16 8V4H4v12h4',
     edit:'M4 20l4-1L20 7l-3-3L5 16z M14 7l3 3',
     trash:'M4 7h16 M9 7V4h6v3 M6 7l1 13h10l1-13 M10 10v7 M14 10v7',
@@ -272,7 +273,7 @@ export async function boot({config,capture,apply,status,currentDay,hydrate}) {
     ['settings','Account & Connection',['账户与连接','Account & Connection']]
   ];
   for(const [kind,label,keys] of aliases)for(const key of keys)actions.set(key,[kind,label]);
-  const byId={'nav-today':['calendar','Today'],'nav-notice':['bell','Class Notices'],'nav-rooms':['room','Rooms'],'tab-plan':['list','Tasks'],'tab-done':['check','Progress'],'tab-quiz':['note','Vocabulary Check'],'tab-chasing':['bell','Reminders']};
+  const byId={'nav-today':['calendar','Today'],'nav-notice':['bell','Class Notices'],'nav-rooms':['room','Rooms'],'tab-plan':['list','Tasks'],'tab-done':['check','Progress'],'tab-quiz':['books','Vocabulary Check'],'tab-chasing':['clock','Reminders']};
   const style=document.createElement('style');style.textContent=`
     .wayon-icon-control.wayon-icon-control{display:inline-flex;align-items:center;justify-content:center;position:relative;width:40px!important;min-width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;line-height:1!important;flex-shrink:0;vertical-align:middle;border-radius:10px;list-style:none}
     #tabs button.wayon-icon-control:before{display:none}.wayon-icon-control:focus-visible{outline:2px solid var(--accent,#0071e3);outline-offset:3px}
@@ -314,4 +315,55 @@ export async function boot({config,capture,apply,status,currentDay,hydrate}) {
     .wayon-workbench:has(#classroom-frame) #list>div:has(>a[target="_blank"]){margin:0 0 4px!important;min-height:28px}
   `;
   document.head.append(style);
+})();
+
+// Compact desktop navigation; mobile keeps its horizontal navigation.
+(() => {
+ if(typeof document==='undefined')return;
+ const style=document.createElement('style');style.id='wayon-compact-sidebar';style.textContent=`
+ .wayon-workbench .sidebar #sync{font-size:0;line-height:0;min-height:12px;padding:0;max-width:40px}
+ .wayon-workbench .sidebar #sync:before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--muted)}
+ .wayon-workbench .sidebar #sync[data-connection='saved']:before{background:var(--done)}
+ .wayon-workbench .sidebar #sync[data-connection='error']:before{background:var(--bad)}
+ .wayon-workbench .sidebar .bar{display:none!important}
+ @media(max-width:1023px){
+  .wayon-workbench .app-brand{padding:12px 16px 10px!important}
+  .wayon-workbench .brand-title{font-size:clamp(44px,8vw,72px)!important;line-height:.95!important}
+  .wayon-workbench .sidebar{display:flex!important;flex-direction:row!important;justify-content:space-between;align-items:center;width:100%;height:auto;min-height:0;padding:8px 14px!important;gap:12px}
+  .wayon-workbench .sidebar .nav-section{width:auto;min-width:0;flex:0 1 auto}
+  .wayon-workbench #tabs{display:flex!important;flex-direction:row!important;align-items:center;width:auto!important;padding:0;gap:8px}
+  .wayon-workbench .sidebar-footer{display:flex!important;flex-direction:row!important;align-items:center;gap:12px;width:auto;min-width:0;margin:0!important;padding:0!important;border:0}
+  .wayon-workbench .sidebar #account-settings{width:44px;min-width:0;padding:0}
+  .wayon-workbench .sidebar #account-settings[open]{position:absolute;right:14px;top:100%;width:min(360px,calc(100vw - 28px));padding:14px;z-index:100;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 40px #0002}
+  .wayon-workbench .main-content{padding:14px 14px 32px!important}
+  .wayon-workbench .workspace-top-bar{gap:8px;margin-bottom:8px}
+  .wayon-workbench .workspace-top-bar .view-switch{margin:0!important}
+  .wayon-workbench .workspace-top-bar .date-section{width:auto!important;margin-left:auto}
+  .wayon-workbench .workspace-top-bar #days{width:auto;gap:6px}
+  .wayon-workbench #day-picker{min-width:0;width:170px;max-width:100%;font-size:13px}
+  .wayon-workbench .workspace-sub-bar{gap:8px;margin-bottom:12px}
+  .wayon-workbench #schedule-health{min-width:0;font-size:10px;line-height:1.4;overflow-wrap:anywhere}
+ }
+ @media(max-width:599px){
+  .wayon-workbench .workspace-top-bar .date-section{flex:1 1 100%}
+  .wayon-workbench .workspace-top-bar #days{width:100%}
+  .wayon-workbench #day-picker{width:auto;flex:1}
+  .wayon-workbench #subtabs{gap:2px;padding:3px}
+ }
+ @media(min-width:1024px){
+  .wayon-workbench .app-layout{grid-template-columns:64px minmax(0,1fr)}
+  .wayon-workbench .sidebar{width:64px;min-width:0;padding:18px 12px;align-items:center;gap:16px}
+  .wayon-workbench .sidebar .nav-section{width:40px;min-width:0}
+  .wayon-workbench #tabs{padding:0;align-items:center;gap:8px}
+  .wayon-workbench .sidebar-footer{width:40px;min-width:0;display:flex;flex-direction:column;align-items:center;padding:12px 0 0;gap:12px}
+  .wayon-workbench .sidebar #sync{font-size:0;line-height:0;min-height:12px;padding:0;max-width:40px}
+  .wayon-workbench .sidebar #sync:before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--muted)}
+  .wayon-workbench .sidebar #sync[data-connection='saved']:before{background:var(--done)}
+  .wayon-workbench .sidebar #sync[data-connection='error']:before{background:var(--bad)}
+  .wayon-workbench .sidebar #account-settings{width:40px;padding:0;min-width:0}
+  .wayon-workbench .sidebar #account-settings[open]{position:fixed;left:76px;bottom:16px;width:min(360px,calc(100vw - 96px));padding:16px;z-index:100;background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 40px #0002}
+  .wayon-workbench .main-content{padding-left:24px;padding-right:24px}
+ }
+ `;document.head.append(style);
+ const sync=document.getElementById('sync');if(sync){const update=()=>{const t=sync.textContent;sync.title=t;sync.dataset.connection=/失败|不可用|冲突|未配置/.test(t)?'error':/已保存云端|已读取云端/.test(t)?'saved':'pending';};new MutationObserver(update).observe(sync,{childList:true,characterData:true,subtree:true});update();}
 })();
