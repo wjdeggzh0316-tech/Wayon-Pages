@@ -173,11 +173,11 @@ export async function boot({config,capture,apply,status,currentDay,hydrate}) {
     a.href=url;a.download=`wayon-local-backup-${day}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   });
   const logout=button('退出',async()=>{await client.auth.signOut();location.reload();});
-  panel.append(heading,email,password,login,retry,conflict,legacy,logout);document.getElementById('sync').after(panel);
+  panel.append(heading,email,password,login,retry,conflict,legacy,logout);const settings=document.getElementById('account-settings');if(settings)settings.append(panel);else document.getElementById('sync').after(panel);
   async function connect(session) {
-    if(!session) {panel.open=true;engine=null;email.hidden=password.hidden=login.hidden=false;status('请登录以保存云端记录；现有本机记录保留');return false;}
+    if(!session) {if(settings)settings.open=true;panel.open=true;engine=null;email.hidden=password.hidden=login.hidden=false;status('请登录以保存云端记录；现有本机记录保留');return false;}
     const {data,error}=await client.from('wayon_owner').select('user_id');
-    if(error || data?.length!==1 || data[0].user_id!==session.user.id) {panel.open=true;engine=null;email.hidden=password.hidden=login.hidden=false;status('此账号没有工作台权限');return false;}
+    if(error || data?.length!==1 || data[0].user_id!==session.user.id) {if(settings)settings.open=true;panel.open=true;engine=null;email.hidden=password.hidden=login.hidden=false;status('此账号没有工作台权限');return false;}
     if(user && user!==session.user.id) {location.reload();return;}
     user=session.user.id;
     if(!engine) {

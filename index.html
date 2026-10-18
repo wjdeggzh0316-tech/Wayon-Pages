@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Wayon 任务清单 10/18</title>
+<title>Wayon 任务清单 10/16</title>
 <style id="wayon-apple">
 /* Wayon · macOS-inspired workspace. Shared by the generated task and room templates. */
 :root{color-scheme:light;--bg:#f5f5f7;--card:#fff;--card-elevated:#fff;--fg:#1d1d1f;--fg-secondary:#515156;--muted:#6e6e73;--line:rgba(30,30,40,.09);--line-strong:rgba(30,30,40,.18);--accent:#0071e3;--accent-hover:#0064cb;--accent-subtle:#eaf3ff;--code-bg:#f5f5f7;--done:#248a3d;--done-dark:#207535;--done-bg:#edf7ef;--done-border:#cce6d2;--bad:#d93025;--bad-dark:#b3261e;--bad-bg:#fff1f0;--bad-border:#f1c8c5;--warning-bg:#fff8e8;--warning-fg:#805300;--sidebar:rgba(248,248,250,.94);--shadow-card:0 2px 12px rgba(20,20,35,.035);--sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif}
@@ -102,6 +102,25 @@ body.wayon-workbench{margin:0;font-size:15px;line-height:1.55}
 .study-copy-temp{position:fixed;left:0;top:0;width:1px;height:1px;opacity:.01}
 @media(max-width:599px){.study-toolbar{gap:8px}.study-toolbar .meta{width:100%}.study-card .study-actions{gap:6px}}
 
+
+/* Daily workflow hierarchy: predictable order, three destinations, quiet maintenance. */
+.wayon-workbench .list{columns:auto;display:flex;flex-direction:column;gap:14px;max-width:1080px}
+.wayon-workbench .item,.wayon-workbench .quiz{margin:0;width:100%;padding:20px 24px;gap:12px}
+.wayon-workbench .item.folded{margin:0}.wayon-workbench .head{gap:8px 12px}
+.wayon-workbench .name{flex:1 1 220px}.wayon-workbench .head .meta{flex:0 1 auto}
+.wayon-workbench .view-switch{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 22px;padding:4px;border-radius:12px;background:var(--line);width:fit-content;max-width:100%}
+.view-switch button{min-height:40px;border:0;border-radius:9px;padding:8px 16px;background:transparent;color:var(--muted);font-size:13px}
+.view-switch button.on{background:var(--card);color:var(--fg);box-shadow:0 1px 5px rgba(0,0,0,.07)}
+.wayon-workbench #days{display:flex;flex-direction:column;padding:0 10px;gap:6px}
+#day-picker{width:100%;min-height:40px;border:1px solid var(--line-strong);border-radius:9px;padding:7px 10px;background:var(--card);color:var(--fg);font:inherit;font-size:14px}
+.wayon-workbench .workspace-settings{font-size:12px;color:var(--muted);padding:0 10px}
+.workspace-settings>summary{cursor:pointer;min-height:40px;line-height:40px}.workspace-settings .cloud-panel{margin-top:8px}
+.wayon-workbench #tabs button:before{content:none}
+.wayon-workbench .note-disclosure{grid-column:1/-1;font-size:12px;color:var(--muted);min-width:0}
+.note-disclosure>summary{cursor:pointer;min-height:28px;line-height:28px}.note-disclosure .note{margin-top:4px}
+.wayon-workbench .note-disclosure .note{grid-area:auto;height:36px}
+@media(max-width:859px){.wayon-workbench #tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}.wayon-workbench #tabs button{justify-content:center;min-height:44px}.wayon-workbench .sidebar{gap:12px}.wayon-workbench .date-section{margin:0}.wayon-workbench #days{flex-direction:row;align-items:center}#day-picker{width:auto;flex:1;min-width:0}.wayon-workbench .sidebar-footer{padding-top:8px;gap:4px}.wayon-workbench .bar{padding:0 10px}.wayon-workbench .workspace-heading{margin-bottom:16px}.wayon-workbench .view-switch{margin-bottom:16px}.wayon-workbench .workspace-settings{width:100%}}
+@media(max-width:599px){.wayon-workbench .item,.wayon-workbench .quiz{padding:16px}.wayon-workbench .main-content{padding:20px 14px 48px}.view-switch button{padding:8px 10px;min-height:44px}.wayon-workbench .name{flex-basis:100%}.wayon-workbench .task{padding:6px 0}.wayon-workbench .sidebar{padding:18px 14px 12px}}
 </style>
 </head>
 <body class="wayon-workbench">
@@ -114,12 +133,12 @@ body.wayon-workbench{margin:0;font-size:15px;line-height:1.55}
     </div>
     
     <div class="nav-section">
-      <div class="section-label">工作板块</div>
+      <div class="section-label">操作台</div>
       <div class="nav-tabs" id="tabs"></div>
     </div>
 
     <div class="nav-section date-section">
-      <div class="section-label">日期切换</div>
+      <div class="section-label">查看日期</div>
       <div class="days" id="days"></div>
     </div>
 
@@ -130,9 +149,12 @@ body.wayon-workbench{margin:0;font-size:15px;line-height:1.55}
           <div class="count" id="count"></div>
         </div>
         <div class="track"><div class="fill" id="fill"></div></div>
-        <button id="reset" type="button">重置这一天</button>
+
       </div>
-      <div class="sync-pill" id="sync"></div>
+      <div class="sync-pill" id="sync" role="status"></div>
+      <details id="account-settings" class="workspace-settings"><summary>设置与账户</summary>
+        <button id="reset" type="button">重置当前板块记录</button>
+      </details>
     </div>
   </aside>
 
@@ -143,6 +165,7 @@ body.wayon-workbench{margin:0;font-size:15px;line-height:1.55}
       <p id="view-subtitle"></p>
     </header>
 
+    <nav id="subtabs" class="view-switch" aria-label="当前工作内容"></nav>
     <div class="sub" id="sub" style="display:none"></div>
     <div class="health-box" id="schedule-health" role="status"></div>
     <div class="list" id="list"></div>
@@ -557,24 +580,37 @@ function renderNotice(){
   document.getElementById("count").textContent = n + " / " + rows.length + " 已复制";
   document.getElementById("fill").style.width = (rows.length ? n / rows.length * 100 : 0) + "%";
 }
+function noteDisclosure(input){
+  const box=document.createElement('details');box.className='note-disclosure';box.open=!!input.value;
+  const title=document.createElement('summary');title.textContent=input.value?'查看 / 编辑备注':'添加备注';
+  input.addEventListener('input',()=>{title.textContent=input.value?'查看 / 编辑备注':'添加备注';});
+  box.append(title,input);return box;
+}
 function render(){
   const rows = DATA[cur] || [];
   const shown = mode === "notice" ? curN : cur;
   document.getElementById("d").textContent = rel(shown) + mdOf(shown);
-  const days = document.getElementById("days"); days.textContent = "";
-  const dlist = mode === "notice" ? [...new Set([...Object.keys(NOTICE), tomorrow])].sort() : [...new Set([...DAYS, today])].sort();
-  dlist.forEach(d => { const b = document.createElement("button"); b.type = "button"; b.id = "day-" + d;
-    b.textContent = rel(d) + mdOf(d);
-    if (d === shown) b.className = "on";
-    b.onclick = () => { if (mode === "notice") { curN = d; nload(); render(); nwatch(); } else { cur = d; let checkCloud=null;const noticeOpened=new Set();
-load(); pload(); render(); watch(); } };
-    days.append(b); });
-  const tabs = document.getElementById("tabs"); tabs.textContent = "";
-  [["plan","任务安排（早上发群）"],["done","完成情况（下班反馈）"],["quiz","单词抽背情况"],["notice","明日课程通知"],["chasing","线上催缴"],["classroom","教室使用"]].forEach(m => { const b = document.createElement("button"); b.type = "button"; b.id = "tab-" + m[0];
-    b.textContent = m[1]; b.setAttribute("aria-pressed", String(m[0] === mode)); if (m[0] === mode) b.className = "on"; b.onclick = () => { mode = m[0]; render(); }; tabs.append(b); });
-  document.getElementById("ttl").textContent = mode === "plan" ? "任务安排" : mode === "quiz" ? "单词抽背情况" : mode === "notice" ? "课程通知" : mode === "chasing" ? "线上催缴" : mode === "classroom" ? "教室使用" : "任务完成情况";
-  document.getElementById("view-title").textContent=document.getElementById("ttl").textContent;
-  document.getElementById("view-subtitle").textContent=rel(shown)+mdOf(shown)+" · 教学操作台";
+  const group = mode === 'chasing' ? 'chasing' : ['notice','classroom'].includes(mode) ? 'arrange' : 'today';
+  const days = document.getElementById('days'); days.textContent = '';
+  const dlist = mode === 'notice' ? [...new Set([...Object.keys(NOTICE),tomorrow,curN])].sort() : [...new Set([...DAYS,today,cur])].sort();
+  const picker=document.createElement('select');picker.id='day-picker';picker.setAttribute('aria-label','查看日期');
+  for(const day of dlist){const o=document.createElement('option');o.value=day;o.textContent=rel(day)+mdOf(day);o.selected=day===shown;picker.append(o);}
+  picker.onchange=()=>{if(mode==='notice'){curN=picker.value;nload();render();nwatch();}else{cur=picker.value;load();pload();render();watch();}};
+  const home=document.createElement('button');home.type='button';home.textContent=mode==='notice'?'回到明天':'回到今天';
+  home.onclick=()=>{if(mode==='notice'){curN=tomorrow;nload();render();nwatch();}else{cur=today;load();pload();render();watch();}};
+  days.append(picker,home);document.querySelector('.date-section').hidden=['chasing','classroom'].includes(mode);
+  const tabs=document.getElementById('tabs');tabs.textContent='';
+  for(const [id,label,initial] of [['today','今天',bjHour<13?'plan':'done'],['chasing','待催','chasing'],['arrange','安排','notice']]){
+    const b=document.createElement('button');b.type='button';b.id='nav-'+id;b.textContent=label;b.className=group===id?'on':'';b.setAttribute('aria-pressed',String(group===id));
+    b.onclick=()=>{mode=initial;render();};tabs.append(b);
+  }
+  const subtabs=document.getElementById('subtabs');subtabs.textContent='';
+  const sections=group==='today'?[['plan','任务安排'],['done','完成记录'],['quiz','课前 / 课后抽背']]:group==='arrange'?[['notice','明日课程'],["classroom","教室使用"]]:[];
+  for(const [id,label] of sections){const b=document.createElement('button');b.type='button';b.id='tab-'+id;b.textContent=label;b.className=mode===id?'on':'';b.setAttribute('aria-pressed',String(mode===id));b.onclick=()=>{mode=id;render();};subtabs.append(b);}
+  subtabs.hidden=!sections.length;
+  document.getElementById("ttl").textContent = mode === "plan" ? "任务安排" : mode === "quiz" ? "单词抽背情况" : mode === "notice" ? "课程通知" : mode === "chasing" ? "待催作业" : mode === "classroom" ? "教室使用" : "任务完成情况";
+  document.getElementById('view-title').textContent={today:'今天',chasing:'待催',arrange:'安排'}[group];
+  document.getElementById("view-subtitle").textContent=rel(shown)+mdOf(shown)+" · "+document.getElementById("ttl").textContent;
   document.getElementById("sub").textContent = mode === "notice"
     ? "每个有课的学生一张卡片（默认显示明天的课）。点「复制」发给学生 / 家长，卡片记下已复制时间。"
     : mode === "quiz"
@@ -725,7 +761,7 @@ load(); pload(); render(); watch(); } };
         });
         s.m = newM; s.n = newN; s.c = ""; save(); render();
       };
-      row.append(m, tx, note, del); tasks.append(row);
+      row.append(m, tx, noteDisclosure(note), del); tasks.append(row);
     });
     const opRow = document.createElement("div"); opRow.style.display = "flex"; opRow.style.gap = "8px"; opRow.style.marginTop = "4px"; opRow.style.alignItems = "center"; opRow.style.flexWrap = "wrap";
     const addBtn = document.createElement("button"); addBtn.type = "button"; addBtn.className = "small add-btn";
@@ -912,7 +948,7 @@ class StudyTasks {
           const buttons=document.createElement('div');buttons.className='study-marks';
           for(const [label,mark] of [['✅','ok'],['❌','no']]){const b=document.createElement('button');b.type='button';b.className='study-mark';b.textContent=label;b.setAttribute('aria-label',task.text+' '+(mark==='ok'?'完成':'未完成'));b.setAttribute('aria-pressed',String(task.mark===mark));b.onclick=()=>run(()=>this.change(day,card.id,task.id,'mark',task.mark===mark?'':mark));buttons.append(b);}row.append(buttons);
           const note=document.createElement('input');note.className='note';note.placeholder='备注（可不填）';note.setAttribute('aria-label',task.text+' 备注');note.maxLength=2000;note.value=task.note;
-          note.oninput=()=>{try{this.change(day,card.id,task.id,'note',note.value);error.textContent='';}catch(e){error.textContent=e.message;}};row.append(note);
+          note.oninput=()=>{try{this.change(day,card.id,task.id,'note',note.value);error.textContent='';}catch(e){error.textContent=e.message;}};row.append(noteDisclosure(note));
         }
         el.append(row);
       });
