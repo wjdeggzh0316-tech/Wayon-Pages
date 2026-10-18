@@ -16,14 +16,15 @@
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;overflow:hidden}
 body{background:var(--bg);color:var(--fg);font-family:var(--sans);padding:8px;display:flex;flex-direction:column;gap:6px;height:100vh;height:100dvh;width:100%}
-.top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:clamp(12px,3.4vw,16px);min-width:0}
-.top b{font-size:clamp(16px,4.6vw,22px)}
-.days{display:inline-flex;gap:4px}
-.days button{font:inherit;font-size:clamp(12px,3.4vw,15px);border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:3px 9px;cursor:pointer;font-variant-numeric:tabular-nums}
-.days button.on{background:var(--accent);border-color:var(--accent);color:var(--bg);font-weight:700}
+.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:clamp(12px,3.4vw,15px);min-width:0;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.top b{font-size:clamp(15px,4vw,18px);letter-spacing:-.02em}
+.days{margin-left:auto;display:inline-flex;align-items:center;gap:6px}
+.days button{font:inherit;font-size:12.5px;font-weight:550;letter-spacing:-.01em;min-height:32px;height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--line-strong);background:var(--card);color:var(--fg);cursor:pointer;font-variant-numeric:tabular-nums;box-shadow:0 1px 2px rgba(0,0,0,.03);transition:all .15s ease;white-space:nowrap}
+.days button:hover{background:var(--line);color:var(--fg)}
+.days button.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;box-shadow:0 1px 4px rgba(0,113,227,.25)}
 .miss{color:var(--bad);font-weight:700}
 .ok{color:var(--t2b);font-weight:600}.no{color:var(--bad);font-weight:700}
-.sync{color:var(--muted);font-size:11px;margin-left:auto;white-space:nowrap}
+.sync{color:var(--muted);font-size:11px;white-space:nowrap}
 .legend{display:flex;gap:8px;flex-wrap:wrap;font-size:11px;color:var(--muted)}
 .legend span{display:inline-flex;align-items:center;gap:3px}
 .legend i{width:9px;height:9px;border-radius:2px;display:inline-block}
@@ -148,6 +149,12 @@ body.wayon-workbench{margin:0;font-size:15px;line-height:1.55}
 
 .wayon-room>[role="status"]{padding:8px 10px!important;border:1px solid var(--line)!important;border-radius:9px;background:var(--code-bg)!important;color:var(--muted)!important;font-size:11px;line-height:1.5}
 .wayon-room .cloud-panel{flex:1 1 100%;width:100%;max-width:100%}.wayon-room .cloud-panel button{white-space:normal}
+.wayon-room .cloud-panel:not([open]){display:none!important}
+.wayon-room .days{margin-left:auto;display:inline-flex;align-items:center;gap:6px}
+.wayon-room .days button{min-height:32px;height:32px;border-radius:8px;padding:0 12px;border:1px solid var(--line-strong);background:var(--card);color:var(--fg);font-size:12.5px;font-weight:550;letter-spacing:-.01em;box-shadow:0 1px 2px rgba(0,0,0,.03);cursor:pointer;transition:all .15s ease;white-space:nowrap}
+.wayon-room .days button:hover{background:var(--line);color:var(--fg)}
+.wayon-room .days button.on{background:#0071e3!important;border-color:#0071e3!important;color:#fff!important;font-weight:600;box-shadow:0 1px 4px rgba(0,113,227,.25)}
+.wayon-room .cloud-panel:not([open]){display:none!important}
 .wayon-room .room-scroll{flex:1;min-height:0;min-width:0;width:100%;overflow:auto;border-radius:10px;overscroll-behavior:contain}
 .wayon-room .room-scroll>.grid{height:100%;min-height:420px;min-width:740px;overflow:visible}
 @media(max-width:599px){.wayon-workbench .task{grid-template-columns:minmax(0,1fr) 60px 44px}.wayon-workbench .del-btn{min-width:44px}.cloud-panel button{min-height:44px}}
@@ -156,7 +163,7 @@ body.wayon-workbench{margin:0;font-size:15px;line-height:1.55}
 </head>
 <body class="wayon-room">
 
-<div class="top"><b>教室使用</b><span class="days" id="days"></span><span id="cf"></span><span class="sync" id="sync"></span></div>
+<div class="top"><b>教室使用</b><span id="cf"></span><span class="days" id="days"></span><span class="sync" id="sync"></span></div>
 <div class="legend" id="lg"></div>
 <div class="room-scroll" role="region" aria-label="教室使用表，可横向滚动" tabindex="0"><div class="grid" id="g"></div></div>
 <div class="foot" id="f"></div>
@@ -167,8 +174,7 @@ body.wayon-workbench{margin:0;font-size:15px;line-height:1.55}
   <div class="hint">只改这张表，不会改小SaaS 课表、不写备忘录。课程块可以按住拖到别的格子。</div>
 </div>
 <script>
-const ALL = ({"days": {"2026-10-07": {"iso": "2026-10-07", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [["李子熙", "SAT阅读预备", "元园", ""]], []], [[["Dana", "口语", "王银屏", ""]], [], [], []], [[], [], [], [["王子居&Andy", "SAT阅读", "元园", "19:00-21:00"]]], [[], [], [], []], [[["彦如", "阅读", "徐梓淞", "09:00-10:30"]], [], [], []], [[], [["Dana", "课后", "", ""], ["彦如", "课后", "", ""]], [["Dana", "课后", "", ""], ["彦如", "课后", "", ""]], [["Dana", "课后", "", ""], ["彦如", "课后", "", ""], ["李子熙", "课后", "", ""]]]], "teachers": ["元园", "徐梓淞", "王银屏"], "online": ["JACK GRE数学 10:00"], "unknown": [], "date": "10/7"}, "2026-10-14": {"iso": "2026-10-14", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []]], "teachers": [], "online": [], "unknown": [], "date": "10/14"}, "2026-10-15": {"iso": "2026-10-15", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []]], "teachers": [], "online": [], "unknown": [], "date": "10/15"}, "2026-10-16": {"iso": "2026-10-16", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], [["Ray英文综合能力提升", "读写", "徐梓淞", "16:00-18:00"]]], [[["黄号然", "自习", "", ""]], [], [], []]], "teachers": ["徐梓淞"], "online": ["George吴洋亿 SAT语法 08:30", "郭璟Jack SAT阅读 08:30"], "unknown": [], "date": "10/16"}, "2026-10-17": {"iso": "2026-10-17", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [], []], [[], [["Leo&Iven", "听力", "王银屏", ""]], [], []], [[["赖晨曦", "听力", "王银屏", ""]], [["黄子珊", "写作", "任玥蓉", ""]], [["聂彦如&陈书进", "听力", "王银屏", ""]], [["潘韬薄&苏顺平&周家琪", "口语", "梁润泽", ""]]], [[], [["丁嘉宝", "口语", "梁润泽", ""]], [], []], [[], [["Frank", "阅读", "徐梓淞", ""]], [], []], [[], [["赖晨曦", "课后", "", ""]], [["赖晨曦", "课后", "", ""], ["黄子珊", "课后", "", ""], ["丁嘉宝", "课后", "", ""], ["Frank", "课后", "", ""], ["Leo", "课后", "", ""], ["Iven", "课后", "", ""]], [["赖晨曦", "课后", "", ""], ["黄子珊", "课后", "", ""], ["丁嘉宝", "课后", "", ""], ["Frank", "课后", "", ""], ["Leo", "课后", "", ""], ["Iven", "课后", "", ""], ["聂彦如", "课后", "", ""], ["陈书进", "课后", "", ""]]]], "teachers": ["任玥蓉", "徐梓淞", "梁润泽", "王银屏"], "online": [], "unknown": [], "date": "10/17"}, "2026-10-18": {"iso": "2026-10-18", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [["李洪睿John", "语法", "任玥蓉", "15:00-17:00"]], [["李洪睿John", "语法", "任玥蓉", "15:00-17:00"]]], [[["Amy徐畅", "听力", "王银屏", "09:00-10:30"]], [], [["代佳鸣", "词汇与语言应用", "王银屏", "14:00-15:30"]], []], [[], [["赵梓轩", "阅读写作", "徐梓淞", ""]], [], []], [[], [], [], [["王明泽&李子熙", "SAT阅读", "元园", ""]]], [[], [], [], []], [[], [["Amy徐畅", "课后", "", ""]], [["Amy徐畅", "课后", "", ""], ["赵梓轩", "课后", "", ""]], [["Amy徐畅", "课后", "", ""], ["赵梓轩", "课后", "", ""], ["代佳鸣", "课后", "", ""]]]], "teachers": ["任玥蓉", "元园", "徐梓淞", "王银屏"], "online": ["朱宸萱 阅读 13:30"], "unknown": [], "date": "10/18"}, "2026-10-19": {"iso": "2026-10-19", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], [["丁嘉宝", "听说", "王银屏", "17:00-19:00"]]], [[], [], [], []]], "teachers": ["王银屏"], "online": [], "unknown": [], "date": "10/19"}}}).days || {};
-const $ = id => document.getElementById(id);
+const ALL = ({"days": {"2026-10-07": {"iso": "2026-10-07", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [["李子熙", "SAT阅读预备", "元园", ""]], []], [[["Dana", "口语", "王银屏", ""]], [], [], []], [[], [], [], [["王子居&Andy", "SAT阅读", "元园", "19:00-21:00"]]], [[], [], [], []], [[["彦如", "阅读", "徐梓淞", "09:00-10:30"]], [], [], []], [[], [["Dana", "课后", "", ""], ["彦如", "课后", "", ""]], [["Dana", "课后", "", ""], ["彦如", "课后", "", ""]], [["Dana", "课后", "", ""], ["彦如", "课后", "", ""], ["李子熙", "课后", "", ""]]]], "teachers": ["元园", "徐梓淞", "王银屏"], "online": ["JACK GRE数学 10:00"], "unknown": [], "date": "10/7"}, "2026-10-14": {"iso": "2026-10-14", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []]], "teachers": [], "online": [], "unknown": [], "date": "10/14"}, "2026-10-15": {"iso": "2026-10-15", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []]], "teachers": [], "online": [], "unknown": [], "date": "10/15"}, "2026-10-16": {"iso": "2026-10-16", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], [["Ray英文综合能力提升", "读写", "徐梓淞", "16:00-18:00"]]], [[["黄号然", "自习", "", ""]], [], [], []]], "teachers": ["徐梓淞"], "online": ["George吴洋亿 SAT语法 08:30", "郭璟Jack SAT阅读 08:30"], "unknown": [], "date": "10/16"}, "2026-10-17": {"iso": "2026-10-17", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [], []], [[], [["Leo&Iven", "听力", "王银屏", ""]], [], []], [[["赖晨曦", "听力", "王银屏", ""]], [["黄子珊", "写作", "任玥蓉", ""]], [["聂彦如&陈书进", "听力", "王银屏", ""]], [["潘韬薄&苏顺平&周家琪", "口语", "梁润泽", ""]]], [[], [["丁嘉宝", "口语", "梁润泽", ""]], [], []], [[], [["Frank", "阅读", "徐梓淞", ""]], [], []], [[], [["赖晨曦", "课后", "", ""]], [["赖晨曦", "课后", "", ""], ["黄子珊", "课后", "", ""], ["丁嘉宝", "课后", "", ""], ["Frank", "课后", "", ""], ["Leo", "课后", "", ""], ["Iven", "课后", "", ""]], [["赖晨曦", "课后", "", ""], ["黄子珊", "课后", "", ""], ["丁嘉宝", "课后", "", ""], ["Frank", "课后", "", ""], ["Leo", "课后", "", ""], ["Iven", "课后", "", ""], ["聂彦如", "课后", "", ""], ["陈书进", "课后", "", ""]]]], "teachers": ["任玥蓉", "徐梓淞", "梁润泽", "王银屏"], "online": [], "unknown": [], "date": "10/17"}, "2026-10-18": {"iso": "2026-10-18", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [["李洪睿John", "语法", "任玥蓉", "15:00-17:00"]], [["李洪睿John", "语法", "任玥蓉", "15:00-17:00"]]], [[["Amy徐畅", "听力", "王银屏", "09:00-10:30"]], [], [["代佳鸣", "词汇与语言应用", "王银屏", "14:00-15:30"]], []], [[], [["赵梓轩", "阅读写作", "徐梓淞", ""]], [], []], [[], [], [], [["王明泽&李子熙", "SAT阅读", "元园", ""]]], [[], [], [], []], [[], [["Amy徐畅", "课后", "", ""]], [["Amy徐畅", "课后", "", ""], ["赵梓轩", "课后", "", ""]], [["Amy徐畅", "课后", "", ""], ["赵梓轩", "课后", "", ""], ["代佳鸣", "课后", "", ""]]]], "teachers": ["任玥蓉", "元园", "徐梓淞", "王银屏"], "online": ["朱宸萱 阅读 13:30"], "unknown": [], "date": "10/18"}, "2026-10-19": {"iso": "2026-10-19", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], [["丁嘉宝", "听说", "王银屏", "17:00-19:00"]]], [[], [], [], []]], "teachers": ["王银屏"], "online": [], "unknown": [], "date": "10/19"}}}).days || {};\nconst $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x !== undefined) e.textContent = x; return e; };
 // 2026-10-05 Leo：今天、明天两天可切换；打开默认今天（北京时间），不记上次看的日期
 const today = new Date().toLocaleDateString("en-CA", {timeZone: "Asia/Shanghai"});
@@ -209,7 +215,7 @@ function block(x, ri, si, idx) {
   const hall = ri === HALL && !x[2], col = tcol[x[2]] || "5", b = el("div", "k");
   b.style.background = hall ? "var(--hall)" : "var(--t" + col + ")";
   b.style.borderLeftColor = hall ? "var(--hallb)" : "var(--t" + col + "b)";
-  b.append(el("div", "w", x[0] || ""));
+  b.append(el("div", "w", (x[0] || "").replace(/[【】]/g, "")));
   const sub = [x[1], x[2]].filter(Boolean).join("·");
   if (sub) b.append(el("div", "s", sub));
   if (x[3]) b.append(el("div", "tt", x[3]));
@@ -238,8 +244,8 @@ function render() {
           c.setAttribute("aria-label", "大厅 " + s[0] + " 段 座位 " + (k + 1));
           const pre = x && x[1] === "课后";   // 上完课自动放进来的 = 预占（Leo 2026-10-05），点一下改成确定
           if (x) { const b = block(x, ri, si, k); b.classList.add("chip"); if (pre) b.classList.add("pre");   // 虚线框 = 预占（图例里写明），格子太小不另写字
-            b.title = x[0] + (pre ? "（预占：上完课，点一下改成确定）" : x[1] ? "（" + x[1] + "）" : "");
-            const del = el("button", "x", "×"); del.type = "button"; del.setAttribute("aria-label", "从这个时段的大厅删除 " + x[0]);
+            b.title = (x[0] || "").replace(/[【】]/g, "") + (pre ? "（预占：上完课，点一下改成确定）" : x[1] ? "（" + x[1] + "）" : "");
+            const del = el("button", "x", "×"); del.type = "button"; del.setAttribute("aria-label", "从这个时段的大厅删除 " + (x[0] || "").replace(/[【】]/g, ""));
             del.addEventListener("pointerdown", e => e.stopPropagation());
             del.onclick = e => { e.stopPropagation(); const before = JSON.stringify(ed); const a2 = items(ri, si).slice(); a2[k] = null; setCell(ri, si, a2); commit(before); };
             b.append(del); c.append(b); }
@@ -431,12 +437,12 @@ import("./checks-sync.mjs?v=20261018-03").then(m => m.boot({
   checkCloud = x;
   subscribe();
 }).catch(err => {
-  console.error('Cloud boot error:', err);
-  const msg = (err && (err.message || String(err))) || '';
+  console.error("Cloud boot error:", err);
+  const msg = (err && (err.message || String(err))) || "";
   setSy(msg ? `云端组件不可用（${msg}），本机记录保留；请重试` : "云端组件不可用，本机记录保留；请重试");
 });
 useDay(today);
 </script>
 
-<!--WAYON-SCHEDULE-HEALTH--><div role="status" style="padding:8px;color:#854d0e;background:#fef3c7;font-size:13px">⚠️ 2026-10-16 课表／页面未确认更新，显示上次内容；上次成功核对：未记录；本次检查：2026-10-18T15:49:50.776857+08:00<br>⚠️ 2026-10-17 课表／页面未确认更新，显示上次内容；上次成功核对：2026-10-17T21:40:20.997533+08:00；本次检查：2026-10-18T15:49:50.776857+08:00</div><!--/WAYON-SCHEDULE-HEALTH--></body>
+<!--WAYON-SCHEDULE-HEALTH--><div role="status" style="padding:8px;color:#854d0e;background:#fef3c7;font-size:13px">⚠️ 2026-10-16 课表／页面未确认更新，显示上次内容；上次成功核对：未记录；本次检查：2026-10-18T16:09:27.695223+08:00<br>⚠️ 2026-10-17 课表／页面未确认更新，显示上次内容；上次成功核对：2026-10-17T21:40:20.997533+08:00；本次检查：2026-10-18T16:09:27.695223+08:00</div><!--/WAYON-SCHEDULE-HEALTH--></body>
 </html>
