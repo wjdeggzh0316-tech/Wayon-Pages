@@ -300,3 +300,18 @@ export async function boot({config,capture,apply,status,currentDay,hydrate}) {
   };
   new MutationObserver(refresh).observe(document.body,{childList:true,subtree:true,characterData:true});refresh();
 })();
+
+// Presentation only: remove empty room toolbars; keep the editor iframe mounted.
+(() => {
+  if(typeof document==='undefined')return;
+  const style=document.createElement('style');style.id='wayon-room-spacing';
+  style.textContent=`
+    .wayon-workbench .brand-meta{display:none!important}
+    .wayon-workbench #schedule-health:empty{display:none!important}
+    .wayon-workbench:has(#classroom-frame) .workspace-top-bar,
+    .wayon-workbench:has(#classroom-frame) .workspace-sub-bar{display:none!important}
+    .wayon-workbench:has(#classroom-frame) .main-content{padding-top:8px!important}
+    .wayon-workbench:has(#classroom-frame) #list>div:has(>a[target="_blank"]){margin:0 0 4px!important;min-height:28px}
+  `;
+  document.head.append(style);
+})();
