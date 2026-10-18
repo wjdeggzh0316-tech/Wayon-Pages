@@ -122,6 +122,17 @@ body.wayon-workbench{margin:0;font-size:15px;line-height:1.55}
 @media(max-width:859px){.wayon-workbench #tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}.wayon-workbench #tabs button{justify-content:center;min-height:44px}.wayon-workbench .sidebar{gap:12px}.wayon-workbench .date-section{margin:0}.wayon-workbench #days{flex-direction:row;align-items:center}#day-picker{width:auto;flex:1;min-width:0}.wayon-workbench .sidebar-footer{padding-top:8px;gap:4px}.wayon-workbench .bar{padding:0 10px}.wayon-workbench .workspace-heading{margin-bottom:16px}.wayon-workbench .view-switch{margin-bottom:16px}.wayon-workbench .workspace-settings{width:100%}}
 @media(max-width:599px){.wayon-workbench .item,.wayon-workbench .quiz{padding:16px}.wayon-workbench .main-content{padding:20px 14px 48px}.view-switch button{padding:8px 10px;min-height:44px}.wayon-workbench .name{flex-basis:100%}.wayon-workbench .task{padding:6px 0}.wayon-workbench .sidebar{padding:18px 14px 12px}}
 </style>
+<style id="inline-note-layout">
+/* inline-note-layout: task, optional note and marks share one compact row. */
+.wayon-workbench .task{grid-template-columns:minmax(0,1fr) minmax(110px,260px) 68px 32px;align-items:center;padding:6px 0;gap:6px 10px}
+.wayon-workbench .task>.mark{grid-area:1/3}.wayon-workbench .task>.del-btn{grid-area:1/4}
+.wayon-workbench .task>.note-disclosure,.wayon-workbench .study-task>.note-disclosure{grid-column:2;grid-row:1;align-self:center}
+.wayon-workbench .study-task{grid-template-columns:minmax(0,1fr) minmax(110px,260px) auto;align-items:center;padding:8px 0;gap:6px 12px}
+.study-task>.study-task-text{grid-area:1/1}.study-task>.study-marks{grid-area:1/3;align-self:center}
+.wayon-workbench .note-disclosure>summary{min-height:36px;line-height:36px;white-space:nowrap}
+.wayon-workbench .note-disclosure .note{margin:0;height:36px;width:100%}
+@media(max-width:599px){.wayon-workbench .task{grid-template-columns:minmax(0,1fr) 76px 60px 28px;gap:4px}.wayon-workbench .task>.del-btn{min-width:28px;width:28px}.wayon-workbench .study-task{grid-template-columns:minmax(0,1fr) 76px auto;gap:4px 6px}.wayon-workbench .note-disclosure{font-size:11px}.wayon-workbench .note-disclosure>summary{white-space:normal;line-height:1.4;padding:8px 0}.wayon-workbench .study-marks{gap:3px}.wayon-workbench .study-mark{min-width:38px;min-height:40px;padding:4px}.wayon-workbench .tasks{gap:4px}}
+</style>
 </head>
 <body class="wayon-workbench">
 
