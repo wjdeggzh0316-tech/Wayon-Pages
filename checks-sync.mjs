@@ -155,7 +155,12 @@ export async function boot({config,capture,apply,status,currentDay,hydrate}) {
   const email=document.createElement('input');email.type='email';email.placeholder='你的登录邮箱';email.autocomplete='email';
   const password=document.createElement('input');password.type='password';password.placeholder='你的工作台密码';password.autocomplete='current-password';
   const button=(label,action)=>{const b=document.createElement('button');b.textContent=label;b.type='button';b.onclick=()=>Promise.resolve(action()).catch(()=>status('操作失败，请重试'));return b;};
-  const sdk=await import('https://esm.sh/@supabase/supabase-js@2.49.4');
+  let sdk;
+  try { sdk = await import('https://esm.sh/@supabase/supabase-js@2.49.4'); }
+  catch(e1) {
+    try { sdk = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm'); }
+    catch(e2) { sdk = await import('https://unpkg.com/@supabase/supabase-js@2.49.4/dist/module/index.js'); }
+  }
   const client=sdk.createClient(config.url,config.key);
   let engine=null, user=null;
   const login=button('登录',()=>passwordLogin({client,emailInput:email,passwordInput:password,status,connect}));
@@ -173,7 +178,12 @@ export async function boot({config,capture,apply,status,currentDay,hydrate}) {
     a.href=url;a.download=`wayon-local-backup-${day}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   });
   const logout=button('退出',async()=>{await client.auth.signOut();location.reload();});
-  panel.append(heading,email,password,login,retry,conflict,legacy,logout);const settings=document.getElementById('account-settings');if(settings)settings.append(panel);else document.getElementById('sync').after(panel);
+  panel.append(heading,email,password,login,retry,conflict,legacy,logout);
+  const settings=document.getElementById('account-settings');
+  const syncMount=document.getElementById('sync');
+  if(settings) settings.append(panel);
+  else if(syncMount) syncMount.after(panel);
+  else document.body.append(panel);
   async function connect(session) {
     if(!session) {if(settings)settings.open=true;panel.open=true;engine=null;email.hidden=password.hidden=login.hidden=false;status('请登录以保存云端记录；现有本机记录保留');return false;}
     const {data,error}=await client.from('wayon_owner').select('user_id');
@@ -182,7 +192,8 @@ export async function boot({config,capture,apply,status,currentDay,hydrate}) {
     user=session.user.id;
     if(!engine) {
       if(hydrate) await hydrate(client,user);
-      engine=new CheckSync({client,owner:user,storage:localStorage,capture,apply,status,uuid:()=>crypto.randomUUID()});
+      const uuidGen=()=>(typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function')?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return (c==='x'?r:(r&0x3|0x8)).toString(16);});
+      engine=new CheckSync({client,owner:user,storage:localStorage,capture,apply,status,uuid:uuidGen});
       email.hidden=password.hidden=login.hidden=true;panel.open=false;
       await engine.open(currentDay());
     }
