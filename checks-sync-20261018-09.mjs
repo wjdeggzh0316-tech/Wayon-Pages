@@ -227,6 +227,7 @@ export async function boot({config,capture,apply,status,currentDay,hydrate}) {
   if(typeof document==='undefined'||globalThis.wayonIconControls)return;
   globalThis.wayonIconControls=true;
   const paths={
+    pending:'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0',
     clock:'M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0 M12 5v7l-4 4',books:'M3 3h4v18H3z M10 3h4v18h-4z M17 3h4v18h-4z',
     copy:'M8 8h12v12H8z M16 8V4H4v12h4',
     edit:'M4 20l4-1L20 7l-3-3L5 16z M14 7l3 3',
@@ -241,7 +242,7 @@ export async function boot({config,capture,apply,status,currentDay,hydrate}) {
     play:'M8 4l12 8-12 8z'
   };
   const actions=new Map([
-    ['Retry Copy',['copy','Retry Copy']],['复制失败，请重试',['copy','Retry Copy']],['Copy Manually',['copy','Copy Manually']],['Unmarked',['note','Unmarked']],['未标',['note','Unmarked']],['✅ Done',['✅','Done']],['❌ Not Done',['❌','Not Done']],
+    ['Retry Copy',['copy','Retry Copy']],['复制失败，请重试',['copy','Retry Copy']],['Copy Manually',['copy','Copy Manually']],['Unmarked',['pending','Unmarked']],['未标',['pending','Unmarked']],['✅ Done',['✅','Done']],['❌ Not Done',['❌','Not Done']],
     ['All Done',['✅','All Done']],['全部完成',['✅','All Done']],['全部✅',['✅','All Done']],
     ['All Not Done',['❌','All Not Done']],['全部未完成',['❌','All Not Done']],
     ['Stop Reminders',['✋','Stop Reminders']],['停止催缴',['✋','Stop Reminders']],
