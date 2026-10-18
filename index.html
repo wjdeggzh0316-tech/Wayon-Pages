@@ -1,111 +1,936 @@
-<!doctype html>
-<html lang="zh-CN">
-<head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Wayon 任务清单 10/18</title>
-<style id="wayon-apple">
-/* Wayon · macOS-inspired workspace. Shared by the generated task and room templates. */
-:root{color-scheme:light;--bg:#f5f5f7;--card:#fff;--card-elevated:#fff;--fg:#1d1d1f;--fg-secondary:#515156;--muted:#6e6e73;--line:rgba(30,30,40,.09);--line-strong:rgba(30,30,40,.18);--accent:#0071e3;--accent-hover:#0064cb;--accent-subtle:#eaf3ff;--code-bg:#f5f5f7;--done:#248a3d;--done-dark:#207535;--done-bg:#edf7ef;--done-border:#cce6d2;--bad:#d93025;--bad-dark:#b3261e;--bad-bg:#fff1f0;--bad-border:#f1c8c5;--warning-bg:#fff8e8;--warning-fg:#805300;--sidebar:rgba(248,248,250,.94);--shadow-card:0 2px 12px rgba(20,20,35,.035);--sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#151517;--card:#222225;--card-elevated:#2c2c30;--fg:#f5f5f7;--fg-secondary:#c3c3c9;--muted:#a0a0a8;--line:rgba(255,255,255,.1);--line-strong:rgba(255,255,255,.2);--accent:#64b0ff;--accent-hover:#85c1ff;--accent-subtle:#21364d;--code-bg:#1b1b1e;--done:#72d58b;--done-dark:#8bdd9e;--done-bg:#203427;--done-border:#345b40;--bad:#ff8279;--bad-dark:#ffaaa4;--bad-bg:#402725;--bad-border:#6a3c38;--warning-bg:#352d1d;--warning-fg:#f0cc81;--sidebar:rgba(29,29,32,.96);--shadow-card:0 2px 12px rgba(0,0,0,.12)}}
-:root[data-theme="dark"]{color-scheme:dark;--bg:#151517;--card:#222225;--card-elevated:#2c2c30;--fg:#f5f5f7;--fg-secondary:#c3c3c9;--muted:#a0a0a8;--line:rgba(255,255,255,.1);--line-strong:rgba(255,255,255,.2);--accent:#64b0ff;--accent-hover:#85c1ff;--accent-subtle:#21364d;--code-bg:#1b1b1e;--done:#72d58b;--done-dark:#8bdd9e;--done-bg:#203427;--done-border:#345b40;--bad:#ff8279;--bad-dark:#ffaaa4;--bad-bg:#402725;--bad-border:#6a3c38;--warning-bg:#352d1d;--warning-fg:#f0cc81;--sidebar:rgba(29,29,32,.96);--shadow-card:0 2px 12px rgba(0,0,0,.12)}
-*{box-sizing:border-box}body{font-family:var(--sans);-webkit-font-smoothing:antialiased;background:var(--bg);color:var(--fg)}
-button,input,textarea,summary{font-family:inherit}button,summary{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:disabled{opacity:.5;cursor:default}
-button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
-[hidden]{display:none!important}
-.cloud-panel{font-size:12px;color:var(--fg-secondary);padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);min-width:0}
-.cloud-panel summary{cursor:pointer;min-height:32px;line-height:32px;font-weight:600;list-style-position:inside}
-.cloud-panel input{display:block;width:100%;height:40px;margin:8px 0;padding:8px 10px;border-radius:9px;border:1px solid var(--line-strong);background:var(--code-bg);color:var(--fg);font-size:16px}
-.cloud-panel button{min-height:36px;padding:6px 10px;margin:3px;border:1px solid var(--line);border-radius:8px;background:var(--code-bg);color:var(--fg-secondary);font-size:12px}
-.cloud-panel button:first-of-type{background:var(--accent);color:var(--bg);border-color:transparent}
-body.wayon-workbench{margin:0;font-size:15px;line-height:1.55}
-.wayon-workbench .app-layout{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:100dvh}
-.wayon-workbench .sidebar{position:sticky;top:0;height:100dvh;overflow:auto;background:var(--sidebar);border-right:1px solid var(--line);padding:30px 16px 20px;display:flex;flex-direction:column;gap:26px}
-.wayon-workbench .sidebar-top{padding:0 10px}.wayon-workbench .brand-title{font-size:25px;line-height:1.2;letter-spacing:-.035em;font-weight:600;margin:0 0 7px;display:flex;align-items:center;gap:10px}
-.wayon-workbench .brand-title:before{content:"W";display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--fg);color:var(--card);font-size:18px;letter-spacing:-.08em}
-.wayon-workbench .brand-sub{font-size:12px;color:var(--muted)}
-.wayon-workbench .section-label{padding:0 10px;margin-bottom:9px;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.03em}
-.wayon-workbench #tabs{display:flex;flex-direction:column;gap:4px}.wayon-workbench #tabs button{display:flex;align-items:center;gap:10px;min-height:42px;width:100%;padding:8px 12px;border:0;border-radius:9px;text-align:left;background:transparent;color:var(--fg-secondary);font-size:13px;font-weight:500;white-space:nowrap}
-.wayon-workbench #tabs button:hover{background:var(--line)}.wayon-workbench #tabs button.on{background:var(--accent-subtle);color:var(--accent);font-weight:600}
-.wayon-workbench #tabs button:before{content:"";width:18px;height:18px;flex:none;background:currentColor;mask:var(--nav-icon) center/contain no-repeat;-webkit-mask:var(--nav-icon) center/contain no-repeat}
-.wayon-workbench #days{display:flex;flex-wrap:wrap;gap:5px;padding:0 6px}.wayon-workbench #days button{min-height:32px;border:0;border-radius:7px;padding:5px 9px;background:transparent;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
-.wayon-workbench #days button:hover{background:var(--line)}.wayon-workbench #days button.on{background:var(--card);color:var(--fg);box-shadow:0 1px 4px rgba(0,0,0,.09);font-weight:600}
-.wayon-workbench .sidebar-footer{margin-top:auto;display:flex;flex-direction:column;gap:12px;padding-top:16px;border-top:1px solid var(--line)}
-.wayon-workbench .bar{padding:8px 10px;display:flex;flex-direction:column;gap:9px}.wayon-workbench .bar-top{display:flex;align-items:center;justify-content:space-between;gap:8px}.wayon-workbench .bar-lbl{font-size:11px;color:var(--muted)}
-.wayon-workbench .count{font-size:12px;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}.wayon-workbench .track{height:4px;background:var(--line);border-radius:4px;overflow:hidden}.wayon-workbench .fill{height:100%;width:0;background:var(--accent);border-radius:4px}
-.wayon-workbench #reset{align-self:flex-start;min-height:32px;border:0;background:transparent;color:var(--muted);padding:4px 0;font-size:11px}.wayon-workbench #reset:hover{color:var(--bad)}
-.wayon-workbench #sync{font-size:11px;line-height:1.5;color:var(--muted);padding:0 10px;overflow-wrap:anywhere}
-.wayon-workbench .main-content{padding:32px clamp(20px,3vw,48px) 64px;min-width:0;max-width:1680px;width:100%}
-.wayon-workbench .workspace-heading{margin:0 0 22px}.wayon-workbench .eyebrow{font-size:10px;letter-spacing:.16em;color:var(--muted);font-weight:600;margin:0 0 7px}.wayon-workbench #view-title{font-size:28px;line-height:1.25;letter-spacing:-.025em;font-weight:600;margin:0 0 7px}.wayon-workbench #view-subtitle{font-size:13px;color:var(--muted);margin:0}
-.wayon-workbench #schedule-health{font-size:11px;color:var(--muted);margin:0 0 20px;line-height:1.55}.wayon-workbench #schedule-health:empty{display:none}.wayon-workbench #schedule-health.health-error{padding:12px 14px;background:var(--warning-bg);color:var(--warning-fg);border:1px solid var(--line);border-radius:10px}
-.wayon-workbench .list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:18px;align-items:start}
-.wayon-workbench .item,.wayon-workbench .quiz{border:1px solid var(--line);border-radius:16px;background:var(--card);box-shadow:var(--shadow-card);padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0}
-.wayon-workbench .head{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0}.wayon-workbench .name{flex:1 1 100%;font-weight:600;font-size:17px;line-height:1.4;letter-spacing:-.015em;overflow-wrap:anywhere}.wayon-workbench .meta{flex:1;min-width:80px;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
-.wayon-workbench .copy,.wayon-workbench .small{min-height:36px;border-radius:9px;font-size:12px;font-weight:500;padding:7px 11px;border:1px solid var(--line);background:var(--code-bg);color:var(--fg-secondary);white-space:nowrap;transition:background .16s,color .16s}
-.wayon-workbench .copy{background:#0071e3;color:#fff;border-color:transparent}.wayon-workbench .copy:hover{background:#0064cb}.wayon-workbench .small:hover{background:var(--line)}.wayon-workbench .copy:active,.wayon-workbench .small:active{filter:brightness(.94)}
-.wayon-workbench .state{font-size:11px;padding:3px 7px;border-radius:6px;color:var(--accent);background:var(--accent-subtle)}
-.wayon-workbench .item.copied .copy{background:var(--accent-subtle);color:var(--accent);box-shadow:none;border-color:transparent}
-.wayon-workbench .item.folded{grid-column:1/-1;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;box-shadow:none;background:var(--card);color:var(--fg-secondary);font-size:13px;cursor:pointer}
-.wayon-workbench .tasks{display:flex;flex-direction:column;gap:8px}.wayon-workbench .task{display:grid;grid-template-columns:minmax(0,1fr) 68px 32px;gap:6px 8px;padding:8px;border:1px solid transparent;border-bottom-color:var(--line);border-radius:9px;min-width:0;align-items:start}
-.wayon-workbench .task.ok{background:var(--done-bg);border-color:var(--done-border)}.wayon-workbench .task.no{background:var(--bad-bg);border-color:var(--bad-border)}
-.wayon-workbench .task .txt{grid-area:1/1;min-width:0;width:100%;font:inherit;font-size:14px;line-height:1.55;color:var(--fg);background:transparent;border:1px solid transparent;border-radius:6px;padding:5px 3px;resize:none;overflow:hidden;margin:0}
-.wayon-workbench .task .txt:focus{background:var(--card);border-color:var(--accent)}
-.wayon-workbench .mark{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:5px 8px;border:1px solid var(--line-strong);border-radius:8px;background:var(--card);color:var(--muted);font-size:12px;font-weight:500;white-space:nowrap}
-.wayon-workbench .task>.mark{grid-area:1/2;width:68px;min-width:0}.wayon-workbench .task.ok .mark,.wayon-workbench .qchk.on{color:var(--done-dark);border-color:var(--done-border);background:var(--done-bg)}.wayon-workbench .task.no .mark{color:var(--bad-dark);border-color:var(--bad-border);background:var(--bad-bg)}
-.wayon-workbench .del-btn{grid-area:1/3;min-width:32px;height:36px;padding:0;border:0;border-radius:8px;background:transparent;font-size:20px;color:var(--muted)}.wayon-workbench .del-btn:hover{background:var(--bad-bg);color:var(--bad)}
-.wayon-workbench .note{grid-column:1/-1;grid-row:2;min-width:0;width:100%;height:32px;padding:5px 8px;border:1px solid var(--line);border-radius:7px;background:var(--code-bg);color:var(--fg-secondary);font-size:12px}.wayon-workbench .note:focus{border-color:var(--accent);background:var(--card)}
-.wayon-workbench .add-btn{color:var(--accent);background:transparent;border-style:dashed;min-height:36px}.wayon-workbench .task-editor{padding:14px;background:var(--code-bg);border:1px solid var(--line);border-radius:12px}.wayon-workbench .editor-area{width:100%;min-height:110px;border:1px solid var(--line-strong);border-radius:9px;padding:10px;color:var(--fg);background:var(--card);font-size:14px;line-height:1.6;resize:vertical}
-.wayon-workbench pre{margin:0;padding:14px;background:var(--code-bg);border:1px solid var(--line);border-radius:10px;color:var(--fg-secondary);font:inherit;font-size:14px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text}
-.wayon-workbench .quiz{grid-column:1/-1}.wayon-workbench .quiz h2{font-size:17px;font-weight:600;margin:0}.wayon-workbench .qgroup{border-top:1px solid var(--line);padding:12px 0;min-width:0}.wayon-workbench .qhead{font-size:15px;font-weight:600;margin-bottom:6px}.wayon-workbench .qrow{display:flex;align-items:center;gap:8px;padding:8px 0;min-width:0}.wayon-workbench .qinfo{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:3px 10px}.wayon-workbench .qname{font-weight:500}.wayon-workbench .qrange,.wayon-workbench .qcourse{font-size:12px;color:var(--muted)}.wayon-workbench .qfold{border:1px solid var(--done-border);background:var(--done-bg);padding:10px 14px;border-radius:10px;color:var(--done-dark);cursor:pointer}.wayon-workbench .qfold .qhead{margin:0}
-.wayon-workbench .list>.sub{grid-column:1/-1;padding:32px 20px;background:var(--card);border:1px solid var(--line);border-radius:16px;text-align:center;color:var(--muted);font-size:14px}
-.wayon-workbench #classroom-frame{grid-column:1/-1;border-radius:14px!important;border:1px solid var(--line)!important;background:var(--card)}body[data-mode="classroom"] .list{display:block}
-.wayon-room{padding:18px!important;gap:10px!important}.wayon-room .top{padding:0 0 10px;border-bottom:1px solid var(--line)}.wayon-room .top b{font-weight:600!important;letter-spacing:-.02em}.wayon-room .days button{min-height:36px;border-radius:8px;padding:5px 11px}.wayon-room .days button.on{background:#0071e3;color:#fff}.wayon-room .legend{line-height:1.6}.wayon-room .c{border-radius:9px;padding:5px}.wayon-room .k{border-radius:6px}.wayon-room .h,.wayon-room .r{font-weight:600}.wayon-room .c.bad{border:2px solid var(--bad)}.wayon-room .cloud-panel{flex:none}.wayon-room .grid{overflow:auto}
-@media(max-width:1023px){.wayon-workbench .app-layout{display:block}.wayon-workbench .sidebar{position:relative;height:auto;width:100%;padding:18px 20px 14px;gap:14px;border-right:0;border-bottom:1px solid var(--line)}.wayon-workbench .sidebar-top{display:flex;align-items:center;justify-content:space-between;padding:0}.wayon-workbench .brand-title{font-size:22px;margin:0}.wayon-workbench .brand-title:before{width:27px;height:27px;font-size:16px}.wayon-workbench .section-label{display:none}.wayon-workbench #tabs{flex-direction:row;overflow:auto;gap:4px;padding-bottom:3px;scrollbar-width:none}.wayon-workbench #tabs button{width:auto;flex:none;min-height:44px;padding:8px 12px;border-radius:8px}.wayon-workbench #days{flex-wrap:nowrap;overflow:auto;padding:2px;scrollbar-width:none}.wayon-workbench #days button{flex:none;min-height:36px}.wayon-workbench .sidebar-footer{margin:0;padding:0;border:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;align-items:center}.wayon-workbench .bar{padding:0;display:grid;grid-template-columns:auto minmax(32px,1fr) auto;align-items:center;gap:12px}.wayon-workbench .bar-lbl{display:none}.wayon-workbench #sync{grid-column:1/-1;padding:0}.wayon-workbench .cloud-panel{grid-column:1/-1}.wayon-workbench .cloud-panel:not([open]){justify-self:start;padding:0 10px;border-color:transparent;background:transparent}.wayon-workbench .main-content{padding:24px 20px 48px}.wayon-workbench #view-title{font-size:24px}.wayon-workbench .workspace-heading{margin-bottom:18px}}
-@media(max-width:599px){.wayon-workbench{font-size:16px}.wayon-workbench .sidebar{padding:16px;gap:12px}.wayon-workbench .brand-sub{font-size:11px}.wayon-workbench #tabs button{font-size:13px}.wayon-workbench #tabs button:before{width:16px;height:16px}.wayon-workbench .main-content{padding:22px 16px 40px}.wayon-workbench .list{grid-template-columns:minmax(0,1fr);gap:14px}.wayon-workbench .item,.wayon-workbench .quiz{padding:16px}.wayon-workbench .task{grid-template-columns:minmax(0,1fr) 60px 32px;column-gap:5px;padding:7px 4px}.wayon-workbench .task>.mark{width:60px}.wayon-workbench .task .txt{font-size:16px;line-height:1.6}.wayon-workbench .note,.wayon-workbench .editor-area{font-size:16px}.wayon-workbench .note{height:38px}.wayon-workbench .mark,.wayon-workbench .del-btn,.wayon-workbench .copy,.wayon-workbench .small{min-height:44px}.wayon-workbench .del-btn{min-width:32px}.wayon-workbench .head{gap:8px}.wayon-workbench .meta{font-size:11px}.wayon-workbench .copy,.wayon-workbench .small{font-size:12px;padding:8px 10px}.wayon-workbench .qrow{gap:6px}.wayon-workbench .qinfo{font-size:14px}.wayon-workbench .qchk{padding:7px 9px}.wayon-room{padding:10px!important}.wayon-room .days button{min-height:44px}.cloud-panel input{font-size:16px}}
-@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+<style>
+/* ========================================================
+   Wayon Workbench — Modern Dashboard with Responsive Sidebar
+   ======================================================== */
+:root {
+  --bg: #f5f5f7;
+  --card: #ffffff;
+  --card-elevated: #ffffff;
+  --fg: #1d1d1f;
+  --fg-secondary: #48484a;
+  --muted: #86868b;
+  --line: rgba(0, 0, 0, 0.08);
+  --line-strong: rgba(0, 0, 0, 0.16);
+  
+  /* Apple & Claude Accents */
+  --accent: #0071e3;
+  --accent-hover: #0077ed;
+  --accent-subtle: #f0f7ff;
+  --claude-warm: #d97757;
+  --claude-bg: #faf9f5;
+  --claude-border: #e8e6df;
+  
+  /* States */
+  --done: #34c759;
+  --done-dark: #15803d;
+  --done-bg: #f0fdf4;
+  --done-border: #bbf7d0;
+  
+  --bad: #ff3b30;
+  --bad-dark: #b91c1c;
+  --bad-bg: #fef2f2;
+  --bad-border: #fecaca;
+  
+  --code-bg: #f5f5f7;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.03);
+  --shadow-card: 0 4px 18px -2px rgba(0, 0, 0, 0.04), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+  --shadow-hover: 0 8px 26px -4px rgba(0, 0, 0, 0.08);
+  
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "SF Pro", "Helvetica Neue", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+}
 
-#tab-plan{--nav-icon:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M8%204h8v3H8z%20M6%205H4v17h16V5h-2%20M8%2012h8%20M8%2016h5%22%2F%3E%3C%2Fsvg%3E")}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #000000;
+    --card: #1c1c1e;
+    --card-elevated: #2c2c2e;
+    --fg: #f5f5f7;
+    --fg-secondary: #aeaeb2;
+    --muted: #86868b;
+    --line: rgba(255, 255, 255, 0.12);
+    --line-strong: rgba(255, 255, 255, 0.22);
+    --accent: #2997ff;
+    --accent-hover: #47a6ff;
+    --accent-subtle: #142334;
+    --claude-warm: #e08b6d;
+    --claude-bg: #1e1d1b;
+    --claude-border: #383531;
+    --done: #30d158;
+    --done-dark: #4ade80;
+    --done-bg: #0d2616;
+    --done-border: #166534;
+    --bad: #ff453a;
+    --bad-dark: #f87171;
+    --bad-bg: #2d1413;
+    --bad-border: #991b1b;
+    --code-bg: #141415;
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+    --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.45);
+    --shadow-hover: 0 8px 32px rgba(0, 0, 0, 0.6);
+    color-scheme: dark;
+  }
+}
 
-#tab-done{--nav-icon:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9%2012l2%202%204-4%20M20%2012a8%208%200%201%201-5-7%22%2F%3E%3C%2Fsvg%3E")}
+:root[data-theme="dark"] {
+  --bg: #000000;
+  --card: #1c1c1e;
+  --card-elevated: #2c2c2e;
+  --fg: #f5f5f7;
+  --fg-secondary: #aeaeb2;
+  --muted: #86868b;
+  --line: rgba(255, 255, 255, 0.12);
+  --line-strong: rgba(255, 255, 255, 0.22);
+  --accent: #2997ff;
+  --accent-hover: #47a6ff;
+  --accent-subtle: #142334;
+  --claude-warm: #e08b6d;
+  --claude-bg: #1e1d1b;
+  --claude-border: #383531;
+  --done: #30d158;
+  --done-dark: #4ade80;
+  --done-bg: #0d2616;
+  --done-border: #166534;
+  --bad: #ff453a;
+  --bad-dark: #f87171;
+  --bad-bg: #2d1413;
+  --bad-border: #991b1b;
+  --code-bg: #141415;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.45);
+  --shadow-hover: 0 8px 32px rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+}
 
-#tab-quiz{--nav-icon:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%205h6a3%203%200%200%201%202%201%203%203%200%200%201%202-1h6v15h-6a3%203%200%200%200-2%201%203%203%200%200%200-2-1H4z%20M12%206v15%22%2F%3E%3C%2Fsvg%3E")}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--sans);
+  font-size: 14.5px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
 
-#tab-notice{--nav-icon:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%2010v5h4l10%205V5L8%2010z%20M8%2015l2%206%22%2F%3E%3C%2Fsvg%3E")}
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+  width: 100%;
+}
 
-#tab-chasing{--nav-icon:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%208v5l3%202%20M20%2012a8%208%200%201%201-3-6%20M20%204v5h-5%22%2F%3E%3C%2Fsvg%3E")}
+#tab-plan::before { content: "📋 "; }
+#tab-done::before { content: "✅ "; }
+#tab-quiz::before { content: "📝 "; }
+#tab-notice::before { content: "📢 "; }
+#tab-chasing::before { content: "⚡ "; }
+#tab-classroom::before { content: "🏫 "; }
 
-#tab-classroom{--nav-icon:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%2021V5l10-2v18%20M2%2021h20%20M14%208h6v13%20M8%207v1%20M8%2012v1%20M8%2017v1%22%2F%3E%3C%2Fsvg%3E")}
+@media (min-width: 860px) {
+  .sidebar {
+    width: 250px;
+    flex: none;
+    height: 100vh;
+    position: sticky;
+    top: 0;
+    overflow-y: auto;
+    background: var(--card);
+    border-right: 1px solid var(--line);
+    padding: 24px 16px 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    box-shadow: 1px 0 0 rgba(0, 0, 0, 0.02);
+  }
 
-.wayon-room>[role="status"]{padding:8px 10px!important;border:1px solid var(--line)!important;border-radius:9px;background:var(--code-bg)!important;color:var(--muted)!important;font-size:11px;line-height:1.5}
-.wayon-room .cloud-panel{flex:1 1 100%;width:100%;max-width:100%}.wayon-room .cloud-panel button{white-space:normal}
-.wayon-room .room-scroll{flex:1;min-height:0;min-width:0;width:100%;overflow:auto;border-radius:10px;overscroll-behavior:contain}
-.wayon-room .room-scroll>.grid{height:100%;min-height:420px;min-width:740px;overflow:visible}
-@media(max-width:599px){.wayon-workbench .task{grid-template-columns:minmax(0,1fr) 60px 44px}.wayon-workbench .del-btn{min-width:44px}.cloud-panel button{min-height:44px}}
+  .sidebar-top {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
 
+  .brand-title {
+    font-size: 28px;
+    margin: 0;
+    font-weight: 800;
+    letter-spacing: -0.035em;
+    line-height: 1.1;
+    color: var(--fg);
+  }
+
+  .brand-sub {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+    letter-spacing: -0.01em;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 8px;
+    padding-left: 6px;
+  }
+
+  #tabs {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  #tabs button {
+    width: 100%;
+    border-radius: 10px;
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 8px 12px;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--fg-secondary);
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  #tabs button:hover {
+    background: rgba(0, 0, 0, 0.04);
+    color: var(--fg);
+  }
+
+  #tabs button.on {
+    background: var(--accent);
+    color: #ffffff;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(0, 113, 227, 0.28);
+  }
+
+  #days {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 2px 4px;
+  }
+
+  #days button {
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 10px;
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid transparent;
+    color: var(--fg-secondary);
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  #days button:hover {
+    background: rgba(0, 0, 0, 0.08);
+    color: var(--fg);
+  }
+
+  #days button.on {
+    background: var(--fg);
+    color: var(--bg);
+    font-weight: 600;
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding-top: 14px;
+    border-top: 1px solid var(--line);
+  }
+
+  .bar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background: rgba(0, 0, 0, 0.02);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 10px 12px;
+  }
+
+  .bar-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .bar-lbl {
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .count {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--fg);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .track {
+    width: 100%;
+    height: 6px;
+    border-radius: 9999px;
+    background: rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+  }
+
+  .fill {
+    height: 100%;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, #34c759, #30b0c7);
+    width: 0;
+    transition: width 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  #reset {
+    font-size: 11.5px;
+    font-weight: 500;
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--line);
+    background: var(--card);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+  }
+
+  #reset:hover {
+    color: var(--bad);
+    border-color: var(--bad);
+    background: var(--bad-bg);
+  }
+
+  #sync {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    padding: 4px 8px;
+    border-radius: 9999px;
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid var(--line);
+    white-space: nowrap;
+    width: fit-content;
+  }
+
+  .main-content {
+    flex: 1;
+    min-width: 0;
+    padding: 24px 32px 64px;
+    overflow-y: auto;
+  }
+
+  #schedule-health {
+    margin-bottom: 16px;
+  }
+
+  .list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+    align-items: start;
+  }
+}
+
+@media (min-width: 1340px) {
+  .list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 20px;
+  }
+}
+
+@media (max-width: 859px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    padding: 16px 16px 12px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .sidebar-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .brand-title {
+    font-size: 24px;
+    margin: 0;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    color: var(--fg);
+  }
+
+  .brand-sub {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+
+  .section-label {
+    display: none;
+  }
+
+  #tabs {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding: 2px 2px 6px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  #tabs::-webkit-scrollbar { display: none; }
+
+  #tabs button {
+    border-radius: 9999px;
+    font-size: 13px;
+    font-weight: 500;
+    padding: 6px 14px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    color: var(--fg-secondary);
+    white-space: nowrap;
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+  }
+
+  #tabs button.on {
+    background: var(--accent);
+    color: #ffffff;
+    border-color: var(--accent);
+    font-weight: 600;
+  }
+
+  #days {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 2px 2px 6px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  #days::-webkit-scrollbar { display: none; }
+
+  #days button {
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 500;
+    padding: 4px 12px;
+    background: rgba(0, 0, 0, 0.04);
+    border: 1px solid transparent;
+    color: var(--fg-secondary);
+    white-space: nowrap;
+    flex: none;
+    cursor: pointer;
+  }
+
+  #days button.on {
+    background: var(--fg);
+    color: var(--bg);
+    font-weight: 600;
+  }
+
+  .sidebar-footer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 8px 14px;
+    flex-wrap: wrap;
+  }
+
+  .bar-top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .bar-lbl {
+    display: none;
+  }
+
+  .track {
+    flex: 1;
+    min-width: 100px;
+    height: 6px;
+    border-radius: 9999px;
+    background: rgba(0, 0, 0, 0.06);
+    overflow: hidden;
+  }
+
+  .fill {
+    height: 100%;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, #34c759, #30b0c7);
+    width: 0;
+  }
+
+  .count {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--fg);
+    white-space: nowrap;
+  }
+
+  #reset {
+    font-size: 11.5px;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  #sync {
+    font-size: 11px;
+    color: var(--muted);
+    padding: 3px 8px;
+    border-radius: 9999px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    width: fit-content;
+  }
+
+  .main-content {
+    padding: 12px 14px 48px;
+  }
+
+  .list {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+}
+
+#schedule-health {
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+#schedule-health:empty {
+  display: none;
+}
+#schedule-health:not(:empty) {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #92400e;
+  border-radius: 10px;
+  padding: 8px 14px;
+}
+@media (prefers-color-scheme: dark) {
+  #schedule-health:not(:empty) {
+    background: #2d2412;
+    border-color: #634311;
+    color: #fde68a;
+  }
+}
+
+.item {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-card);
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+.item:hover {
+  box-shadow: var(--shadow-hover);
+}
+.item.copied {
+  border-color: rgba(52, 199, 89, 0.4);
+}
+.item.folded {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px;
+  background: var(--done-bg);
+  border-color: var(--done-border);
+  color: var(--done-dark);
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  grid-column: 1 / -1;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 10px;
+  flex-wrap: wrap;
+}
+
+.name {
+  font-weight: 700;
+  font-size: 16.5px;
+  line-height: 1.3;
+  color: var(--fg);
+  letter-spacing: -0.015em;
+  flex: 1 1 100%;
+  min-width: 0;
+  word-break: break-word;
+}
+
+.meta {
+  color: var(--muted);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  flex: 1 1 auto;
+  margin-right: auto;
+  font-weight: 450;
+}
+
+.state {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--done-dark);
+  background: var(--done-bg);
+  border: 1px solid var(--done-border);
+  padding: 2px 8px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.copy {
+  background: var(--accent);
+  border: none;
+  color: #ffffff;
+  font-weight: 600;
+  font-size: 12.5px;
+  border-radius: 9999px;
+  white-space: nowrap;
+  padding: 6px 14px;
+  box-shadow: 0 2px 6px rgba(0, 113, 227, 0.22);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.copy:hover {
+  filter: brightness(1.08);
+  transform: scale(1.02);
+}
+.copy:active {
+  transform: scale(0.98);
+}
+.item.copied .copy {
+  background: var(--done-bg);
+  color: var(--done-dark);
+  border: 1px solid var(--done-border);
+  box-shadow: none;
+}
+
+.small {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 9999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--fg-secondary);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.small:hover {
+  border-color: var(--line-strong);
+  color: var(--fg);
+  background: var(--code-bg);
+}
+
+.tasks {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+}
+
+.task {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  border-radius: 10px;
+  padding: 5px 8px;
+  background: rgba(0, 0, 0, 0.015);
+  border: 1px solid transparent;
+  transition: all 0.15s;
+}
+@media (prefers-color-scheme: dark) {
+  .task { background: rgba(255, 255, 255, 0.03); }
+}
+.task.ok {
+  background: var(--done-bg);
+  border-color: var(--done-border);
+}
+.task.no {
+  background: var(--bad-bg);
+  border-color: var(--bad-border);
+}
+
+.mark {
+  width: 78px;
+  height: 28px;
+  flex: none;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 9999px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--muted);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.mark:hover {
+  border-color: var(--line-strong);
+}
+.task.ok .mark {
+  background: #34c759;
+  border-color: #34c759;
+  color: #ffffff;
+}
+.task.no .mark {
+  background: #ff3b30;
+  border-color: #ff3b30;
+  color: #ffffff;
+}
+
+.task input.txt {
+  flex: 1;
+  min-width: 120px;
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 450;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--fg);
+  transition: all 0.15s;
+}
+.task input.txt:hover {
+  border-color: var(--line);
+  background: var(--card);
+}
+.task input.txt:focus {
+  border-color: var(--accent);
+  background: var(--card);
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.15);
+  outline: none;
+}
+
+.note {
+  flex: 1;
+  min-width: 110px;
+  font: inherit;
+  font-size: 12px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.02);
+  color: var(--fg);
+  transition: all 0.15s;
+}
+.note:focus {
+  border-color: var(--accent);
+  background: var(--card);
+  box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.15);
+  outline: none;
+}
+
+.del-btn {
+  width: 22px;
+  height: 22px;
+  line-height: 20px;
+  padding: 0;
+  text-align: center;
+  font-size: 15px;
+  color: var(--muted);
+  background: rgba(0, 0, 0, 0.04);
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  flex: none;
+  transition: all 0.15s;
+}
+.del-btn:hover {
+  color: #ffffff;
+  background: #ff3b30;
+}
+
+.add-btn {
+  width: 100%;
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 12.5px;
+  padding: 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-top: 2px;
+}
+.add-btn:hover {
+  border-color: var(--accent);
+  background: var(--accent-subtle);
+}
+
+.task-editor {
+  background: var(--claude-bg);
+  border: 1px solid var(--claude-border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 4px 0 8px;
+}
+.editor-area {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.45;
+  padding: 8px 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--fg);
+  resize: vertical;
+}
+
+pre {
+  margin: 0;
+  background: var(--code-bg);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: all;
+  color: var(--fg-secondary);
+}
+
+.quiz {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-card);
+  grid-column: 1 / -1;
+}
+.quiz h2 {
+  font-size: 17px;
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--fg);
+}
+.qgroup {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.01);
+}
+.qhead {
+  font-weight: 700;
+  font-size: 14.5px;
+  padding: 4px 6px;
+  color: var(--fg);
+}
+.qfold {
+  background: var(--done-bg);
+  border-color: var(--done-border);
+}
+.qfold .qhead {
+  cursor: pointer;
+}
+.qrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  border-radius: 8px;
+  padding: 5px 8px;
+}
+.qrow.ok { background: var(--done-bg); }
+.qrow.no { background: var(--bad-bg); }
+.qname { font-weight: 650; min-width: 70px; flex: 1; }
+.qrange { color: var(--muted); font-size: 12.5px; min-width: 88px; font-variant-numeric: tabular-nums; }
+.qcourse { font-weight: 400; color: var(--muted); font-size: 13px; }
+.qsub { margin-left: 12px; border-left: 2px solid var(--line); border-radius: 0 6px 6px 0; }
+.qinfo { flex: 1; min-width: 0; display: flex; flex-wrap: wrap; column-gap: 8px; align-items: baseline; }
+.qsub .mark { width: auto; padding: 4px 10px; white-space: nowrap; }
+.qchk.on {
+  border-color: #34c759;
+  color: #ffffff;
+  background: #34c759;
+}
+
+.item.folded,
+.quiz,
+#classroom-frame,
+.list > .sub {
+  grid-column: 1 / -1;
+}
+body[data-mode="classroom"] .list {
+  display: block;
+}
 </style>
-<style id="wayon-study">
-.wayon-workbench .study-toolbar,.wayon-workbench .study-form{grid-column:1/-1}
-.study-toolbar,.study-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.study-toolbar{padding:0 0 4px}.study-form{max-width:760px}.study-form h3{margin:0 0 12px}
-.study-form label{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;font-size:13px;color:var(--muted)}
-.study-form input,.study-form textarea{box-sizing:border-box;width:100%;min-width:0;border:1px solid var(--line);border-radius:8px;background:var(--input-bg);color:var(--text);padding:10px;font:inherit;font-size:16px}
-.study-form textarea{resize:vertical}.study-form .study-actions{margin-top:10px}
-.study-card .head{margin-bottom:10px}.study-card .study-actions{margin-bottom:8px}
-.study-task{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 10px;padding:9px 0;border-top:1px solid var(--line)}
-.study-task-text{min-width:0;overflow-wrap:anywhere;line-height:1.6;align-self:center}
-.study-marks{display:flex;gap:4px;align-self:start;flex-shrink:0}
-.study-mark{min-width:44px;min-height:44px;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--input-bg);cursor:pointer;opacity:.45}
-.study-mark[aria-pressed="true"]{opacity:1;background:var(--code-bg);border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
-.study-task>.note{grid-column:1/-1;width:100%;box-sizing:border-box;margin:0}
-.study-error{color:var(--red,#b42318);font-size:13px;line-height:1.6}.study-error:empty{display:none}
-.study-copy-fallback{box-sizing:border-box;width:100%;min-height:150px;background:var(--input-bg);color:var(--text);font:inherit}
-.study-copy-temp{position:fixed;left:0;top:0;width:1px;height:1px;opacity:.01}
-@media(max-width:599px){.study-toolbar{gap:8px}.study-toolbar .meta{width:100%}.study-card .study-actions{gap:6px}}
-
-</style>
-</head>
-<body class="wayon-workbench">
-
 <div class="app-layout">
   <aside class="sidebar">
     <div class="sidebar-top">
@@ -137,19 +962,13 @@ body.wayon-workbench{margin:0;font-size:15px;line-height:1.55}
   </aside>
 
   <main class="main-content">
-    <header class="workspace-heading">
-      <p class="eyebrow">WAYON WORKSPACE</p>
-      <h2 id="view-title">教学操作台</h2>
-      <p id="view-subtitle"></p>
-    </header>
-
     <div class="sub" id="sub" style="display:none"></div>
     <div class="health-box" id="schedule-health" role="status"></div>
     <div class="list" id="list"></div>
   </main>
 </div>
 <script>
-const DATA = {"2026-10-15": [], "2026-10-16": [], "2026-10-17": [["赖晨曦", "08:30-10:30", "赖晨曦", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "赖晨曦雅思一对一"], ["黄子珊", "10:40-12:40", "黄子珊", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["写作课", "", ""], ["写作课后任务", "", ""]], "黄子珊-雅思1v1"], ["Leo", "10:40-12:40", "Leo", [["课堂生词抽背", "", ""], ["系统内托福单词100个（50*2）", "", ""], ["5篇完形填空", "", ""], ["托福口语一套", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "【Leo&Iven】托福强化课程 2026暑假"], ["Iven", "10:40-12:40", "Iven", [["课堂生词抽背", "", ""], ["系统内托福单词100个（50*2）", "", ""], ["5篇完形填空", "", ""], ["托福口语一套", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "【Leo&Iven】托福强化课程 2026暑假"], ["丁嘉宝", "10:40-12:40", "丁嘉宝", [["课堂生词抽背", "", ""], ["口语课", "", ""], ["口语课后任务", "", ""]], "丁嘉宝-英语能力提升"], ["Frank", "10:40-12:40", "Frank", [["课堂生词抽背", "", ""], ["托福词汇*两组", "", ""], ["每天5篇完形", "", ""], ["每天一套口语任务", "", ""], ["一套听力+错题分析", "", ""], ["阅读课", "", ""], ["阅读课后任务", "", ""]], "Frank-托福1v1"], ["陈书进", "13:30-15:30", "陈书进", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "【聂彦如&陈书进】雅思强化课程"], ["聂彦如", "13:30-15:30", "聂彦如", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "【聂彦如&陈书进】雅思强化课程"], ["潘韬薄", "15:40-17:40", "潘韬薄", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["口语课", "", ""], ["口语课后任务", "", ""]], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"], ["周家琪", "15:40-17:40", "周家琪", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["口语课", "", ""], ["口语课后任务", "", ""]], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"], ["苏顺平", "15:40-17:40", "苏顺平", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["口语课", "", ""], ["口语课后任务", "", ""]], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"]], "2026-10-18": [["Amy徐畅】雅思基础课程", "09:00-10:30", "Amy徐畅】雅思基础课程", [["课堂生词抽背", "", ""], ["系统内单词任务（四级词汇*两组，每组30词）", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "【Amy徐畅】雅思基础课程 2026秋季"], ["赵梓轩", "10:40-12:40", "赵梓轩", [["课堂生词抽背", "", ""], ["阅读写作课", "", ""], ["阅读写作课后任务", "", ""]], "赵梓轩-英语能力提升"], ["朱宸萱MAP阅读", "13:30-15:30", "朱宸萱MAP阅读", [["课堂生词抽背", "", ""], ["系统内单词任务（新托福词汇*50）", "", ""], ["阅读课", "", ""], ["阅读课后任务", "", ""]], "朱宸萱MAP阅读/托福"], ["托福", "13:30-15:30", "托福", [["课堂生词抽背", "", ""], ["系统内单词任务（新托福词汇*50）", "", ""], ["阅读课", "", ""], ["阅读课后任务", "", ""]], "朱宸萱MAP阅读/托福"], ["代佳鸣高中同步课程", "14:00-15:30", "代佳鸣高中同步课程", [["课堂生词抽背", "", ""], ["词汇与语言应用课", "", ""], ["词汇与语言应用课后任务", "", ""]], "代佳鸣高中同步课程"], ["李洪睿John语法能力提升", "15:00-17:00", "李洪睿John语法能力提升", [["课堂生词抽背", "", ""], ["语法课", "", ""], ["语法课后任务", "", ""]], "李洪睿John语法能力提升"], ["王明泽", "15:40-17:40", "王明泽", [["课堂生词抽背", "", ""], ["SAT阅读课", "", ""], ["SAT阅读课后任务", "", ""]], "【王明泽&李子熙】SAT阅读预备班"], ["李子熙", "15:40-17:40", "李子熙", [["课堂生词抽背", "", ""], ["SAT阅读课", "", ""], ["SAT阅读课后任务", "", ""]], "【王明泽&李子熙】SAT阅读预备班"]], "2026-10-19": [["丁嘉宝", "17:00-19:00", "丁嘉宝", [["课堂生词抽背", "", ""], ["听说课", "", ""], ["听说课后任务", "", ""]], "丁嘉宝"]], "_chasing": [{"name": "Tiger", "task_title": "Tiger-托福1v1", "prev_date": "2026-10-14", "deadline": "2026-10-17", "is_urgent": false, "countdown_tag": "（考期：2026-10-17）", "uncompleted": ["【重录5+】2026年2月第4套/口语/Listen and Repeat"], "uncompleted_ids": ["14575231"], "uncompleted_details": [{"id": "14575231", "title": "【重录5+】2026年2月第4套/口语/Listen and Repeat", "date": "2026-10-14", "elapsed_days": 4}], "copy_text": "【Tiger 任务催交提醒】\n1. 【重录5+】2026年2月第4套/口语/Listen and Repeat\n请完成后回复，谢谢！"}, {"name": "Dana", "task_title": "Dana-托福1v1", "prev_date": "2026-10-10", "deadline": "", "is_urgent": false, "countdown_tag": "（考期：2026-10-17）", "uncompleted": ["2026年7月第1套/听力", "完形填空练习7", "【新托福】阅读填空题常考500词(社会学 经济学)-英译英中"], "uncompleted_ids": ["14507568", "14507567", "14507565"], "uncompleted_details": [{"id": "14507568", "title": "2026年7月第1套/听力", "date": "2026-10-10", "elapsed_days": 8}, {"id": "14507567", "title": "完形填空练习7", "date": "2026-10-10", "elapsed_days": 8}, {"id": "14507565", "title": "【新托福】阅读填空题常考500词(社会学 经济学)-英译英中", "date": "2026-10-10", "elapsed_days": 8}], "copy_text": "【Dana 任务催交提醒】\n1. 2026年7月第1套/听力\n2. 完形填空练习7\n3. 【新托福】阅读填空题常考500词(社会学 经济学)-英译英中\n请完成后回复，谢谢！"}, {"name": "Leo", "task_title": "Leo-托福1v1", "prev_date": "2026-10-11、2026-10-18", "deadline": "2026-10-31", "is_urgent": false, "countdown_tag": "（10/31 考试在即 · 仅剩 13 天）", "uncompleted": ["2026年3月第3套(0315)/写作/Build a Sentence+Write an Email+Write for an Academic Discussion", "【新托福】听力高频800词(生物+天文)-英译英中"], "uncompleted_ids": ["14521237", "14628553"], "uncompleted_details": [{"id": "14521237", "title": "2026年3月第3套(0315)/写作/Build a Sentence+Write an Email+Write for an Academic Discussion", "date": "2026-10-11", "elapsed_days": 7}, {"id": "14628553", "title": "【新托福】听力高频800词(生物+天文)-英译英中", "date": "2026-10-18", "elapsed_days": 0}], "copy_text": "【Leo 任务催交提醒】\n1. 2026年3月第3套(0315)/写作/Build a Sentence+Write an Email+Write for an Academic Discussion\n2. 【新托福】听力高频800词(生物+天文)-英译英中\n请完成后回复，谢谢！"}, {"name": "何昊隆", "task_title": "何昊隆-托福1v1", "prev_date": "2026-10-01、2026-10-18", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["2026年5月第5套/口语/Take an Interview", "【新托福】听力高频800词(工作场合)-英译英中", "【新托福】阅读填空题常考500词(生物学+化学)-英译英中"], "uncompleted_ids": ["14375175", "14628555", "14628556"], "uncompleted_details": [{"id": "14375175", "title": "2026年5月第5套/口语/Take an Interview", "date": "2026-10-01", "elapsed_days": 17}, {"id": "14628555", "title": "【新托福】听力高频800词(工作场合)-英译英中", "date": "2026-10-18", "elapsed_days": 0}, {"id": "14628556", "title": "【新托福】阅读填空题常考500词(生物学+化学)-英译英中", "date": "2026-10-18", "elapsed_days": 0}], "copy_text": "【何昊隆 任务催交提醒】\n1. 2026年5月第5套/口语/Take an Interview\n2. 【新托福】听力高频800词(工作场合)-英译英中\n3. 【新托福】阅读填空题常考500词(生物学+化学)-英译英中\n请完成后回复，谢谢！"}, {"name": "岳璐宇", "task_title": "岳璐宇-雅思考前自动补齐", "prev_date": "2026-10-16", "deadline": "2026-11-27", "is_urgent": false, "countdown_tag": "（11/27 考试在即 · 仅剩 40 天）", "uncompleted": ["CIT-C16-T3/阅读", "CIT-C15-T3/听力", "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)", "王陆807(课程)-英译英中"], "uncompleted_ids": ["14593801", "14593800", "14593798", "14593797"], "uncompleted_details": [{"id": "14593801", "title": "CIT-C16-T3/阅读", "date": "2026-10-16", "elapsed_days": 2}, {"id": "14593800", "title": "CIT-C15-T3/听力", "date": "2026-10-16", "elapsed_days": 2}, {"id": "14593798", "title": "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)", "date": "2026-10-16", "elapsed_days": 2}, {"id": "14593797", "title": "王陆807(课程)-英译英中", "date": "2026-10-16", "elapsed_days": 2}], "copy_text": "【岳璐宇 任务催交提醒】\n1. CIT-C16-T3/阅读\n2. CIT-C15-T3/听力\n3. 雅思阅读词汇真经(List 1 自然地理)-英译中(选择)\n4. 王陆807(课程)-英译英中\n请完成后回复，谢谢！"}, {"name": "Charlotte", "task_title": "Charlotte-SAT", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["SAT核心词汇6200(list 1)-英译中(选择)"], "uncompleted_ids": ["14625159"], "uncompleted_details": [{"id": "14625159", "title": "SAT核心词汇6200(list 1)-英译中(选择)", "date": "2026-10-17", "elapsed_days": 1}], "copy_text": "【Charlotte 任务催交提醒】\n1. SAT核心词汇6200(list 1)-英译中(选择)\n请完成后回复，谢谢！"}, {"name": "赖晨曦雅思一对一", "task_title": "", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["王陆807(课程)-英译英中", "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)"], "uncompleted_ids": ["14609559", "14609565"], "uncompleted_details": [{"id": "14609559", "title": "王陆807(课程)-英译英中", "date": "2026-10-17", "elapsed_days": 1}, {"id": "14609565", "title": "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)", "date": "2026-10-17", "elapsed_days": 1}], "copy_text": "【赖晨曦雅思一对一 任务催交提醒】\n1. 王陆807(课程)-英译英中\n2. 雅思阅读词汇真经(List 1 自然地理)-英译中(选择)\n请完成后回复，谢谢！"}, {"name": "Frank", "task_title": "Frank-托福1v1", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["【新托福】听力高频800词(健康话题+校园政策+地球科学)-英译英中", "【重做】【新托福】听力高频800词(环境科学)-英译英中", "完形填空练习1", "2026年3月第8套/口语/Listen and Repeat", "【重录5+】2026年3月第8套/口语/Listen and Repeat", "2026年3月第8套/口语/Take an Interview"], "uncompleted_ids": ["14609717", "14609731", "14609803", "14609852", "14609865", "14609879"], "uncompleted_details": [{"id": "14609717", "title": "【新托福】听力高频800词(健康话题+校园政策+地球科学)-英译英中", "date": "2026-10-17", "elapsed_days": 1}, {"id": "14609731", "title": "【重做】【新托福】听力高频800词(环境科学)-英译英中", "date": "2026-10-17", "elapsed_days": 1}, {"id": "14609803", "title": "完形填空练习1", "date": "2026-10-17", "elapsed_days": 1}, {"id": "14609852", "title": "2026年3月第8套/口语/Listen and Repeat", "date": "2026-10-17", "elapsed_days": 1}, {"id": "14609865", "title": "【重录5+】2026年3月第8套/口语/Listen and Repeat", "date": "2026-10-17", "elapsed_days": 1}, {"id": "14609879", "title": "2026年3月第8套/口语/Take an Interview", "date": "2026-10-17", "elapsed_days": 1}], "copy_text": "【Frank 任务催交提醒】\n1. 【新托福】听力高频800词(健康话题+校园政策+地球科学)-英译英中\n2. 【重做】【新托福】听力高频800词(环境科学)-英译英中\n3. 完形填空练习1\n4. 2026年3月第8套/口语/Listen and Repeat\n5. 【重录5+】2026年3月第8套/口语/Listen and Repeat\n6. 2026年3月第8套/口语/Take an Interview\n请完成后回复，谢谢！"}, {"name": "聂彦如&陈书进", "task_title": "", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["王陆807(课程)-英译英中"], "uncompleted_ids": ["14610155"], "uncompleted_details": [{"id": "14610155", "title": "王陆807(课程)-英译英中", "date": "2026-10-17", "elapsed_days": 1}], "copy_text": "【聂彦如&陈书进 任务催交提醒】\n1. 王陆807(课程)-英译英中\n请完成后回复，谢谢！"}, {"name": "雅思三人基础班", "task_title": "", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["王陆807(普通用词（二）)-英译英中", "雅思阅读词汇真经(List 7 文化历史+List 8 语言演化)-英译中(选择)"], "uncompleted_ids": ["14610336", "14610345"], "uncompleted_details": [{"id": "14610336", "title": "王陆807(普通用词（二）)-英译英中", "date": "2026-10-17", "elapsed_days": 1}, {"id": "14610345", "title": "雅思阅读词汇真经(List 7 文化历史+List 8 语言演化)-英译中(选择)", "date": "2026-10-17", "elapsed_days": 1}], "copy_text": "【雅思三人基础班 任务催交提醒】\n1. 王陆807(普通用词（二）)-英译英中\n2. 雅思阅读词汇真经(List 7 文化历史+List 8 语言演化)-英译中(选择)\n请完成后回复，谢谢！"}, {"name": "戴荧/汤馨然", "task_title": "戴荧&汤馨然-雅思强化班", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["王陆807(课程)-音译英中", "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)"], "uncompleted_ids": ["14605169", "14605170"], "uncompleted_details": [{"id": "14605169", "title": "王陆807(课程)-音译英中", "date": "2026-10-17", "elapsed_days": 1}, {"id": "14605170", "title": "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)", "date": "2026-10-17", "elapsed_days": 1}], "copy_text": "【戴荧/汤馨然 任务催交提醒】\n1. 王陆807(课程)-音译英中\n2. 雅思阅读词汇真经(List 1 自然地理)-英译中(选择)\n请完成后回复，谢谢！"}], "_chasing_status": "verified", "_chasing_unknown": false, "_plan": {"2026-10-15": [], "2026-10-16": [], "2026-10-17": [["赖晨曦", "08:30-10:30", "【赖晨曦】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "听力课", "听力课后任务"], "赖晨曦雅思一对一"], ["黄子珊", "10:40-12:40", "【黄子珊】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "写作课", "写作课后任务"], "黄子珊-雅思1v1"], ["Leo", "10:40-12:40", "【Leo】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内托福单词100个（50*2）", "5篇完形填空", "托福口语一套", "听力课", "听力课后任务"], "【Leo&Iven】托福强化课程 2026暑假"], ["Iven", "10:40-12:40", "【Iven】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内托福单词100个（50*2）", "5篇完形填空", "托福口语一套", "听力课", "听力课后任务"], "【Leo&Iven】托福强化课程 2026暑假"], ["丁嘉宝", "10:40-12:40", "【丁嘉宝】 10月17日任务安排🖊️", ["课堂生词抽背", "口语课", "口语课后任务"], "丁嘉宝-英语能力提升"], ["Frank", "10:40-12:40", "【Frank】 10月17日任务安排🖊️", ["课堂生词抽背", "托福词汇*两组", "每天5篇完形", "每天一套口语任务", "一套听力+错题分析", "阅读课", "阅读课后任务"], "Frank-托福1v1"], ["陈书进", "13:30-15:30", "【陈书进】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "听力课", "听力课后任务"], "【聂彦如&陈书进】雅思强化课程"], ["聂彦如", "13:30-15:30", "【聂彦如】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "听力课", "听力课后任务"], "【聂彦如&陈书进】雅思强化课程"], ["潘韬薄", "15:40-17:40", "【潘韬薄】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "口语课", "口语课后任务"], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"], ["周家琪", "15:40-17:40", "【周家琪】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "口语课", "口语课后任务"], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"], ["苏顺平", "15:40-17:40", "【苏顺平】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "口语课", "口语课后任务"], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"]], "2026-10-18": [["Amy徐畅】雅思基础课程", "09:00-10:30", "【Amy徐畅】雅思基础课程】 10月18日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（四级词汇*两组，每组30词）", "听力课", "听力课后任务"], "【Amy徐畅】雅思基础课程 2026秋季"], ["赵梓轩", "10:40-12:40", "【赵梓轩】 10月18日任务安排🖊️", ["课堂生词抽背", "阅读写作课", "阅读写作课后任务"], "赵梓轩-英语能力提升"], ["朱宸萱MAP阅读", "13:30-15:30", "【朱宸萱MAP阅读】 10月18日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（新托福词汇*50）", "阅读课", "阅读课后任务"], "朱宸萱MAP阅读/托福"], ["托福", "13:30-15:30", "【托福】 10月18日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（新托福词汇*50）", "阅读课", "阅读课后任务"], "朱宸萱MAP阅读/托福"], ["代佳鸣高中同步课程", "14:00-15:30", "【代佳鸣高中同步课程】 10月18日任务安排🖊️", ["课堂生词抽背", "词汇与语言应用课", "词汇与语言应用课后任务"], "代佳鸣高中同步课程"], ["李洪睿John语法能力提升", "15:00-17:00", "【李洪睿John语法能力提升】 10月18日任务安排🖊️", ["课堂生词抽背", "语法课", "语法课后任务"], "李洪睿John语法能力提升"], ["王明泽", "15:40-17:40", "【王明泽】 10月18日任务安排🖊️", ["课堂生词抽背", "SAT阅读课", "SAT阅读课后任务"], "【王明泽&李子熙】SAT阅读预备班"], ["李子熙", "15:40-17:40", "【李子熙】 10月18日任务安排🖊️", ["课堂生词抽背", "SAT阅读课", "SAT阅读课后任务"], "【王明泽&李子熙】SAT阅读预备班"]], "2026-10-19": [["丁嘉宝", "17:00-19:00", "【丁嘉宝-雅思基础】 10月19日任务安排🖊️", ["课堂生词抽背", "听说课", "听说课后任务"], "丁嘉宝"]]}, "_cids": {"2026-10-15": {}, "2026-10-16": {}, "2026-10-17": {"赖晨曦-雅思 1v1": [290722], "黄子珊-雅思1v1": [244187], "丁嘉宝": [258115], "Frank": [289544], "Leo&Ivan": [290341], "聂彦如&陈书进": [303091], "周家琪/潘韬薄/苏顺平-雅思基础班": [274331]}, "2026-10-18": {"Amy": [310785], "赵梓轩": [244773], "朱宸萱": [305273], "代佳鸣": [270115], "李洪睿John": [308836], "王明泽&李子熙": [299838]}, "2026-10-19": {"丁嘉宝": [258115]}}, "_notice": {"2026-10-06": [["Dana", "08:30-10:30", "【明日课程提醒】2026/10/6⏰\n\n时间： 10月6日 08:30-10:30\n课程： 写作\n老师： 徐梓淞\n学生： Dana\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["黄子珊", "10:40-12:40", "【明日课程提醒】2026/10/6⏰\n\n时间： 10月6日 10:40-12:40\n课程： 阅读\n老师： 徐梓淞\n学生： 黄子珊\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["戴荧&汤馨然", "10:40-15:30", "【明日课程提醒】2026/10/6⏰\n\n1️⃣\n时间： 10月6日 10:40-12:40\n课程： 听力\n老师： 王银屏\n学生： 戴荧/汤馨然\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室\n2️⃣\n时间： 10月6日 13:30-15:30\n课程： 写作\n老师： 任玥蓉\n学生： 戴荧/汤馨然\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 1号教室"], ["黄号然", "13:30-15:30", "【明日课程提醒】2026/10/6⏰\n\n时间： 10月6日 13:30-15:30\n课程： 写作\n老师： 徐梓淞\n学生： 黄号然\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["李洪睿John", "15:40-17:40", "【明日课程提醒】2026/10/6⏰\n\n时间： 10月6日 15:40-17:40\n课程： 语法\n老师： 任玥蓉\n学生： 李洪睿John\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 1号教室"]], "2026-10-07": [["Dana", "08:30-10:30", "【明日课程提醒】2026/10/7⏰\n\n时间： 10月7日 08:30-10:30\n课程： 口语\n老师： 王银屏\n学生： Dana\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["聂彦如", "09:00-10:30", "【明日课程提醒】2026/10/7⏰\n\n时间： 10月7日 09:00-10:30\n课程： 阅读\n老师： 徐梓淞\n学生： 聂彦如\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["郭璟Jack-SAT", "10:00-12:00", "【明日课程提醒】2026/10/7⏰\n\n时间： 10月7日 10:00-12:00（北京时间）\n美东时间： 10月6日 22:00-00:00\n课程： GRE数学\n老师： 钟美娟\n学生： 郭璟Jack-SAT\n形式： 线上"], ["李子熙", "13:30-15:30", "【明日课程提醒】2026/10/7⏰\n\n时间： 10月7日 13:30-15:30\n课程： SAT阅读预备\n老师： 元园\n学生： 李子熙\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 1号教室"], ["王子居&Andy", "19:00-21:00", "【明日课程提醒】2026/10/7⏰\n\n时间： 10月7日 19:00-21:00\n课程： SAT阅读\n老师： 元园\n学生： 王子居/Andy\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"]], "2026-10-15": [["George吴洋亿SAT一对一", "07:30-09:30", "【明日课程提醒】2026/10/15⏰\n\n时间： 10月15日 07:30-09:30（北京时间）\n美东时间： 10月14日 19:30-21:30\n课程： SAT语法\n老师： 邓凯帆\n学生： George吴洋亿SAT一对一\n形式： 线上"]], "2026-10-16": [["George吴洋亿", "08:30-10:30", "【明日课程提醒】2026/10/16⏰\n\n时间：\n10月16日 08:30-10:30（北京时间）\n10月15日 20:30-22:30（美东时间）\n课程： SAT语法\n老师： 胡亮宇\n学生： George吴洋亿\n形式： 线上"], ["郭璟Jack-SAT", "08:30-10:30", "【明日课程提醒】2026/10/16⏰\n\n时间：\n10月16日 08:30-10:30（北京时间）\n10月15日 20:30-22:30（美东时间）\n课程： SAT阅读\n老师： 元园\n学生： 郭璟Jack-SAT\n形式： 线上"], ["Ray英文综合能力提升", "16:00-18:00", "【明日课程提醒】2026/10/16⏰\n\n时间： 10月16日 16:00-18:00\n课程： 读写\n老师： 徐梓淞\n学生： Ray英文综合能力提升\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"]], "2026-10-17": [["赖晨曦", "08:30-10:30", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 08:30-10:30\n课程： 听力\n老师： 王银屏\n学生： 赖晨曦\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["黄子珊", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 写作\n老师： 任玥蓉\n学生： 黄子珊\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["丁嘉宝", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 口语\n老师： 梁润泽\n学生： 丁嘉宝\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 5号教室"], ["Frank", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 阅读\n老师： 徐梓淞\n学生： Frank\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["Leo&Iven", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 听力\n老师： 王银屏\n学生： Leo/Iven\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["聂彦如&陈书进", "13:30-15:30", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 13:30-15:30\n课程： 听力\n老师： 王银屏\n学生： 聂彦如/陈书进\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["周家琪/潘韬薄/苏顺平", "15:40-17:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 15:40-17:40\n课程： 口语\n老师： 梁润泽\n学生： 周家琪/潘韬薄/苏顺平\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"]], "2026-10-18": [["Amy", "09:00-10:30", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 09:00-10:30\n课程： 听力\n老师： 王银屏\n学生： Amy\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["赵梓轩", "10:40-12:40", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 10:40-12:40\n课程： 阅读写作\n老师： 徐梓淞\n学生： 赵梓轩\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["朱宸萱", "13:30-15:30", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 13:30-15:30\n课程： 阅读\n老师： 徐梓淞\n学生： 朱宸萱\n形式： 线上"], ["代佳鸣", "14:00-15:30", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 14:00-15:30\n课程： 词汇与语言应用\n老师： 王银屏\n学生： 代佳鸣\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["李洪睿John", "15:00-17:00", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 15:00-17:00\n课程： 语法\n老师： 任玥蓉\n学生： 李洪睿John\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 1号教室"], ["王明泽&李子熙", "15:40-17:40", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 15:40-17:40\n课程： SAT阅读\n老师： 元园\n学生： 王明泽/李子熙\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 5号教室"]], "2026-10-19": [["丁嘉宝", "17:00-19:00", "【明日课程提醒】2026/10/19⏰\n\n时间： 10月19日 17:00-19:00\n课程： 听说\n老师： 王银屏\n学生： 丁嘉宝\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"]]}, "_sess": {"2026-10-05": [["Dana", "08:30-10:30", "听力", "王银屏"], ["郭璟Jack", "08:30-10:30", "SAT阅读", "元园"], ["赵梓轩", "10:40-12:40", "阅读写作", "徐梓淞"], ["刘芝彬", "10:40-12:40", "雅思写作", "任玥蓉"], ["戴荧&汤馨然", "10:40-12:40", "听力", "王银屏"], ["黄号然", "13:30-15:30", "口语", "王银屏"], ["黄子珊", "13:30-15:30", "写作", "任玥蓉"], ["戴荧&汤馨然", "13:30-15:30", "阅读", "徐梓淞"], ["苏顺平", "15:40-17:40", "写作", "任玥蓉"], ["王明泽&李子熙", "15:40-17:40", "SAT阅读", "元园"], ["丁嘉宝", "17:00-19:00", "读写", "徐梓淞"]], "2026-10-06": [["Dana", "08:30-10:30", "写作", "徐梓淞"], ["黄子珊", "10:40-12:40", "阅读", "徐梓淞"], ["戴荧&汤馨然", "10:40-12:40", "听力", "王银屏"], ["黄号然", "13:30-15:30", "写作", "徐梓淞"], ["戴荧&汤馨然", "13:30-15:30", "写作", "任玥蓉"], ["李洪睿John", "15:40-17:40", "语法", "任玥蓉"]], "2026-10-07": [["Dana", "08:30-10:30", "口语", "王银屏"], ["彦如", "09:00-10:30", "阅读", "徐梓淞"], ["JACK", "10:00-12:00", "GRE数学", "钟美娟"], ["李子熙", "13:30-15:30", "SAT阅读预备", "元园"], ["王子居&Andy", "19:00-21:00", "SAT阅读", "元园"]], "2026-10-14": [], "2026-10-15": [], "2026-10-16": [["George吴洋亿", "08:30-10:30", "SAT语法", "胡亮宇"], ["郭璟Jack", "08:30-10:30", "SAT阅读", "元园"], ["Ray英文综合能力提升", "16:00-18:00", "读写", "徐梓淞"]], "2026-10-17": [["赖晨曦", "08:30-10:30", "听力", "王银屏", "线下"], ["黄子珊", "10:40-12:40", "写作", "任玥蓉", "线下"], ["丁嘉宝", "10:40-12:40", "口语", "梁润泽", "线下"], ["Frank", "10:40-12:40", "阅读", "徐梓淞", "线下"], ["Leo&Iven", "10:40-12:40", "听力", "王银屏", "线下"], ["聂彦如&陈书进", "13:30-15:30", "听力", "王银屏", "线下"], ["潘韬薄&苏顺平&周家琪", "15:40-17:40", "口语", "梁润泽", "线下"]], "2026-10-18": [["Amy徐畅", "09:00-10:30", "听力", "王银屏", "线下"], ["赵梓轩", "10:40-12:40", "阅读写作", "徐梓淞", "线下"], ["朱宸萱", "13:30-15:30", "阅读", "徐梓淞", "线上"], ["代佳鸣", "14:00-15:30", "词汇与语言应用", "王银屏", "线下"], ["李洪睿John", "15:00-17:00", "语法", "任玥蓉", "线下"], ["王明泽&李子熙", "15:40-17:40", "SAT阅读", "元园", "线下"]], "2026-10-19": [["丁嘉宝", "17:00-19:00", "听说", "王银屏", "线下"]]}, "_schedule_status": {"2026-10-16": {"status": "error", "checked_at": "2026-10-17T20:56:17.974533+08:00", "message": "2026-10-16 课表读取失败（登录或连接未成功）；未确认是否有课；今天的任务刷新和自动布置暂停。", "last_success_at": null}, "2026-10-17": {"status": "verified", "checked_at": "2026-10-17T21:40:20.997533+08:00", "last_success_at": "2026-10-17T21:40:20.997533+08:00"}, "2026-10-18": {"status": "verified", "checked_at": "2026-10-18T08:56:23.262654+08:00", "last_success_at": "2026-10-18T08:56:23.262654+08:00"}, "2026-10-19": {"status": "verified", "checked_at": "2026-10-18T08:56:23.262654+08:00", "last_success_at": "2026-10-18T08:56:23.262654+08:00"}}}; // {"YYYY-MM-DD": [[卡片名, 时间, 标题里的名字, [[任务, 备忘录里已有的标记, 备忘录里已有的备注]…], 备忘录名], …]}
+const DATA = {"2026-10-15": [], "2026-10-16": [], "2026-10-17": [["赖晨曦", "08:30-10:30", "赖晨曦", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "赖晨曦雅思一对一"], ["黄子珊", "10:40-12:40", "黄子珊", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["写作课", "", ""], ["写作课后任务", "", ""]], "黄子珊-雅思1v1"], ["Leo", "10:40-12:40", "Leo", [["课堂生词抽背", "", ""], ["系统内托福单词100个（50*2）", "", ""], ["5篇完形填空", "", ""], ["托福口语一套", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "【Leo&Iven】托福强化课程 2026暑假"], ["Iven", "10:40-12:40", "Iven", [["课堂生词抽背", "", ""], ["系统内托福单词100个（50*2）", "", ""], ["5篇完形填空", "", ""], ["托福口语一套", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "【Leo&Iven】托福强化课程 2026暑假"], ["丁嘉宝", "10:40-12:40", "丁嘉宝", [["课堂生词抽背", "", ""], ["口语课", "", ""], ["口语课后任务", "", ""]], "丁嘉宝-英语能力提升"], ["Frank", "10:40-12:40", "Frank", [["课堂生词抽背", "", ""], ["托福词汇*两组", "", ""], ["每天5篇完形", "", ""], ["每天一套口语任务", "", ""], ["一套听力+错题分析", "", ""], ["阅读课", "", ""], ["阅读课后任务", "", ""]], "Frank-托福1v1"], ["陈书进", "13:30-15:30", "陈书进", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "【聂彦如&陈书进】雅思强化课程"], ["聂彦如", "13:30-15:30", "聂彦如", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "【聂彦如&陈书进】雅思强化课程"], ["潘韬薄", "15:40-17:40", "潘韬薄", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["口语课", "", ""], ["口语课后任务", "", ""]], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"], ["周家琪", "15:40-17:40", "周家琪", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["口语课", "", ""], ["口语课后任务", "", ""]], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"], ["苏顺平", "15:40-17:40", "苏顺平", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["口语课", "", ""], ["口语课后任务", "", ""]], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"]], "2026-10-18": [["Amy徐畅】雅思基础课程", "09:00-10:30", "Amy徐畅】雅思基础课程", [["课堂生词抽背", "", ""], ["系统内单词任务（四级词汇*两组，每组30词）", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "【Amy徐畅】雅思基础课程 2026秋季"], ["赵梓轩", "10:40-12:40", "赵梓轩", [["课堂生词抽背", "", ""], ["阅读写作课", "", ""], ["阅读写作课后任务", "", ""]], "赵梓轩-英语能力提升"], ["朱宸萱MAP阅读", "13:30-15:30", "朱宸萱MAP阅读", [["课堂生词抽背", "", ""], ["系统内单词任务（新托福词汇*50）", "", ""], ["阅读课", "", ""], ["阅读课后任务", "", ""]], "朱宸萱MAP阅读/托福"], ["托福", "13:30-15:30", "托福", [["课堂生词抽背", "", ""], ["系统内单词任务（新托福词汇*50）", "", ""], ["阅读课", "", ""], ["阅读课后任务", "", ""]], "朱宸萱MAP阅读/托福"], ["代佳鸣高中同步课程", "14:00-15:30", "代佳鸣高中同步课程", [["课堂生词抽背", "", ""], ["词汇与语言应用课", "", ""], ["词汇与语言应用课后任务", "", ""]], "代佳鸣高中同步课程"], ["李洪睿John语法能力提升", "15:00-17:00", "李洪睿John语法能力提升", [["课堂生词抽背", "", ""], ["语法课", "", ""], ["语法课后任务", "", ""]], "李洪睿John语法能力提升"], ["王明泽", "15:40-17:40", "王明泽", [["课堂生词抽背", "", ""], ["SAT阅读课", "", ""], ["SAT阅读课后任务", "", ""]], "【王明泽&李子熙】SAT阅读预备班"], ["李子熙", "15:40-17:40", "李子熙", [["课堂生词抽背", "", ""], ["SAT阅读课", "", ""], ["SAT阅读课后任务", "", ""]], "【王明泽&李子熙】SAT阅读预备班"]], "2026-10-19": [["丁嘉宝", "17:00-19:00", "丁嘉宝", [["课堂生词抽背", "", ""], ["听说课", "", ""], ["听说课后任务", "", ""]], "丁嘉宝"]], "_chasing": [{"name": "Tiger", "task_title": "Tiger-托福1v1", "prev_date": "2026-10-14", "deadline": "2026-10-17", "is_urgent": false, "countdown_tag": "（考期：2026-10-17）", "uncompleted": ["【重录5+】2026年2月第4套/口语/Listen and Repeat"], "uncompleted_ids": ["14575231"], "uncompleted_details": [{"id": "14575231", "title": "【重录5+】2026年2月第4套/口语/Listen and Repeat", "date": "2026-10-14", "elapsed_days": 4}], "copy_text": "【Tiger 任务催交提醒】\n1. 【重录5+】2026年2月第4套/口语/Listen and Repeat\n请完成后回复，谢谢！"}, {"name": "Dana", "task_title": "Dana-托福1v1", "prev_date": "2026-10-10", "deadline": "", "is_urgent": false, "countdown_tag": "（考期：2026-10-17）", "uncompleted": ["2026年7月第1套/听力", "完形填空练习7", "【新托福】阅读填空题常考500词(社会学 经济学)-英译英中"], "uncompleted_ids": ["14507568", "14507567", "14507565"], "uncompleted_details": [{"id": "14507568", "title": "2026年7月第1套/听力", "date": "2026-10-10", "elapsed_days": 8}, {"id": "14507567", "title": "完形填空练习7", "date": "2026-10-10", "elapsed_days": 8}, {"id": "14507565", "title": "【新托福】阅读填空题常考500词(社会学 经济学)-英译英中", "date": "2026-10-10", "elapsed_days": 8}], "copy_text": "【Dana 任务催交提醒】\n1. 2026年7月第1套/听力\n2. 完形填空练习7\n3. 【新托福】阅读填空题常考500词(社会学 经济学)-英译英中\n请完成后回复，谢谢！"}, {"name": "Leo", "task_title": "Leo-托福1v1", "prev_date": "2026-10-11、2026-10-18", "deadline": "2026-10-31", "is_urgent": false, "countdown_tag": "（10/31 考试在即 · 仅剩 13 天）", "uncompleted": ["2026年3月第3套(0315)/写作/Build a Sentence+Write an Email+Write for an Academic Discussion", "【新托福】听力高频800词(生物+天文)-英译英中"], "uncompleted_ids": ["14521237", "14628553"], "uncompleted_details": [{"id": "14521237", "title": "2026年3月第3套(0315)/写作/Build a Sentence+Write an Email+Write for an Academic Discussion", "date": "2026-10-11", "elapsed_days": 7}, {"id": "14628553", "title": "【新托福】听力高频800词(生物+天文)-英译英中", "date": "2026-10-18", "elapsed_days": 0}], "copy_text": "【Leo 任务催交提醒】\n1. 2026年3月第3套(0315)/写作/Build a Sentence+Write an Email+Write for an Academic Discussion\n2. 【新托福】听力高频800词(生物+天文)-英译英中\n请完成后回复，谢谢！"}, {"name": "何昊隆", "task_title": "何昊隆-托福1v1", "prev_date": "2026-10-01、2026-10-18", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["2026年5月第5套/口语/Take an Interview", "【新托福】听力高频800词(工作场合)-英译英中", "【新托福】阅读填空题常考500词(生物学+化学)-英译英中"], "uncompleted_ids": ["14375175", "14628555", "14628556"], "uncompleted_details": [{"id": "14375175", "title": "2026年5月第5套/口语/Take an Interview", "date": "2026-10-01", "elapsed_days": 17}, {"id": "14628555", "title": "【新托福】听力高频800词(工作场合)-英译英中", "date": "2026-10-18", "elapsed_days": 0}, {"id": "14628556", "title": "【新托福】阅读填空题常考500词(生物学+化学)-英译英中", "date": "2026-10-18", "elapsed_days": 0}], "copy_text": "【何昊隆 任务催交提醒】\n1. 2026年5月第5套/口语/Take an Interview\n2. 【新托福】听力高频800词(工作场合)-英译英中\n3. 【新托福】阅读填空题常考500词(生物学+化学)-英译英中\n请完成后回复，谢谢！"}, {"name": "岳璐宇", "task_title": "岳璐宇-雅思考前自动补齐", "prev_date": "2026-10-16", "deadline": "2026-11-27", "is_urgent": false, "countdown_tag": "（11/27 考试在即 · 仅剩 40 天）", "uncompleted": ["CIT-C16-T3/阅读", "CIT-C15-T3/听力", "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)", "王陆807(课程)-英译英中"], "uncompleted_ids": ["14593801", "14593800", "14593798", "14593797"], "uncompleted_details": [{"id": "14593801", "title": "CIT-C16-T3/阅读", "date": "2026-10-16", "elapsed_days": 2}, {"id": "14593800", "title": "CIT-C15-T3/听力", "date": "2026-10-16", "elapsed_days": 2}, {"id": "14593798", "title": "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)", "date": "2026-10-16", "elapsed_days": 2}, {"id": "14593797", "title": "王陆807(课程)-英译英中", "date": "2026-10-16", "elapsed_days": 2}], "copy_text": "【岳璐宇 任务催交提醒】\n1. CIT-C16-T3/阅读\n2. CIT-C15-T3/听力\n3. 雅思阅读词汇真经(List 1 自然地理)-英译中(选择)\n4. 王陆807(课程)-英译英中\n请完成后回复，谢谢！"}, {"name": "Charlotte", "task_title": "Charlotte-SAT", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["SAT核心词汇6200(list 1)-英译中(选择)"], "uncompleted_ids": ["14625159"], "uncompleted_details": [{"id": "14625159", "title": "SAT核心词汇6200(list 1)-英译中(选择)", "date": "2026-10-17", "elapsed_days": 1}], "copy_text": "【Charlotte 任务催交提醒】\n1. SAT核心词汇6200(list 1)-英译中(选择)\n请完成后回复，谢谢！"}, {"name": "赖晨曦雅思一对一", "task_title": "", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["王陆807(课程)-英译英中", "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)"], "uncompleted_ids": ["14609559", "14609565"], "uncompleted_details": [{"id": "14609559", "title": "王陆807(课程)-英译英中", "date": "2026-10-17", "elapsed_days": 1}, {"id": "14609565", "title": "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)", "date": "2026-10-17", "elapsed_days": 1}], "copy_text": "【赖晨曦雅思一对一 任务催交提醒】\n1. 王陆807(课程)-英译英中\n2. 雅思阅读词汇真经(List 1 自然地理)-英译中(选择)\n请完成后回复，谢谢！"}, {"name": "Frank", "task_title": "Frank-托福1v1", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["【新托福】听力高频800词(健康话题+校园政策+地球科学)-英译英中", "【重做】【新托福】听力高频800词(环境科学)-英译英中", "完形填空练习1", "2026年3月第8套/口语/Listen and Repeat", "【重录5+】2026年3月第8套/口语/Listen and Repeat", "2026年3月第8套/口语/Take an Interview"], "uncompleted_ids": ["14609717", "14609731", "14609803", "14609852", "14609865", "14609879"], "uncompleted_details": [{"id": "14609717", "title": "【新托福】听力高频800词(健康话题+校园政策+地球科学)-英译英中", "date": "2026-10-17", "elapsed_days": 1}, {"id": "14609731", "title": "【重做】【新托福】听力高频800词(环境科学)-英译英中", "date": "2026-10-17", "elapsed_days": 1}, {"id": "14609803", "title": "完形填空练习1", "date": "2026-10-17", "elapsed_days": 1}, {"id": "14609852", "title": "2026年3月第8套/口语/Listen and Repeat", "date": "2026-10-17", "elapsed_days": 1}, {"id": "14609865", "title": "【重录5+】2026年3月第8套/口语/Listen and Repeat", "date": "2026-10-17", "elapsed_days": 1}, {"id": "14609879", "title": "2026年3月第8套/口语/Take an Interview", "date": "2026-10-17", "elapsed_days": 1}], "copy_text": "【Frank 任务催交提醒】\n1. 【新托福】听力高频800词(健康话题+校园政策+地球科学)-英译英中\n2. 【重做】【新托福】听力高频800词(环境科学)-英译英中\n3. 完形填空练习1\n4. 2026年3月第8套/口语/Listen and Repeat\n5. 【重录5+】2026年3月第8套/口语/Listen and Repeat\n6. 2026年3月第8套/口语/Take an Interview\n请完成后回复，谢谢！"}, {"name": "聂彦如", "task_title": "", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["王陆807(课程)-英译英中", "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)"], "uncompleted_ids": ["14610155", "14610161"], "uncompleted_details": [{"id": "14610155", "title": "王陆807(课程)-英译英中", "date": "2026-10-17", "elapsed_days": 1}, {"id": "14610161", "title": "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)", "date": "2026-10-17", "elapsed_days": 1}], "copy_text": "【聂彦如 任务催交提醒】\n1. 王陆807(课程)-英译英中\n2. 雅思阅读词汇真经(List 1 自然地理)-英译中(选择)\n请完成后回复，谢谢！"}, {"name": "陈书进", "task_title": "", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["王陆807(课程)-英译英中"], "uncompleted_ids": ["14610155"], "uncompleted_details": [{"id": "14610155", "title": "王陆807(课程)-英译英中", "date": "2026-10-17", "elapsed_days": 1}], "copy_text": "【陈书进 任务催交提醒】\n1. 王陆807(课程)-英译英中\n请完成后回复，谢谢！"}], "_chasing_status": "error", "_chasing_unknown": true, "_plan": {"2026-10-15": [], "2026-10-16": [], "2026-10-17": [["赖晨曦", "08:30-10:30", "【赖晨曦】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "听力课", "听力课后任务"], "赖晨曦雅思一对一"], ["黄子珊", "10:40-12:40", "【黄子珊】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "写作课", "写作课后任务"], "黄子珊-雅思1v1"], ["Leo", "10:40-12:40", "【Leo】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内托福单词100个（50*2）", "5篇完形填空", "托福口语一套", "听力课", "听力课后任务"], "【Leo&Iven】托福强化课程 2026暑假"], ["Iven", "10:40-12:40", "【Iven】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内托福单词100个（50*2）", "5篇完形填空", "托福口语一套", "听力课", "听力课后任务"], "【Leo&Iven】托福强化课程 2026暑假"], ["丁嘉宝", "10:40-12:40", "【丁嘉宝】 10月17日任务安排🖊️", ["课堂生词抽背", "口语课", "口语课后任务"], "丁嘉宝-英语能力提升"], ["Frank", "10:40-12:40", "【Frank】 10月17日任务安排🖊️", ["课堂生词抽背", "托福词汇*两组", "每天5篇完形", "每天一套口语任务", "一套听力+错题分析", "阅读课", "阅读课后任务"], "Frank-托福1v1"], ["陈书进", "13:30-15:30", "【陈书进】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "听力课", "听力课后任务"], "【聂彦如&陈书进】雅思强化课程"], ["聂彦如", "13:30-15:30", "【聂彦如】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "听力课", "听力课后任务"], "【聂彦如&陈书进】雅思强化课程"], ["潘韬薄", "15:40-17:40", "【潘韬薄】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "口语课", "口语课后任务"], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"], ["周家琪", "15:40-17:40", "【周家琪】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "口语课", "口语课后任务"], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"], ["苏顺平", "15:40-17:40", "【苏顺平】 10月17日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "口语课", "口语课后任务"], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"]], "2026-10-18": [["Amy徐畅】雅思基础课程", "09:00-10:30", "【Amy徐畅】雅思基础课程】 10月18日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（四级词汇*两组，每组30词）", "听力课", "听力课后任务"], "【Amy徐畅】雅思基础课程 2026秋季"], ["赵梓轩", "10:40-12:40", "【赵梓轩】 10月18日任务安排🖊️", ["课堂生词抽背", "阅读写作课", "阅读写作课后任务"], "赵梓轩-英语能力提升"], ["朱宸萱MAP阅读", "13:30-15:30", "【朱宸萱MAP阅读】 10月18日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（新托福词汇*50）", "阅读课", "阅读课后任务"], "朱宸萱MAP阅读/托福"], ["托福", "13:30-15:30", "【托福】 10月18日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（新托福词汇*50）", "阅读课", "阅读课后任务"], "朱宸萱MAP阅读/托福"], ["代佳鸣高中同步课程", "14:00-15:30", "【代佳鸣高中同步课程】 10月18日任务安排🖊️", ["课堂生词抽背", "词汇与语言应用课", "词汇与语言应用课后任务"], "代佳鸣高中同步课程"], ["李洪睿John语法能力提升", "15:00-17:00", "【李洪睿John语法能力提升】 10月18日任务安排🖊️", ["课堂生词抽背", "语法课", "语法课后任务"], "李洪睿John语法能力提升"], ["王明泽", "15:40-17:40", "【王明泽】 10月18日任务安排🖊️", ["课堂生词抽背", "SAT阅读课", "SAT阅读课后任务"], "【王明泽&李子熙】SAT阅读预备班"], ["李子熙", "15:40-17:40", "【李子熙】 10月18日任务安排🖊️", ["课堂生词抽背", "SAT阅读课", "SAT阅读课后任务"], "【王明泽&李子熙】SAT阅读预备班"]], "2026-10-19": [["丁嘉宝", "17:00-19:00", "【丁嘉宝-雅思基础】 10月19日任务安排🖊️", ["课堂生词抽背", "听说课", "听说课后任务"], "丁嘉宝"]]}, "_cids": {"2026-10-15": {}, "2026-10-16": {}, "2026-10-17": {"赖晨曦-雅思 1v1": [290722], "黄子珊-雅思1v1": [244187], "丁嘉宝": [258115], "Frank": [289544], "Leo&Ivan": [290341], "聂彦如&陈书进": [303091], "周家琪/潘韬薄/苏顺平-雅思基础班": [274331]}, "2026-10-18": {"Amy": [310785], "赵梓轩": [244773], "朱宸萱": [305273], "代佳鸣": [270115], "李洪睿John": [308836], "王明泽&李子熙": [299838]}, "2026-10-19": {"丁嘉宝": [258115]}}, "_notice": {"2026-10-06": [["Dana", "08:30-10:30", "【明日课程提醒】2026/10/6⏰\n\n时间： 10月6日 08:30-10:30\n课程： 写作\n老师： 徐梓淞\n学生： Dana\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["黄子珊", "10:40-12:40", "【明日课程提醒】2026/10/6⏰\n\n时间： 10月6日 10:40-12:40\n课程： 阅读\n老师： 徐梓淞\n学生： 黄子珊\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["戴荧&汤馨然", "10:40-15:30", "【明日课程提醒】2026/10/6⏰\n\n1️⃣\n时间： 10月6日 10:40-12:40\n课程： 听力\n老师： 王银屏\n学生： 戴荧/汤馨然\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室\n2️⃣\n时间： 10月6日 13:30-15:30\n课程： 写作\n老师： 任玥蓉\n学生： 戴荧/汤馨然\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 1号教室"], ["黄号然", "13:30-15:30", "【明日课程提醒】2026/10/6⏰\n\n时间： 10月6日 13:30-15:30\n课程： 写作\n老师： 徐梓淞\n学生： 黄号然\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["李洪睿John", "15:40-17:40", "【明日课程提醒】2026/10/6⏰\n\n时间： 10月6日 15:40-17:40\n课程： 语法\n老师： 任玥蓉\n学生： 李洪睿John\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 1号教室"]], "2026-10-07": [["Dana", "08:30-10:30", "【明日课程提醒】2026/10/7⏰\n\n时间： 10月7日 08:30-10:30\n课程： 口语\n老师： 王银屏\n学生： Dana\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["聂彦如", "09:00-10:30", "【明日课程提醒】2026/10/7⏰\n\n时间： 10月7日 09:00-10:30\n课程： 阅读\n老师： 徐梓淞\n学生： 聂彦如\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["郭璟Jack-SAT", "10:00-12:00", "【明日课程提醒】2026/10/7⏰\n\n时间： 10月7日 10:00-12:00（北京时间）\n美东时间： 10月6日 22:00-00:00\n课程： GRE数学\n老师： 钟美娟\n学生： 郭璟Jack-SAT\n形式： 线上"], ["李子熙", "13:30-15:30", "【明日课程提醒】2026/10/7⏰\n\n时间： 10月7日 13:30-15:30\n课程： SAT阅读预备\n老师： 元园\n学生： 李子熙\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 1号教室"], ["王子居&Andy", "19:00-21:00", "【明日课程提醒】2026/10/7⏰\n\n时间： 10月7日 19:00-21:00\n课程： SAT阅读\n老师： 元园\n学生： 王子居/Andy\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"]], "2026-10-15": [["George吴洋亿SAT一对一", "07:30-09:30", "【明日课程提醒】2026/10/15⏰\n\n时间： 10月15日 07:30-09:30（北京时间）\n美东时间： 10月14日 19:30-21:30\n课程： SAT语法\n老师： 邓凯帆\n学生： George吴洋亿SAT一对一\n形式： 线上"]], "2026-10-16": [["George吴洋亿", "08:30-10:30", "【明日课程提醒】2026/10/16⏰\n\n时间：\n10月16日 08:30-10:30（北京时间）\n10月15日 20:30-22:30（美东时间）\n课程： SAT语法\n老师： 胡亮宇\n学生： George吴洋亿\n形式： 线上"], ["郭璟Jack-SAT", "08:30-10:30", "【明日课程提醒】2026/10/16⏰\n\n时间：\n10月16日 08:30-10:30（北京时间）\n10月15日 20:30-22:30（美东时间）\n课程： SAT阅读\n老师： 元园\n学生： 郭璟Jack-SAT\n形式： 线上"], ["Ray英文综合能力提升", "16:00-18:00", "【明日课程提醒】2026/10/16⏰\n\n时间： 10月16日 16:00-18:00\n课程： 读写\n老师： 徐梓淞\n学生： Ray英文综合能力提升\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"]], "2026-10-17": [["赖晨曦", "08:30-10:30", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 08:30-10:30\n课程： 听力\n老师： 王银屏\n学生： 赖晨曦\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["黄子珊", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 写作\n老师： 任玥蓉\n学生： 黄子珊\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["丁嘉宝", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 口语\n老师： 梁润泽\n学生： 丁嘉宝\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 5号教室"], ["Frank", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 阅读\n老师： 徐梓淞\n学生： Frank\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["Leo&Iven", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 听力\n老师： 王银屏\n学生： Leo/Iven\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["聂彦如&陈书进", "13:30-15:30", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 13:30-15:30\n课程： 听力\n老师： 王银屏\n学生： 聂彦如/陈书进\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["周家琪/潘韬薄/苏顺平", "15:40-17:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 15:40-17:40\n课程： 口语\n老师： 梁润泽\n学生： 周家琪/潘韬薄/苏顺平\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"]], "2026-10-18": [["Amy", "09:00-10:30", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 09:00-10:30\n课程： 听力\n老师： 王银屏\n学生： Amy\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["赵梓轩", "10:40-12:40", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 10:40-12:40\n课程： 阅读写作\n老师： 徐梓淞\n学生： 赵梓轩\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["朱宸萱", "13:30-15:30", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 13:30-15:30\n课程： 阅读\n老师： 徐梓淞\n学生： 朱宸萱\n形式： 线上"], ["代佳鸣", "14:00-15:30", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 14:00-15:30\n课程： 词汇与语言应用\n老师： 王银屏\n学生： 代佳鸣\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["李洪睿John", "15:00-17:00", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 15:00-17:00\n课程： 语法\n老师： 任玥蓉\n学生： 李洪睿John\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 1号教室"], ["王明泽&李子熙", "15:40-17:40", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 15:40-17:40\n课程： SAT阅读\n老师： 元园\n学生： 王明泽/李子熙\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 5号教室"]], "2026-10-19": [["丁嘉宝", "17:00-19:00", "【明日课程提醒】2026/10/19⏰\n\n时间： 10月19日 17:00-19:00\n课程： 听说\n老师： 王银屏\n学生： 丁嘉宝\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"]]}, "_sess": {"2026-10-05": [["Dana", "08:30-10:30", "听力", "王银屏"], ["郭璟Jack", "08:30-10:30", "SAT阅读", "元园"], ["赵梓轩", "10:40-12:40", "阅读写作", "徐梓淞"], ["刘芝彬", "10:40-12:40", "雅思写作", "任玥蓉"], ["戴荧&汤馨然", "10:40-12:40", "听力", "王银屏"], ["黄号然", "13:30-15:30", "口语", "王银屏"], ["黄子珊", "13:30-15:30", "写作", "任玥蓉"], ["戴荧&汤馨然", "13:30-15:30", "阅读", "徐梓淞"], ["苏顺平", "15:40-17:40", "写作", "任玥蓉"], ["王明泽&李子熙", "15:40-17:40", "SAT阅读", "元园"], ["丁嘉宝", "17:00-19:00", "读写", "徐梓淞"]], "2026-10-06": [["Dana", "08:30-10:30", "写作", "徐梓淞"], ["黄子珊", "10:40-12:40", "阅读", "徐梓淞"], ["戴荧&汤馨然", "10:40-12:40", "听力", "王银屏"], ["黄号然", "13:30-15:30", "写作", "徐梓淞"], ["戴荧&汤馨然", "13:30-15:30", "写作", "任玥蓉"], ["李洪睿John", "15:40-17:40", "语法", "任玥蓉"]], "2026-10-07": [["Dana", "08:30-10:30", "口语", "王银屏"], ["彦如", "09:00-10:30", "阅读", "徐梓淞"], ["JACK", "10:00-12:00", "GRE数学", "钟美娟"], ["李子熙", "13:30-15:30", "SAT阅读预备", "元园"], ["王子居&Andy", "19:00-21:00", "SAT阅读", "元园"]], "2026-10-14": [], "2026-10-15": [], "2026-10-16": [["George吴洋亿", "08:30-10:30", "SAT语法", "胡亮宇"], ["郭璟Jack", "08:30-10:30", "SAT阅读", "元园"], ["Ray英文综合能力提升", "16:00-18:00", "读写", "徐梓淞"]], "2026-10-17": [["赖晨曦", "08:30-10:30", "听力", "王银屏", "线下"], ["黄子珊", "10:40-12:40", "写作", "任玥蓉", "线下"], ["丁嘉宝", "10:40-12:40", "口语", "梁润泽", "线下"], ["Frank", "10:40-12:40", "阅读", "徐梓淞", "线下"], ["Leo&Iven", "10:40-12:40", "听力", "王银屏", "线下"], ["聂彦如&陈书进", "13:30-15:30", "听力", "王银屏", "线下"], ["潘韬薄&苏顺平&周家琪", "15:40-17:40", "口语", "梁润泽", "线下"]], "2026-10-18": [["Amy徐畅", "09:00-10:30", "听力", "王银屏", "线下"], ["赵梓轩", "10:40-12:40", "阅读写作", "徐梓淞", "线下"], ["朱宸萱", "13:30-15:30", "阅读", "徐梓淞", "线上"], ["代佳鸣", "14:00-15:30", "词汇与语言应用", "王银屏", "线下"], ["李洪睿John", "15:00-17:00", "语法", "任玥蓉", "线下"], ["王明泽&李子熙", "15:40-17:40", "SAT阅读", "元园", "线下"]], "2026-10-19": [["丁嘉宝", "17:00-19:00", "听说", "王银屏", "线下"]]}, "_schedule_status": {"2026-10-16": {"status": "error", "checked_at": "2026-10-18T10:07:22.722798+08:00", "message": "2026-10-16 课表读取失败（登录或连接未成功）；未确认是否有课；今天的任务刷新和自动布置暂停。", "last_success_at": null}, "2026-10-17": {"status": "error", "checked_at": "2026-10-18T10:07:22.722798+08:00", "message": "2026-10-17 课表读取失败（登录或连接未成功）；未确认是否有课；明日课程通知保留旧内容，未确认更新。", "last_success_at": "2026-10-17T21:40:20.997533+08:00"}, "2026-10-18": {"status": "verified", "checked_at": "2026-10-18T08:56:23.262654+08:00", "last_success_at": "2026-10-18T08:56:23.262654+08:00"}, "2026-10-19": {"status": "verified", "checked_at": "2026-10-18T08:56:23.262654+08:00", "last_success_at": "2026-10-18T08:56:23.262654+08:00"}}}; // {"YYYY-MM-DD": [[卡片名, 时间, 标题里的名字, [[任务, 备忘录里已有的标记, 备忘录里已有的备注]…], 备忘录名], …]}
 const DAYS = Object.keys(DATA).filter(k => k[0] !== "_").sort();
 const PLAN = DATA._plan || {}; // {"YYYY-MM-DD": [[卡片名, 时间, 标题行, [任务…], 备忘录名], …]}
 const pad = n => String(n).padStart(2, "0");
@@ -297,24 +1116,21 @@ function planCard(title, meta, txt, k){
 }
 function renderPlan(){
   const rows = PLAN[cur] || [];
-  if(typeof study!=='undefined')study.renderCards(list,cur,'plan');
-  if (!rows.length && !(typeof study!=='undefined' && study.cards(cur).length)){ const e = document.createElement("div"); e.className = "sub"; e.textContent = (cur in PLAN) ? ("🎉 " + rel(cur) + mdOf(cur) + " 暂无排课与自习任务安排。") : ("这天还没生成（" + rel(cur) + mdOf(cur) + " 的任务安排要先跑 tasks / sync-notes）。"); list.append(e); }
+  if (!rows.length){ const e = document.createElement("div"); e.className = "sub"; e.textContent = (cur in PLAN) ? ("🎉 " + rel(cur) + mdOf(cur) + " 暂无排课与自习任务安排。") : ("这天还没生成（" + rel(cur) + mdOf(cur) + " 的任务安排要先跑 tasks / sync-notes）。"); list.append(e); }
   const bottomP = [];
   rows.forEach((p, i) => {
     const card = planCard((i+1) + ".【" + p[0] + "】", p[1], ptext(p), p[0]);
     placeCard(card, !!ps[p[0]], "plan:" + cur + ":" + p[0], (i+1) + ".【" + p[0] + "】", ps[p[0]], bottomP);
   });
   bottomP.forEach(e => list.append(e));
-  const extra=typeof study!=='undefined'?study.stats(cur,'plan'):{total:0,copied:0};
-  const n=rows.filter(p=>ps[p[0]]).length+extra.copied,total=rows.length+extra.total;
-  document.getElementById('count').textContent=n+' / '+total+' 已复制';
-  document.getElementById('fill').style.width=(total?n/total*100:0)+'%';
+  const n = rows.filter(p => ps[p[0]]).length;
+  document.getElementById("count").textContent = n + " / " + rows.length + " 已复制";
+  document.getElementById("fill").style.width = (rows.length ? n / rows.length * 100 : 0) + "%";
 }
 function summary(rows){
-  const extra=typeof study!=='undefined'?study.stats(cur,'done'):{total:0,copied:0};
-  const n=rows.filter(r=>get(r[0]).c).length+extra.copied,total=rows.length+extra.total;
-  document.getElementById('count').textContent=n+' / '+total+' 已复制';
-  document.getElementById('fill').style.width=(total?n/total*100:0)+'%';
+  const n = rows.filter(r => get(r[0]).c).length;
+  document.getElementById("count").textContent = n + " / " + rows.length + " 已复制";
+  document.getElementById("fill").style.width = (rows.length ? n / rows.length * 100 : 0) + "%";
 }
 // 单词抽背情况（Leo 2026-10-05）：完成情况页签最下面的独立板块，每天一份，和打勾一起存云端（字段 quiz）
 let qz = {}, qzDay = "";
@@ -571,10 +1387,8 @@ load(); pload(); render(); watch(); } };
     days.append(b); });
   const tabs = document.getElementById("tabs"); tabs.textContent = "";
   [["plan","任务安排（早上发群）"],["done","完成情况（下班反馈）"],["quiz","单词抽背情况"],["notice","明日课程通知"],["chasing","线上催缴"],["classroom","教室使用"]].forEach(m => { const b = document.createElement("button"); b.type = "button"; b.id = "tab-" + m[0];
-    b.textContent = m[1]; b.setAttribute("aria-pressed", String(m[0] === mode)); if (m[0] === mode) b.className = "on"; b.onclick = () => { mode = m[0]; render(); }; tabs.append(b); });
+    b.textContent = m[1]; if (m[0] === mode) b.className = "on"; b.onclick = () => { mode = m[0]; render(); }; tabs.append(b); });
   document.getElementById("ttl").textContent = mode === "plan" ? "任务安排" : mode === "quiz" ? "单词抽背情况" : mode === "notice" ? "课程通知" : mode === "chasing" ? "线上催缴" : mode === "classroom" ? "教室使用" : "任务完成情况";
-  document.getElementById("view-title").textContent=document.getElementById("ttl").textContent;
-  document.getElementById("view-subtitle").textContent=rel(shown)+mdOf(shown)+" · 教学操作台";
   document.getElementById("sub").textContent = mode === "notice"
     ? "每个有课的学生一张卡片（默认显示明天的课）。点「复制」发给学生 / 家长，卡片记下已复制时间。"
     : mode === "quiz"
@@ -585,25 +1399,21 @@ load(); pload(); render(); watch(); } };
     ? "本系统发布台账与老师明确未完成的任务催缴清单，点「复制催交信息」贴到群里催缴，复制后卡片自动收纳到底部。"
     : mode === "classroom"
     ? "各教室排课与自习占用情况（支持点击格子修改、拖拽排课与时间重叠两两冲突检测）。"
-    : "点每条任务右边的按钮切换 未标 → ✅ → ❌；需要说明就写在备注里。标完点「复制」，贴到群里。任务以备忘录里的最新内容为准。";
+    : "点每条任务左边的按钮切换 未标 → ✅ → ❌；需要说明就写在备注里。标完点「复制」，贴到群里。任务以备忘录里的最新内容为准。";
   list.textContent = "";
   const healthDay = mode === "notice" ? curN : cur;
   const health = (DATA._schedule_status || {})[healthDay];
   const healthBox = document.getElementById("schedule-health");
   const showHealth = mode !== "chasing" && health;
-  healthBox.className="health-box "+(health?.status==='error'?'health-error':'health-ok');
   const shTime = value => value ? new Date(value).toLocaleString("zh-CN", {timeZone:"Asia/Shanghai", hour12:false}) : "未记录";
   healthBox.textContent = !showHealth ? "" : health.status === "error"
     ? "⚠️ " + healthDay + " 课表／页面未确认更新；旧内容仅供参考。上次成功核对：" + shTime(health.last_success_at) + "；本次检查：" + shTime(health.checked_at)
     : "课表核对时间（北京时间）：" + shTime(health.checked_at);
-  if(typeof study!=='undefined' && ['plan','done'].includes(mode))study.toolbar(list,cur,[...(DATA[cur]||[]).map(r=>r[0]),...(PLAN[cur]||[]).map(r=>r[0])]);
   if (showHealth && health.status === "error" && !(mode === "notice" ? (NOTICE[healthDay] || []).length : rows.length)) {
     const warning = document.createElement("div"); warning.className = "sub";
     warning.textContent = "读取或刷新失败，无法确认是否有课／有任务；没有可显示的旧记录。";
     list.append(warning); document.getElementById("count").textContent = "状态未知";
-    document.getElementById("fill").style.width = "0%";
-    if(typeof study!=='undefined' && ['plan','done'].includes(mode))study.renderCards(list,cur,mode);
-    return;
+    document.getElementById("fill").style.width = "0%"; return;
   }
   document.body.setAttribute("data-mode", mode);
   if (mode === "classroom") { renderClassroom(); return; } else {
@@ -616,8 +1426,7 @@ load(); pload(); render(); watch(); } };
   if (mode === "quiz") { renderQuiz(rows); const qr = quizRows(rows), n = qr.filter(r => qget(qk(r)).pre && qget(qk(r)).post).length;
     document.getElementById("count").textContent = n + " / " + qr.length + " 课前课后都抽了";
     document.getElementById("fill").style.width = (qr.length ? n / qr.length * 100 : 0) + "%"; return; }
-  if(typeof study!=='undefined')study.renderCards(list,cur,'done');
-  if (!rows.length) { if(typeof study!=='undefined' && study.cards(cur).length){summary(rows);return;} const e = document.createElement("div"); e.className = "sub"; e.textContent = (cur in DATA) ? ("🎉 " + rel(cur) + mdOf(cur) + " 暂无排课与自习任务，全天无任务安排。") : ("这天还没生成（" + rel(cur) + mdOf(cur) + " 的任务清单要先跑 tasks / sync-notes）。"); list.append(e); summary(rows); return; }
+  if (!rows.length) { const e = document.createElement("div"); e.className = "sub"; e.textContent = (cur in DATA) ? ("🎉 " + rel(cur) + mdOf(cur) + " 暂无排课与自习任务，全天无任务安排。") : ("这天还没生成（" + rel(cur) + mdOf(cur) + " 的任务清单要先跑 tasks / sync-notes）。"); list.append(e); summary(rows); return; }
   const bottomD = [];
   rows.forEach((r, ri) => {
     const s = get(r[0]);
@@ -690,12 +1499,9 @@ load(); pload(); render(); watch(); } };
       const m = document.createElement("button"); m.type = "button"; m.className = "mark"; m.id = "m-" + ri + "-" + i;
       m.textContent = v === "ok" ? "✅ 完成" : v === "no" ? "❌ 未完成" : "未标";
       m.onclick = () => { s.m[i] = !v ? "ok" : v === "ok" ? "no" : ""; s.c = ""; save(); render(); };
-      const tx = document.createElement("textarea"); tx.rows=1; tx.className = "txt"; tx.id = "tx-" + ri + "-" + i;
+      const tx = document.createElement("input"); tx.type = "text"; tx.className = "txt"; tx.id = "tx-" + ri + "-" + i;
       tx.value = t[0];
       tx.title = "点击可直接编辑修改任务";
-      tx.setAttribute("aria-label",r[0]+"的第"+(i+1)+"项任务");
-      const sizeText=()=>{tx.style.height="auto";tx.style.height=tx.scrollHeight+"px";};
-      tx.oninput=sizeText;requestAnimationFrame(sizeText);
       tx.onchange = () => {
         const next = tx.value.trim() || t[0];
         if (next === t[0]) return;
@@ -705,10 +1511,10 @@ load(); pload(); render(); watch(); } };
         if (s.n) delete s.n[i];
         s.c = ""; save(); pre.textContent = text(r); summary(rows);
       };
-      const note = document.createElement("input"); note.className = "note"; note.id = "n-" + ri + "-" + i; note.placeholder = "备注（可不填）"; note.value = nt(s, t, i); note.setAttribute("aria-label",r[0]+"的第"+(i+1)+"项备注");
+      const note = document.createElement("input"); note.className = "note"; note.id = "n-" + ri + "-" + i; note.placeholder = "备注（可不填）"; note.value = nt(s, t, i);
       note.oninput = () => { s.n[i] = note.value; if (s.c) { s.c = ""; } save(); pre.textContent = text(r); summary(rows); };
       const del = document.createElement("button"); del.type = "button"; del.className = "del-btn"; del.id = "del-" + ri + "-" + i;
-      del.textContent = "×"; del.title = "删除此任务";del.setAttribute("aria-label","删除第"+(i+1)+"项任务");
+      del.textContent = "×"; del.title = "删除此任务";
       del.onclick = () => {
         if (!Array.isArray(s.tk)) s.tk = currentTasks.map(x => x[0]);
         s.tk.splice(i, 1);
@@ -747,183 +1553,8 @@ load(); pload(); render(); watch(); } };
   bottomD.forEach(e => list.append(e));
   summary(rows);
 }
-document.getElementById("reset").onclick = () => { if(typeof study!=='undefined' && ['plan','done'].includes(mode) && study.cards(cur).length){try{study.commit(cur,f=>{for(const raw of Object.keys(f)){const k=JSON.parse(raw);if((k[0]==='study-copy' && k[2]===mode) || (mode==='done' && ['study-mark','study-note'].includes(k[0])))delete f[raw];}});}catch(e){alert(e.message);return;}} if (mode === "notice") { nc = {}; nsave(); } else if (mode === "quiz") { qz = {}; qsave(); } else if (mode === "plan") { ps = {}; psave(); } else if (mode === "chasing") { ch = {}; chsave(); } else { st = {}; save(); } render(); };
+document.getElementById("reset").onclick = () => { if (mode === "notice") { nc = {}; nsave(); } else if (mode === "quiz") { qz = {}; qsave(); } else if (mode === "plan") { ps = {}; psave(); } else if (mode === "chasing") { ch = {}; chsave(); } else { st = {}; save(); } render(); };
 let checkCloud=null;const noticeOpened=new Set();
-// Embedded in the generated task page. Content is private owner-scoped day fields,
-// never public DATA. Card/task UUIDs survive ordering, names and page regeneration.
-class StudyTasks {
-  constructor({storage, sync, redraw, uuid = () => crypto.randomUUID()}) {
-    Object.assign(this, {storage, sync, redraw, uuid});
-    this.days = new Map(); this.drafts = new Map(); this.open = new Set();
-  }
-  static key(...parts) { return JSON.stringify(parts); }
-  static isKey(raw) {
-    try { const k = JSON.parse(raw); return Array.isArray(k) &&
-      ['study-card','study-task','study-mark','study-note','study-copy'].includes(k[0]); }
-    catch { return false; }
-  }
-  fields(day) {
-    if (!this.days.has(day)) {
-      let f = {}; try { f = JSON.parse(this.storage.getItem('wayon-study-v1:'+day) || '{}'); } catch {}
-      this.days.set(day, Object.fromEntries(Object.entries(f || {}).filter(([k]) => StudyTasks.isKey(k))));
-    }
-    return this.days.get(day);
-  }
-  capture(day) { return structuredClone(this.fields(day)); }
-  apply(day, fields) {
-    this.days.set(day, structuredClone(Object.fromEntries(Object.entries(fields).filter(([k]) => StudyTasks.isKey(k)))));
-    this.persist(day); // Unsubmitted form drafts are deliberately separate.
-  }
-  persist(day) { this.storage.setItem('wayon-study-v1:'+day, JSON.stringify(this.fields(day))); }
-  commit(day, mutate) {
-    if (!this.sync()?.ready(day)) throw Error('请先在「账户与连接」登录并读取这一天，再保存自习任务。');
-    const next = this.capture(day); mutate(next);
-    if (new TextEncoder().encode(JSON.stringify(next)).length > 150000)
-      throw Error('当天自习记录过多，请精简后保存；原记录保留。');
-    // Persist before notifying the CAS queue. A failed local write must not report success.
-    this.storage.setItem('wayon-study-v1:'+day, JSON.stringify(next)); this.days.set(day, next);
-    this.sync().observe(day);
-  }
-  cards(day) {
-    const fields=this.fields(day), cards=[];
-    for (const [raw, meta] of Object.entries(fields)) {
-      let k; try { k=JSON.parse(raw); } catch { continue; }
-      if(k[0]!=='study-card'||k.length!==2||!meta||typeof meta.studentName!=='string'||meta.archivedAt) continue;
-      const tasks=[];
-      for(const [tr, task] of Object.entries(fields)) {
-        let tk;try{tk=JSON.parse(tr);}catch{continue;}
-        if(tk[0]!=='study-task'||tk.length!==3||tk[1]!==k[1]||!task||typeof task.text!=='string')continue;
-        const mark=fields[StudyTasks.key('study-mark',k[1],tk[2])];
-        tasks.push({id:tk[2],text:task.text,order:task.order||0,
-          mark:['ok','no'].includes(mark)?mark:'',note:fields[StudyTasks.key('study-note',k[1],tk[2])]||''});
-      }
-      tasks.sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id));
-      cards.push({id:k[1],...meta,tasks});
-    }
-    return cards.sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt))||a.id.localeCompare(b.id));
-  }
-  create(day, draft) {
-    const name=draft.studentName.trim(), time=draft.time.trim();
-    const tasks=draft.text.split(/\r?\n/).map(x=>x.trim().replace(/^\d+[.、)）]\s*/, '')).filter(Boolean);
-    if(!name||name.length>80||time.length>80) throw Error('请填写学员姓名（80字以内），时间可不填。');
-    if(!tasks.length||tasks.length>40||tasks.some(t=>t.length>500))throw Error('请每行填写一项任务，最多40项，每项500字以内。');
-    const id=draft.id;
-    if(this.fields(day)[StudyTasks.key('study-card',id)])return id; // Same submit cannot create two cards.
-    this.commit(day, f=>{
-      f[StudyTasks.key('study-card',id)]={studentName:name,time,createdAt:new Date().toISOString()};
-      tasks.forEach((text,order)=>f[StudyTasks.key('study-task',id,this.uuid())]={text,order});
-    });
-    this.drafts.delete(day); return id;
-  }
-  change(day,card,task,part,value) {
-    this.commit(day,f=>{
-      if(part==='text') {
-        if(!value.trim()||value.length>500)throw Error('任务需为1至500字。');
-        const key=StudyTasks.key('study-task',card,task), old=f[key];
-        if(!old||old.text===value.trim())return;
-        f[key]={...old,text:value.trim()};
-        delete f[StudyTasks.key('study-mark',card,task)];delete f[StudyTasks.key('study-note',card,task)];
-      } else if(part==='mark') {
-        const key=StudyTasks.key('study-mark',card,task);
-        if(!value)delete f[key];else if(['ok','no'].includes(value))f[key]=value;
-      } else if(part==='note') {
-        if(value.length>2000)throw Error('备注请控制在2000字以内。');
-        const key=StudyTasks.key('study-note',card,task);if(value)f[key]=value;else delete f[key];
-      }
-      // Copied content is now stale. This never implies anything was sent to a student.
-      delete f[StudyTasks.key('study-copy',card,'done')];
-      if(part==='text')delete f[StudyTasks.key('study-copy',card,'plan')];
-    });
-  }
-  bulk(day,card,mark) {
-    const c=this.cards(day).find(c=>c.id===card);if(!c)return;
-    this.commit(day,f=>{for(const t of c.tasks)f[StudyTasks.key('study-mark',card,t.id)]=mark;
-      delete f[StudyTasks.key('study-copy',card,'done')];});
-  }
-  copied(day,card,mode) {return this.fields(day)[StudyTasks.key('study-copy',card,mode)]||'';}
-  stats(day,mode) {const cards=this.cards(day);return {total:cards.length,copied:cards.filter(c=>this.copied(day,c.id,mode)).length};}
-  copyText(day,card,mode) {
-    const d=day.split('-'),date=Number(d[1])+'月'+Number(d[2])+'日';
-    return '【'+card.studentName+'】'+date+(mode==='plan'?'自习任务安排':'自习任务完成情况')+'\n\n'+
-      card.tasks.map((t,i)=>(i+1)+'、'+t.text+(mode==='done'?' '+({ok:'✅',no:'❌'}[t.mark]||'未标记')+(t.note?'（'+t.note+'）':''):'')).join('\n');
-  }
-  toolbar(host,day,names) {
-    const bar=document.createElement('section');bar.className='study-toolbar';
-    const add=document.createElement('button');add.type='button';add.id='study-add';add.className='small';add.textContent='＋ 新增自习任务';
-    add.onclick=()=>{if(!this.drafts.has(day))this.drafts.set(day,{id:this.uuid(),studentName:'',time:'',text:''});this.redraw();};bar.append(add);
-    const hint=document.createElement('span');hint.className='meta';hint.textContent='并入'+day+'的今日任务和完成情况';bar.append(hint);host.append(bar);
-    const draft=this.drafts.get(day);if(!draft)return;
-    const form=document.createElement('form');form.id='study-form';form.className='item study-form';
-    const heading=document.createElement('h3');heading.textContent='新增自习任务 · '+day;form.append(heading);
-    const error=document.createElement('p');error.className='study-error';error.setAttribute('role','alert');
-    const field=(label,tag,prop,placeholder)=>{
-      const l=document.createElement('label');l.textContent=label;
-      const input=document.createElement(tag);input.id='study-'+prop;input.value=draft[prop];input.placeholder=placeholder;
-      input.required=prop!=='time';input.maxLength=prop==='text'?20040:80;
-      if(tag==='textarea')input.rows=5;
-      input.oninput=()=>{draft[prop]=input.value;error.textContent='';};l.append(input);form.append(l);return input;
-    };
-    const name=field('学员','input','studentName','选择或输入学员姓名');name.setAttribute('list','study-students');
-    const dl=document.createElement('datalist');dl.id='study-students';for(const n of new Set(names)){const o=document.createElement('option');o.value=n;dl.append(o);}form.append(dl);
-    field('自习时间（选填）','input','time','例如 14:00–16:00');
-    field('任务（一行一项）','textarea','text','每行填写一项自习任务');
-    const actions=document.createElement('div');actions.className='study-actions';
-    const save=document.createElement('button');save.className='copy';save.type='submit';save.textContent='保存到今日任务';
-    const cancel=document.createElement('button');cancel.type='button';cancel.className='small';cancel.textContent='取消';cancel.onclick=()=>{this.drafts.delete(day);this.redraw();};actions.append(save,cancel);form.append(error,actions);
-    form.onsubmit=e=>{e.preventDefault();try{this.create(day,draft);this.redraw();}catch(e){error.textContent=e.message;}};host.append(form);
-  }
-  renderCards(host,day,mode) {
-    const folded=[];
-    for(const card of this.cards(day)) {
-      const identity=day+':'+card.id+':'+mode,copied=this.copied(day,card.id,mode);
-      const el=document.createElement('section');el.className='item study-card'+(copied?' copied':'');el.dataset.studyId=card.id;
-      const head=document.createElement('div');head.className='head';
-      const name=document.createElement('div');name.className='name';name.textContent='【'+card.studentName+'】';
-      const meta=document.createElement('div');meta.className='meta';meta.textContent='自习'+(card.time?' · '+card.time:'')+(mode==='done'?' · 完成 '+card.tasks.filter(t=>t.mark==='ok').length+'/'+card.tasks.length:'');
-      head.append(name,meta);
-      const error=document.createElement('p');error.className='study-error';error.setAttribute('role','alert');
-      const run=fn=>{try{fn();this.redraw();}catch(e){error.textContent=e.message;}};
-      const copy=document.createElement('button');copy.type='button';copy.className='copy';copy.textContent=copied?'再次复制':'复制';
-      const fallback=document.createElement('textarea');fallback.className='study-copy-fallback';fallback.hidden=true;fallback.readOnly=true;fallback.setAttribute('aria-label','可手动复制的任务文本');
-      copy.onclick=()=>{
-        const value=this.copyText(day,card,mode);
-        const success=()=>run(()=>{this.commit(day,f=>f[StudyTasks.key('study-copy',card.id,mode)]=new Date().toISOString());this.open.delete(identity);});
-        const fail=()=>{error.textContent='复制失败，请选中下方文字手动复制。';fallback.hidden=false;fallback.value=value;};
-        // Synchronous standard copy first: keep the original trusted click gesture.
-        const tmp=document.createElement('textarea');tmp.value=value;tmp.className='study-copy-temp';document.body.append(tmp);tmp.focus();tmp.select();
-        let ok=false;try{ok=document.execCommand('copy')===true;}catch{}tmp.remove();
-        if(ok)success();else if(navigator.clipboard?.writeText)navigator.clipboard.writeText(value).then(success,fail);else fail();
-      };head.append(copy);
-      if(copied){const undo=document.createElement('button');undo.type='button';undo.className='small';undo.textContent='重置复制标记';undo.onclick=()=>run(()=>this.commit(day,f=>delete f[StudyTasks.key('study-copy',card.id,mode)]));head.append(undo);}
-      const remove=document.createElement('button');remove.className='small';remove.type='button';remove.textContent='移除';
-      remove.onclick=()=>{if(confirm('移除这张自习任务卡？已保存的历史记录仍会保留。'))run(()=>this.commit(day,f=>{
-        const key=StudyTasks.key('study-card',card.id);f[key]={...f[key],archivedAt:new Date().toISOString()};}));};head.append(remove);el.append(head);
-      if(copied&&!this.open.has(identity)) {
-        const expand=document.createElement('button');expand.type='button';expand.className='small';expand.textContent='已复制并收纳 · 展开';expand.onclick=()=>{this.open.add(identity);this.redraw();};el.append(expand);folded.push(el);continue;
-      }
-      if(mode==='done') {
-        const batch=document.createElement('div');batch.className='study-actions';
-        for(const [label,mark] of [['全部完成','ok'],['全部未完成','no']]){const b=document.createElement('button');b.type='button';b.className='small';b.textContent=label;b.onclick=()=>run(()=>this.bulk(day,card.id,mark));batch.append(b);}el.append(batch);
-      }
-      card.tasks.forEach((task,i)=>{
-        const row=document.createElement('div');row.className='study-task';
-        const text=document.createElement('div');text.className='study-task-text';text.textContent=(i+1)+'、'+task.text;row.append(text);
-        if(mode==='done'){
-          const buttons=document.createElement('div');buttons.className='study-marks';
-          for(const [label,mark] of [['✅','ok'],['❌','no']]){const b=document.createElement('button');b.type='button';b.className='study-mark';b.textContent=label;b.setAttribute('aria-label',task.text+' '+(mark==='ok'?'完成':'未完成'));b.setAttribute('aria-pressed',String(task.mark===mark));b.onclick=()=>run(()=>this.change(day,card.id,task.id,'mark',task.mark===mark?'':mark));buttons.append(b);}row.append(buttons);
-          const note=document.createElement('input');note.className='note';note.placeholder='备注（可不填）';note.setAttribute('aria-label',task.text+' 备注');note.maxLength=2000;note.value=task.note;
-          note.oninput=()=>{try{this.change(day,card.id,task.id,'note',note.value);error.textContent='';}catch(e){error.textContent=e.message;}};row.append(note);
-        }
-        el.append(row);
-      });
-      if(copied){const fold=document.createElement('button');fold.type='button';fold.className='small';fold.textContent='收起';fold.onclick=()=>{this.open.delete(identity);this.redraw();};el.append(fold);}
-      el.append(error,fallback);host.append(el);
-    }
-    folded.forEach(el=>host.append(el));
-  }
-}
-
-const study = new StudyTasks({storage:localStorage,sync:()=>checkCloud,redraw:()=>render()});
 load(); pload(); render();
 // Manual checks use semantic task keys; array order never identifies a mark.
 
@@ -969,11 +1600,9 @@ function captureChecks(day) {
     let k; try{k=JSON.parse(id);}catch(e){continue;}
     if(Array.isArray(k) && k.length===2 && value?.copied_at && typeof value.signature==='string') out[JSON.stringify(['notice-copy-v2',day,...k])]=value;
   }
-  if(typeof study!=='undefined')Object.assign(out,study.capture(day));
   return out;
 }
 function applyChecks(day, fields) {
-  if(typeof study!=='undefined')study.apply(day,fields);
   const done={},quiz={},plan={},notices={};
   for(const [raw,value] of Object.entries(fields)) {
     let k;try{k=JSON.parse(raw);}catch(e){continue;}
@@ -1024,7 +1653,3 @@ setSync('本机已保存；正在检查云端配置…');
 import('./checks-sync.mjs').then(m=>m.boot({config:{"enabled": true, "url": "https://qcjyllyatiawkftwqfjf.supabase.co", "key": "sb_publishable_ljy3uwM1zNach70iWxqWdA_QYVGLvEo"},capture:captureChecks,apply:applyChecks,status:setSync,currentDay:currentCloudDay,hydrate:(client,owner)=>hydrateChasing(m,client,owner)}))
 .then(x=>{checkCloud=x;if(mode==='notice')nwatch();else watch();}).catch(()=>setSync('云端组件不可用，本机记录保留；请重试'));
 </script>
-
-
-</body>
-</html>
