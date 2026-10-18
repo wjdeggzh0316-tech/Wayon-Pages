@@ -182,8 +182,10 @@ export async function boot({config,capture,apply,status,currentDay,hydrate}) {
   const settings=document.getElementById('account-settings');
   const syncMount=document.getElementById('sync');
   if(settings) settings.append(panel);
-  else if(syncMount) syncMount.after(panel);
-  else document.body.append(panel);
+  else if(!document.body.classList.contains('wayon-room')) {
+    if(syncMount) syncMount.after(panel);
+    else document.body.append(panel);
+  }
   async function connect(session) {
     if(!session) {if(settings)settings.open=true;panel.open=true;engine=null;email.hidden=password.hidden=login.hidden=false;status('请登录以保存云端记录；现有本机记录保留');return false;}
     const {data,error}=await client.from('wayon_owner').select('user_id');

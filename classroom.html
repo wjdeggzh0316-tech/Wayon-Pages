@@ -149,12 +149,12 @@ body.wayon-workbench{margin:0;font-size:15px;line-height:1.55}
 
 .wayon-room>[role="status"]{padding:8px 10px!important;border:1px solid var(--line)!important;border-radius:9px;background:var(--code-bg)!important;color:var(--muted)!important;font-size:11px;line-height:1.5}
 .wayon-room .cloud-panel{flex:1 1 100%;width:100%;max-width:100%}.wayon-room .cloud-panel button{white-space:normal}
-.wayon-room .cloud-panel:not([open]){display:none!important}
+.wayon-room .cloud-panel{display:none!important}
 .wayon-room .days{margin-left:auto;display:inline-flex;align-items:center;gap:6px}
 .wayon-room .days button{min-height:32px;height:32px;border-radius:8px;padding:0 12px;border:1px solid var(--line-strong);background:var(--card);color:var(--fg);font-size:12.5px;font-weight:550;letter-spacing:-.01em;box-shadow:0 1px 2px rgba(0,0,0,.03);cursor:pointer;transition:all .15s ease;white-space:nowrap}
 .wayon-room .days button:hover{background:var(--line);color:var(--fg)}
 .wayon-room .days button.on{background:#0071e3!important;border-color:#0071e3!important;color:#fff!important;font-weight:600;box-shadow:0 1px 4px rgba(0,113,227,.25)}
-.wayon-room .cloud-panel:not([open]){display:none!important}
+.wayon-room .cloud-panel{display:none!important}
 .wayon-room .room-scroll{flex:1;min-height:0;min-width:0;width:100%;overflow:auto;border-radius:10px;overscroll-behavior:contain}
 .wayon-room .room-scroll>.grid{height:100%;min-height:420px;min-width:740px;overflow:visible}
 @media(max-width:599px){.wayon-workbench .task{grid-template-columns:minmax(0,1fr) 60px 44px}.wayon-workbench .del-btn{min-width:44px}.cloud-panel button{min-height:44px}}
@@ -427,7 +427,7 @@ function subscribe() {
   void checkCloud?.open(curD);
 }
 setSy("本机已保存；正在检查云端配置…");
-import("./checks-sync.mjs?v=20261018-03").then(m => m.boot({
+import("./checks-sync.mjs?v=20261018-06").then(m => m.boot({
   config: {"enabled": true, "url": "https://qcjyllyatiawkftwqfjf.supabase.co", "key": "sb_publishable_ljy3uwM1zNach70iWxqWdA_QYVGLvEo"},
   capture: captureRoom,
   apply: applyRoom,
@@ -444,5 +444,5 @@ import("./checks-sync.mjs?v=20261018-03").then(m => m.boot({
 useDay(today);
 </script>
 
-<!--WAYON-SCHEDULE-HEALTH--><div role="status" style="padding:8px;color:#854d0e;background:#fef3c7;font-size:13px">⚠️ 2026-10-16 课表／页面未确认更新，显示上次内容；上次成功核对：未记录；本次检查：2026-10-18T16:09:27.695223+08:00<br>⚠️ 2026-10-17 课表／页面未确认更新，显示上次内容；上次成功核对：2026-10-17T21:40:20.997533+08:00；本次检查：2026-10-18T16:09:27.695223+08:00</div><!--/WAYON-SCHEDULE-HEALTH--></body>
+<!--WAYON-SCHEDULE-HEALTH--><div role="status" style="padding:8px;color:#854d0e;background:#fef3c7;font-size:13px">⚠️ 2026-10-16 课表／页面未确认更新，显示上次内容；上次成功核对：未记录；本次检查：2026-10-18T16:28:39.460864+08:00<br>⚠️ 2026-10-17 课表／页面未确认更新，显示上次内容；上次成功核对：2026-10-17T21:40:20.997533+08:00；本次检查：2026-10-18T16:28:39.460864+08:00</div><!--/WAYON-SCHEDULE-HEALTH--></body>
 </html>
