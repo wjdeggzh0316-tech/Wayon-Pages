@@ -134,6 +134,15 @@ export async function readChasingHistory(client,owner,through) {
         const digest=await crypto.subtle.digest('SHA-256',bytes);
         manual.push({name:k[1],id:'manual:'+Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,'0')).join(''),title:k[4],date:row.day,source:'manual'});
       }
+      // Self-study definitions and marks are private fields, not published source DATA.
+      const uid=v=>typeof v==='string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(v);
+      for(const row of rows)for(const [raw,value] of Object.entries(row.fields)){
+        if(value!=='no')continue;let k;try{k=JSON.parse(raw);}catch{continue;}
+        if(!Array.isArray(k)||k.length!==3||k[0]!=='study-mark'||!uid(k[1])||!uid(k[2]))continue;
+        const card=row.fields[JSON.stringify(['study-card',k[1]])],task=row.fields[JSON.stringify(['study-task',k[1],k[2]])];
+        if(!card||card.archivedAt||typeof card.studentName!=='string'||!card.studentName.trim()||typeof task?.text!=='string')continue;
+        manual.push({name:card.studentName,id:`manual:study:${row.day}:${k[1]}:${k[2]}`,title:task.text,date:row.day,source:'manual'});
+      }
       return {stops,manual};
     }
   }
@@ -187,5 +196,5 @@ export async function boot({config,capture,apply,status,currentDay,hydrate}) {
   setInterval(()=>{if(engine && !document.activeElement?.matches('input,textarea')) void engine.refresh(currentDay());},15000);
   window.addEventListener('online',()=>void engine?.flush());
   window.addEventListener('focus',()=>{if(engine && !document.activeElement?.matches('input,textarea')) void engine.refresh(currentDay());});
-  return {observe:day=>engine?.observe(day),open:day=>engine?.open(day)};
+  return {observe:day=>engine?.observe(day),open:day=>engine?.open(day),ready:day=>Boolean(engine?.days.get(day)?.ready)};
 }

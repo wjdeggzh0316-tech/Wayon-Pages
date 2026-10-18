@@ -83,6 +83,26 @@ body.wayon-workbench{margin:0;font-size:15px;line-height:1.55}
 @media(max-width:599px){.wayon-workbench .task{grid-template-columns:minmax(0,1fr) 60px 44px}.wayon-workbench .del-btn{min-width:44px}.cloud-panel button{min-height:44px}}
 
 </style>
+<style id="wayon-study">
+.wayon-workbench .study-toolbar,.wayon-workbench .study-form{grid-column:1/-1}
+.study-toolbar,.study-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.study-toolbar{padding:0 0 4px}.study-form{max-width:760px}.study-form h3{margin:0 0 12px}
+.study-form label{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;font-size:13px;color:var(--muted)}
+.study-form input,.study-form textarea{box-sizing:border-box;width:100%;min-width:0;border:1px solid var(--line);border-radius:8px;background:var(--input-bg);color:var(--text);padding:10px;font:inherit;font-size:16px}
+.study-form textarea{resize:vertical}.study-form .study-actions{margin-top:10px}
+.study-card .head{margin-bottom:10px}.study-card .study-actions{margin-bottom:8px}
+.study-task{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 10px;padding:9px 0;border-top:1px solid var(--line)}
+.study-task-text{min-width:0;overflow-wrap:anywhere;line-height:1.6;align-self:center}
+.study-marks{display:flex;gap:4px;align-self:start;flex-shrink:0}
+.study-mark{min-width:44px;min-height:44px;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--input-bg);cursor:pointer;opacity:.45}
+.study-mark[aria-pressed="true"]{opacity:1;background:var(--code-bg);border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.study-task>.note{grid-column:1/-1;width:100%;box-sizing:border-box;margin:0}
+.study-error{color:var(--red,#b42318);font-size:13px;line-height:1.6}.study-error:empty{display:none}
+.study-copy-fallback{box-sizing:border-box;width:100%;min-height:150px;background:var(--input-bg);color:var(--text);font:inherit}
+.study-copy-temp{position:fixed;left:0;top:0;width:1px;height:1px;opacity:.01}
+@media(max-width:599px){.study-toolbar{gap:8px}.study-toolbar .meta{width:100%}.study-card .study-actions{gap:6px}}
+
+</style>
 </head>
 <body class="wayon-workbench">
 
@@ -277,21 +297,24 @@ function planCard(title, meta, txt, k){
 }
 function renderPlan(){
   const rows = PLAN[cur] || [];
-  if (!rows.length){ const e = document.createElement("div"); e.className = "sub"; e.textContent = (cur in PLAN) ? ("🎉 " + rel(cur) + mdOf(cur) + " 暂无排课与自习任务安排。") : ("这天还没生成（" + rel(cur) + mdOf(cur) + " 的任务安排要先跑 tasks / sync-notes）。"); list.append(e); }
+  if(typeof study!=='undefined')study.renderCards(list,cur,'plan');
+  if (!rows.length && !(typeof study!=='undefined' && study.cards(cur).length)){ const e = document.createElement("div"); e.className = "sub"; e.textContent = (cur in PLAN) ? ("🎉 " + rel(cur) + mdOf(cur) + " 暂无排课与自习任务安排。") : ("这天还没生成（" + rel(cur) + mdOf(cur) + " 的任务安排要先跑 tasks / sync-notes）。"); list.append(e); }
   const bottomP = [];
   rows.forEach((p, i) => {
     const card = planCard((i+1) + ".【" + p[0] + "】", p[1], ptext(p), p[0]);
     placeCard(card, !!ps[p[0]], "plan:" + cur + ":" + p[0], (i+1) + ".【" + p[0] + "】", ps[p[0]], bottomP);
   });
   bottomP.forEach(e => list.append(e));
-  const n = rows.filter(p => ps[p[0]]).length;
-  document.getElementById("count").textContent = n + " / " + rows.length + " 已复制";
-  document.getElementById("fill").style.width = (rows.length ? n / rows.length * 100 : 0) + "%";
+  const extra=typeof study!=='undefined'?study.stats(cur,'plan'):{total:0,copied:0};
+  const n=rows.filter(p=>ps[p[0]]).length+extra.copied,total=rows.length+extra.total;
+  document.getElementById('count').textContent=n+' / '+total+' 已复制';
+  document.getElementById('fill').style.width=(total?n/total*100:0)+'%';
 }
 function summary(rows){
-  const n = rows.filter(r => get(r[0]).c).length;
-  document.getElementById("count").textContent = n + " / " + rows.length + " 已复制";
-  document.getElementById("fill").style.width = (rows.length ? n / rows.length * 100 : 0) + "%";
+  const extra=typeof study!=='undefined'?study.stats(cur,'done'):{total:0,copied:0};
+  const n=rows.filter(r=>get(r[0]).c).length+extra.copied,total=rows.length+extra.total;
+  document.getElementById('count').textContent=n+' / '+total+' 已复制';
+  document.getElementById('fill').style.width=(total?n/total*100:0)+'%';
 }
 // 单词抽背情况（Leo 2026-10-05）：完成情况页签最下面的独立板块，每天一份，和打勾一起存云端（字段 quiz）
 let qz = {}, qzDay = "";
@@ -573,11 +596,14 @@ load(); pload(); render(); watch(); } };
   healthBox.textContent = !showHealth ? "" : health.status === "error"
     ? "⚠️ " + healthDay + " 课表／页面未确认更新；旧内容仅供参考。上次成功核对：" + shTime(health.last_success_at) + "；本次检查：" + shTime(health.checked_at)
     : "课表核对时间（北京时间）：" + shTime(health.checked_at);
+  if(typeof study!=='undefined' && ['plan','done'].includes(mode))study.toolbar(list,cur,[...(DATA[cur]||[]).map(r=>r[0]),...(PLAN[cur]||[]).map(r=>r[0])]);
   if (showHealth && health.status === "error" && !(mode === "notice" ? (NOTICE[healthDay] || []).length : rows.length)) {
     const warning = document.createElement("div"); warning.className = "sub";
     warning.textContent = "读取或刷新失败，无法确认是否有课／有任务；没有可显示的旧记录。";
     list.append(warning); document.getElementById("count").textContent = "状态未知";
-    document.getElementById("fill").style.width = "0%"; return;
+    document.getElementById("fill").style.width = "0%";
+    if(typeof study!=='undefined' && ['plan','done'].includes(mode))study.renderCards(list,cur,mode);
+    return;
   }
   document.body.setAttribute("data-mode", mode);
   if (mode === "classroom") { renderClassroom(); return; } else {
@@ -590,7 +616,8 @@ load(); pload(); render(); watch(); } };
   if (mode === "quiz") { renderQuiz(rows); const qr = quizRows(rows), n = qr.filter(r => qget(qk(r)).pre && qget(qk(r)).post).length;
     document.getElementById("count").textContent = n + " / " + qr.length + " 课前课后都抽了";
     document.getElementById("fill").style.width = (qr.length ? n / qr.length * 100 : 0) + "%"; return; }
-  if (!rows.length) { const e = document.createElement("div"); e.className = "sub"; e.textContent = (cur in DATA) ? ("🎉 " + rel(cur) + mdOf(cur) + " 暂无排课与自习任务，全天无任务安排。") : ("这天还没生成（" + rel(cur) + mdOf(cur) + " 的任务清单要先跑 tasks / sync-notes）。"); list.append(e); summary(rows); return; }
+  if(typeof study!=='undefined')study.renderCards(list,cur,'done');
+  if (!rows.length) { if(typeof study!=='undefined' && study.cards(cur).length){summary(rows);return;} const e = document.createElement("div"); e.className = "sub"; e.textContent = (cur in DATA) ? ("🎉 " + rel(cur) + mdOf(cur) + " 暂无排课与自习任务，全天无任务安排。") : ("这天还没生成（" + rel(cur) + mdOf(cur) + " 的任务清单要先跑 tasks / sync-notes）。"); list.append(e); summary(rows); return; }
   const bottomD = [];
   rows.forEach((r, ri) => {
     const s = get(r[0]);
@@ -720,8 +747,183 @@ load(); pload(); render(); watch(); } };
   bottomD.forEach(e => list.append(e));
   summary(rows);
 }
-document.getElementById("reset").onclick = () => { if (mode === "notice") { nc = {}; nsave(); } else if (mode === "quiz") { qz = {}; qsave(); } else if (mode === "plan") { ps = {}; psave(); } else if (mode === "chasing") { ch = {}; chsave(); } else { st = {}; save(); } render(); };
+document.getElementById("reset").onclick = () => { if(typeof study!=='undefined' && ['plan','done'].includes(mode) && study.cards(cur).length){try{study.commit(cur,f=>{for(const raw of Object.keys(f)){const k=JSON.parse(raw);if((k[0]==='study-copy' && k[2]===mode) || (mode==='done' && ['study-mark','study-note'].includes(k[0])))delete f[raw];}});}catch(e){alert(e.message);return;}} if (mode === "notice") { nc = {}; nsave(); } else if (mode === "quiz") { qz = {}; qsave(); } else if (mode === "plan") { ps = {}; psave(); } else if (mode === "chasing") { ch = {}; chsave(); } else { st = {}; save(); } render(); };
 let checkCloud=null;const noticeOpened=new Set();
+// Embedded in the generated task page. Content is private owner-scoped day fields,
+// never public DATA. Card/task UUIDs survive ordering, names and page regeneration.
+class StudyTasks {
+  constructor({storage, sync, redraw, uuid = () => crypto.randomUUID()}) {
+    Object.assign(this, {storage, sync, redraw, uuid});
+    this.days = new Map(); this.drafts = new Map(); this.open = new Set();
+  }
+  static key(...parts) { return JSON.stringify(parts); }
+  static isKey(raw) {
+    try { const k = JSON.parse(raw); return Array.isArray(k) &&
+      ['study-card','study-task','study-mark','study-note','study-copy'].includes(k[0]); }
+    catch { return false; }
+  }
+  fields(day) {
+    if (!this.days.has(day)) {
+      let f = {}; try { f = JSON.parse(this.storage.getItem('wayon-study-v1:'+day) || '{}'); } catch {}
+      this.days.set(day, Object.fromEntries(Object.entries(f || {}).filter(([k]) => StudyTasks.isKey(k))));
+    }
+    return this.days.get(day);
+  }
+  capture(day) { return structuredClone(this.fields(day)); }
+  apply(day, fields) {
+    this.days.set(day, structuredClone(Object.fromEntries(Object.entries(fields).filter(([k]) => StudyTasks.isKey(k)))));
+    this.persist(day); // Unsubmitted form drafts are deliberately separate.
+  }
+  persist(day) { this.storage.setItem('wayon-study-v1:'+day, JSON.stringify(this.fields(day))); }
+  commit(day, mutate) {
+    if (!this.sync()?.ready(day)) throw Error('请先在「账户与连接」登录并读取这一天，再保存自习任务。');
+    const next = this.capture(day); mutate(next);
+    if (new TextEncoder().encode(JSON.stringify(next)).length > 150000)
+      throw Error('当天自习记录过多，请精简后保存；原记录保留。');
+    // Persist before notifying the CAS queue. A failed local write must not report success.
+    this.storage.setItem('wayon-study-v1:'+day, JSON.stringify(next)); this.days.set(day, next);
+    this.sync().observe(day);
+  }
+  cards(day) {
+    const fields=this.fields(day), cards=[];
+    for (const [raw, meta] of Object.entries(fields)) {
+      let k; try { k=JSON.parse(raw); } catch { continue; }
+      if(k[0]!=='study-card'||k.length!==2||!meta||typeof meta.studentName!=='string'||meta.archivedAt) continue;
+      const tasks=[];
+      for(const [tr, task] of Object.entries(fields)) {
+        let tk;try{tk=JSON.parse(tr);}catch{continue;}
+        if(tk[0]!=='study-task'||tk.length!==3||tk[1]!==k[1]||!task||typeof task.text!=='string')continue;
+        const mark=fields[StudyTasks.key('study-mark',k[1],tk[2])];
+        tasks.push({id:tk[2],text:task.text,order:task.order||0,
+          mark:['ok','no'].includes(mark)?mark:'',note:fields[StudyTasks.key('study-note',k[1],tk[2])]||''});
+      }
+      tasks.sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id));
+      cards.push({id:k[1],...meta,tasks});
+    }
+    return cards.sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt))||a.id.localeCompare(b.id));
+  }
+  create(day, draft) {
+    const name=draft.studentName.trim(), time=draft.time.trim();
+    const tasks=draft.text.split(/\r?\n/).map(x=>x.trim().replace(/^\d+[.、)）]\s*/, '')).filter(Boolean);
+    if(!name||name.length>80||time.length>80) throw Error('请填写学员姓名（80字以内），时间可不填。');
+    if(!tasks.length||tasks.length>40||tasks.some(t=>t.length>500))throw Error('请每行填写一项任务，最多40项，每项500字以内。');
+    const id=draft.id;
+    if(this.fields(day)[StudyTasks.key('study-card',id)])return id; // Same submit cannot create two cards.
+    this.commit(day, f=>{
+      f[StudyTasks.key('study-card',id)]={studentName:name,time,createdAt:new Date().toISOString()};
+      tasks.forEach((text,order)=>f[StudyTasks.key('study-task',id,this.uuid())]={text,order});
+    });
+    this.drafts.delete(day); return id;
+  }
+  change(day,card,task,part,value) {
+    this.commit(day,f=>{
+      if(part==='text') {
+        if(!value.trim()||value.length>500)throw Error('任务需为1至500字。');
+        const key=StudyTasks.key('study-task',card,task), old=f[key];
+        if(!old||old.text===value.trim())return;
+        f[key]={...old,text:value.trim()};
+        delete f[StudyTasks.key('study-mark',card,task)];delete f[StudyTasks.key('study-note',card,task)];
+      } else if(part==='mark') {
+        const key=StudyTasks.key('study-mark',card,task);
+        if(!value)delete f[key];else if(['ok','no'].includes(value))f[key]=value;
+      } else if(part==='note') {
+        if(value.length>2000)throw Error('备注请控制在2000字以内。');
+        const key=StudyTasks.key('study-note',card,task);if(value)f[key]=value;else delete f[key];
+      }
+      // Copied content is now stale. This never implies anything was sent to a student.
+      delete f[StudyTasks.key('study-copy',card,'done')];
+      if(part==='text')delete f[StudyTasks.key('study-copy',card,'plan')];
+    });
+  }
+  bulk(day,card,mark) {
+    const c=this.cards(day).find(c=>c.id===card);if(!c)return;
+    this.commit(day,f=>{for(const t of c.tasks)f[StudyTasks.key('study-mark',card,t.id)]=mark;
+      delete f[StudyTasks.key('study-copy',card,'done')];});
+  }
+  copied(day,card,mode) {return this.fields(day)[StudyTasks.key('study-copy',card,mode)]||'';}
+  stats(day,mode) {const cards=this.cards(day);return {total:cards.length,copied:cards.filter(c=>this.copied(day,c.id,mode)).length};}
+  copyText(day,card,mode) {
+    const d=day.split('-'),date=Number(d[1])+'月'+Number(d[2])+'日';
+    return '【'+card.studentName+'】'+date+(mode==='plan'?'自习任务安排':'自习任务完成情况')+'\n\n'+
+      card.tasks.map((t,i)=>(i+1)+'、'+t.text+(mode==='done'?' '+({ok:'✅',no:'❌'}[t.mark]||'未标记')+(t.note?'（'+t.note+'）':''):'')).join('\n');
+  }
+  toolbar(host,day,names) {
+    const bar=document.createElement('section');bar.className='study-toolbar';
+    const add=document.createElement('button');add.type='button';add.id='study-add';add.className='small';add.textContent='＋ 新增自习任务';
+    add.onclick=()=>{if(!this.drafts.has(day))this.drafts.set(day,{id:this.uuid(),studentName:'',time:'',text:''});this.redraw();};bar.append(add);
+    const hint=document.createElement('span');hint.className='meta';hint.textContent='并入'+day+'的今日任务和完成情况';bar.append(hint);host.append(bar);
+    const draft=this.drafts.get(day);if(!draft)return;
+    const form=document.createElement('form');form.id='study-form';form.className='item study-form';
+    const heading=document.createElement('h3');heading.textContent='新增自习任务 · '+day;form.append(heading);
+    const error=document.createElement('p');error.className='study-error';error.setAttribute('role','alert');
+    const field=(label,tag,prop,placeholder)=>{
+      const l=document.createElement('label');l.textContent=label;
+      const input=document.createElement(tag);input.id='study-'+prop;input.value=draft[prop];input.placeholder=placeholder;
+      input.required=prop!=='time';input.maxLength=prop==='text'?20040:80;
+      if(tag==='textarea')input.rows=5;
+      input.oninput=()=>{draft[prop]=input.value;error.textContent='';};l.append(input);form.append(l);return input;
+    };
+    const name=field('学员','input','studentName','选择或输入学员姓名');name.setAttribute('list','study-students');
+    const dl=document.createElement('datalist');dl.id='study-students';for(const n of new Set(names)){const o=document.createElement('option');o.value=n;dl.append(o);}form.append(dl);
+    field('自习时间（选填）','input','time','例如 14:00–16:00');
+    field('任务（一行一项）','textarea','text','每行填写一项自习任务');
+    const actions=document.createElement('div');actions.className='study-actions';
+    const save=document.createElement('button');save.className='copy';save.type='submit';save.textContent='保存到今日任务';
+    const cancel=document.createElement('button');cancel.type='button';cancel.className='small';cancel.textContent='取消';cancel.onclick=()=>{this.drafts.delete(day);this.redraw();};actions.append(save,cancel);form.append(error,actions);
+    form.onsubmit=e=>{e.preventDefault();try{this.create(day,draft);this.redraw();}catch(e){error.textContent=e.message;}};host.append(form);
+  }
+  renderCards(host,day,mode) {
+    const folded=[];
+    for(const card of this.cards(day)) {
+      const identity=day+':'+card.id+':'+mode,copied=this.copied(day,card.id,mode);
+      const el=document.createElement('section');el.className='item study-card'+(copied?' copied':'');el.dataset.studyId=card.id;
+      const head=document.createElement('div');head.className='head';
+      const name=document.createElement('div');name.className='name';name.textContent='【'+card.studentName+'】';
+      const meta=document.createElement('div');meta.className='meta';meta.textContent='自习'+(card.time?' · '+card.time:'')+(mode==='done'?' · 完成 '+card.tasks.filter(t=>t.mark==='ok').length+'/'+card.tasks.length:'');
+      head.append(name,meta);
+      const error=document.createElement('p');error.className='study-error';error.setAttribute('role','alert');
+      const run=fn=>{try{fn();this.redraw();}catch(e){error.textContent=e.message;}};
+      const copy=document.createElement('button');copy.type='button';copy.className='copy';copy.textContent=copied?'再次复制':'复制';
+      const fallback=document.createElement('textarea');fallback.className='study-copy-fallback';fallback.hidden=true;fallback.readOnly=true;fallback.setAttribute('aria-label','可手动复制的任务文本');
+      copy.onclick=()=>{
+        const value=this.copyText(day,card,mode);
+        const success=()=>run(()=>{this.commit(day,f=>f[StudyTasks.key('study-copy',card.id,mode)]=new Date().toISOString());this.open.delete(identity);});
+        const fail=()=>{error.textContent='复制失败，请选中下方文字手动复制。';fallback.hidden=false;fallback.value=value;};
+        // Synchronous standard copy first: keep the original trusted click gesture.
+        const tmp=document.createElement('textarea');tmp.value=value;tmp.className='study-copy-temp';document.body.append(tmp);tmp.focus();tmp.select();
+        let ok=false;try{ok=document.execCommand('copy')===true;}catch{}tmp.remove();
+        if(ok)success();else if(navigator.clipboard?.writeText)navigator.clipboard.writeText(value).then(success,fail);else fail();
+      };head.append(copy);
+      if(copied){const undo=document.createElement('button');undo.type='button';undo.className='small';undo.textContent='重置复制标记';undo.onclick=()=>run(()=>this.commit(day,f=>delete f[StudyTasks.key('study-copy',card.id,mode)]));head.append(undo);}
+      const remove=document.createElement('button');remove.className='small';remove.type='button';remove.textContent='移除';
+      remove.onclick=()=>{if(confirm('移除这张自习任务卡？已保存的历史记录仍会保留。'))run(()=>this.commit(day,f=>{
+        const key=StudyTasks.key('study-card',card.id);f[key]={...f[key],archivedAt:new Date().toISOString()};}));};head.append(remove);el.append(head);
+      if(copied&&!this.open.has(identity)) {
+        const expand=document.createElement('button');expand.type='button';expand.className='small';expand.textContent='已复制并收纳 · 展开';expand.onclick=()=>{this.open.add(identity);this.redraw();};el.append(expand);folded.push(el);continue;
+      }
+      if(mode==='done') {
+        const batch=document.createElement('div');batch.className='study-actions';
+        for(const [label,mark] of [['全部完成','ok'],['全部未完成','no']]){const b=document.createElement('button');b.type='button';b.className='small';b.textContent=label;b.onclick=()=>run(()=>this.bulk(day,card.id,mark));batch.append(b);}el.append(batch);
+      }
+      card.tasks.forEach((task,i)=>{
+        const row=document.createElement('div');row.className='study-task';
+        const text=document.createElement('div');text.className='study-task-text';text.textContent=(i+1)+'、'+task.text;row.append(text);
+        if(mode==='done'){
+          const buttons=document.createElement('div');buttons.className='study-marks';
+          for(const [label,mark] of [['✅','ok'],['❌','no']]){const b=document.createElement('button');b.type='button';b.className='study-mark';b.textContent=label;b.setAttribute('aria-label',task.text+' '+(mark==='ok'?'完成':'未完成'));b.setAttribute('aria-pressed',String(task.mark===mark));b.onclick=()=>run(()=>this.change(day,card.id,task.id,'mark',task.mark===mark?'':mark));buttons.append(b);}row.append(buttons);
+          const note=document.createElement('input');note.className='note';note.placeholder='备注（可不填）';note.setAttribute('aria-label',task.text+' 备注');note.maxLength=2000;note.value=task.note;
+          note.oninput=()=>{try{this.change(day,card.id,task.id,'note',note.value);error.textContent='';}catch(e){error.textContent=e.message;}};row.append(note);
+        }
+        el.append(row);
+      });
+      if(copied){const fold=document.createElement('button');fold.type='button';fold.className='small';fold.textContent='收起';fold.onclick=()=>{this.open.delete(identity);this.redraw();};el.append(fold);}
+      el.append(error,fallback);host.append(el);
+    }
+    folded.forEach(el=>host.append(el));
+  }
+}
+
+const study = new StudyTasks({storage:localStorage,sync:()=>checkCloud,redraw:()=>render()});
 load(); pload(); render();
 // Manual checks use semantic task keys; array order never identifies a mark.
 
@@ -767,9 +969,11 @@ function captureChecks(day) {
     let k; try{k=JSON.parse(id);}catch(e){continue;}
     if(Array.isArray(k) && k.length===2 && value?.copied_at && typeof value.signature==='string') out[JSON.stringify(['notice-copy-v2',day,...k])]=value;
   }
+  if(typeof study!=='undefined')Object.assign(out,study.capture(day));
   return out;
 }
 function applyChecks(day, fields) {
+  if(typeof study!=='undefined')study.apply(day,fields);
   const done={},quiz={},plan={},notices={};
   for(const [raw,value] of Object.entries(fields)) {
     let k;try{k=JSON.parse(raw);}catch(e){continue;}
