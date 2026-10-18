@@ -1,0 +1,18 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wayon Rooms</title><style>body{font:15px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;background:#f5f5f7;color:#1d1d1f;padding:24px}</style>
+<p id="status" role="status">Loading rooms…</p><button id="retry" hidden>Retry</button>
+<script>
+// Code-only loader. Existing classroom DATA stays on this origin; no credentials or records are embedded.
+(() => {
+ async function load(){try{
+  const response=await fetch('./classroom.html?room-release='+Date.now(),{cache:'no-store'});
+  if(!response.ok)throw Error('ROOM_UNAVAILABLE');
+  let html=await response.text();
+  // Repair the known generated JS separator, leaving every course/room datum unchanged.
+  html=html.replace('.days || {};\\nconst $','.days || {};\nconst $');
+  html=html.replace(/import\(\s*(['"])\.\/checks-sync\.mjs(?:\?[^'"]*)?\1\s*\)/g,()=>"import('./checks-sync.mjs?room-release="+Date.now()+"')");
+  document.open();document.write(html);document.close();
+ }catch{document.getElementById('status').textContent='Could not load rooms. Saved records are unchanged.';document.getElementById('retry').hidden=false;}}
+ document.getElementById('retry').onclick=load;void load();
+})();
+</script></html>
