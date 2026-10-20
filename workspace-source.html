@@ -281,6 +281,15 @@ const get = n => (st[n] = st[n] || {m:{}, n:{}, c:""});
 const md = () => { const p = cur.split("-"); return Number(p[1]) + "月" + Number(p[2]) + "日"; };
 const ICON = {ok:"✅", no:"❌"};
 const openEditors = new Set();
+// Visibility only: do not rename cloud keys or shift stored task indices.
+const taskVisible = (name, task) => {
+  const label = typeof task === "string" ? task : task[0];
+  if (label !== "课堂生词抽背") return true;
+  const clean = value => String(value || "").replace(/[【】「」\s]/g, "").toLowerCase();
+  const sessions = (DATA._sess?.[cur] || []).filter(s =>
+    String(s[0] || "").split(/[&、/]/).some(n => clean(n) === clean(name)));
+  return !sessions.length || sessions.some(s => s[4] !== "线上");
+};
 const getTasks = (name, defTasks) => {
   const s = get(name);
   if (Array.isArray(s.tk)) {
@@ -311,7 +320,7 @@ const mk = (s, t, i) => s.m[i] === undefined ? (t[1] || "") : s.m[i];   // 没�
 const nt = (s, t, i) => s.n[i] === undefined ? (t[2] || "") : s.n[i];
 const text = r => { const s = get(r[0]);
   const tasks = getTasks(r[0], r[3]);
-  return "【" + r[2] + "】 " + md() + "任务完成情况 👇\n\n" + tasks.map((t,i) => (i+1) + "、" + t[0] + (ICON[mk(s,t,i)] || "") + (nt(s,t,i) ? (" " + nt(s,t,i)) : "")).join("\n"); };
+  return "【" + r[2].replace(/[「」]/g, "").trim() + "】 " + md() + "任务完成情况 👇\n\n" + tasks.map((t,i) => ({t,i})).filter(x => taskVisible(r[0],x.t)).map(({t,i},n) => (n+1) + "、" + t[0] + (ICON[mk(s,t,i)] || "") + (nt(s,t,i) ? (" " + nt(s,t,i)) : "")).join("\n"); };
 const list = document.getElementById("list");
 let mode = bjHour < 13 ? "plan" : "done";   // 上午默认「任务安排」，下午默认「完成情况」
 let ps = {};
@@ -321,7 +330,7 @@ const psave = () => { try { localStorage.setItem(pkey(), JSON.stringify(ps)); } 
 const ptext = p => {
   const s = get(p[0]);
   const tasks = (Array.isArray(s.tk)) ? s.tk : (p[3] || []);
-  return p[2] + "\n\n" + tasks.map((t,i) => (i+1) + "、" + (typeof t === "string" ? t : t[0])).join("\n");
+  return p[2].replace(/[「」]/g, "") + "\n\n" + tasks.filter(t => taskVisible(p[0],t)).map((t,i) => (i+1) + "、" + (typeof t === "string" ? t : t[0])).join("\n");
 };
 const hhmm = () => new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"});
 // 2026-10-05 Leo：任务安排 / 完成情况 / 课程通知——点了「复制」的卡片收成一行挪到最下面；点一下展开，展开后可「收起」
@@ -411,8 +420,8 @@ function renderPlan(){
   if(typeof study!=='undefined')study.renderCards(list,cur,'plan',bottomP);
   if (!rows.length && !(typeof study!=='undefined' && study.cards(cur).length)){ const e = document.createElement("div"); e.className = "sub"; e.textContent = (cur in PLAN) ? ("🎉 " + rel(cur) + mdOf(cur) + " 暂无排课与自习任务安排。") : ("这天还没生成（" + rel(cur) + mdOf(cur) + " 的任务安排要先跑 tasks / sync-notes）。"); list.append(e); }
   rows.forEach((p, i) => {
-    const card = planCard((i+1) + ". " + p[0].replace(/[【】]/g, ""), p[1], ptext(p), p[0]);
-    placeCard(card, !!ps[p[0]], "plan:" + cur + ":" + p[0], (i+1) + ". " + p[0].replace(/[【】]/g, ""), ps[p[0]], bottomP);
+    const card = planCard((i+1) + ". " + p[0].replace(/[【】「」]/g, ""), p[1], ptext(p), p[0]);
+    placeCard(card, !!ps[p[0]], "plan:" + cur + ":" + p[0], (i+1) + ". " + p[0].replace(/[【】「」]/g, ""), ps[p[0]], bottomP);
   });
   bottomP.forEach(e => list.append(e));
   const extra=typeof study!=='undefined'?study.stats(cur,'plan'):{total:0,copied:0};
@@ -616,7 +625,7 @@ function renderChasing(){
     const el = document.createElement("div"); el.className = "item" + (done ? " copied" : "") + (isStopped || isCompleted ? " folded" : "");
     const head = document.createElement("div"); head.className = "head";
     const name = document.createElement("div"); name.className = "name";
-    name.textContent = (i+1) + ". " + sname.replace(/[【】]/g, "") + (r.countdown_tag ? (" " + r.countdown_tag) : "") + (isCompleted ? " [本人已确认完成]" : isStopped ? " [已停止催缴]" : "");
+    name.textContent = (i+1) + ". " + sname.replace(/[【】「」]/g, "") + (r.countdown_tag ? (" " + r.countdown_tag) : "") + (isCompleted ? " [本人已确认完成]" : isStopped ? " [已停止催缴]" : "");
     if (r.is_urgent && !isStopped) name.style.color = "var(--bad)";
     const meta = document.createElement("div"); meta.className = "meta";
     meta.textContent = (r.prev_date ? r.prev_date + "布置 · " : "") + (isCompleted ? "本人已确认完成 " + chasingDisplayItems(completedDetails).length : isStopped ? "已停止 " + chasingDisplayItems(stoppedDetails).length : "欠交 " + activeCount) + " 项" + (isStopped ? " (已停止提醒；布置门禁保持)" : "");
@@ -682,7 +691,7 @@ function renderChasing(){
       });el.append(completed);
     }
     if (isStopped || isCompleted) { stoppedShelf.append(el); stoppedStudents++; if(isCompleted)completedStudents++; return; }
-    placeCard(el, !!done || isStopped, "chasing:" + today + ":" + sname, (i+1) + ". " + sname.replace(/[【】]/g, ""), isStopped ? "[已停止]" : done, bottomC);
+    placeCard(el, !!done || isStopped, "chasing:" + today + ":" + sname, (i+1) + ". " + sname.replace(/[【】「」]/g, ""), isStopped ? "[已停止]" : done, bottomC);
   });
   bottomC.forEach(e => list.append(e));
   if (stoppedStudents) { stoppedHeading.textContent = (completedStudents ? "Closed reminders · " : "Stopped reminders · ") + stoppedStudents; list.append(stoppedShelf); }
@@ -736,7 +745,7 @@ function renderNotice(){
     const done = noticeCopied(r);
     const el = document.createElement("div"); el.className = "item" + (done ? " copied" : "");
     const head = document.createElement("div"); head.className = "head";
-    const name = document.createElement("div"); name.className = "name"; name.textContent = (i+1) + ". " + r[0].replace(/[【】]/g, "");
+    const name = document.createElement("div"); name.className = "name"; name.textContent = (i+1) + ". " + r[0].replace(/[【】「」]/g, "");
     const meta = document.createElement("div"); meta.className = "meta"; meta.textContent = r[1];
     head.append(name, meta);
     if (done) { const x = document.createElement("div"); x.className = "state"; x.textContent = "✓ 已复制 " + done; head.append(x); }
@@ -748,7 +757,7 @@ function renderNotice(){
     head.append(b);
     if (done) { const u = document.createElement("button"); u.type = "button"; u.className = "small"; u.textContent = "撤销"; u.onclick = () => { delete nc[noticeKey(r)]; nsave(); render(); }; head.append(u); }
     el.append(head, pre);
-    placeCard(el, !!done, "notice:" + curN + ":" + r[0], (i+1) + ". " + r[0].replace(/[【】]/g, ""), done, bottomN);
+    placeCard(el, !!done, "notice:" + curN + ":" + r[0], (i+1) + ". " + r[0].replace(/[【】「」]/g, ""), done, bottomN);
   });
   bottomN.forEach(e => list.append(e));
   const n = rows.filter(r => noticeCopied(r)).length;
@@ -849,9 +858,9 @@ function render(){
     const currentTasks = getTasks(r[0], r[3]);
     const el = document.createElement("div"); el.className = "item" + (s.c ? " copied" : "");
     const head = document.createElement("div"); head.className = "head";
-    const name = document.createElement("div"); name.className = "name"; name.textContent = (ri+1) + ". " + r[0].replace(/[【】]/g, "");
-    const okn = currentTasks.filter((t,i) => mk(s,t,i) === "ok").length;
-    const meta = document.createElement("div"); meta.className = "meta"; meta.textContent = r[1] + " · 完成 " + okn + "/" + currentTasks.length;
+    const name = document.createElement("div"); name.className = "name"; name.textContent = (ri+1) + ". " + r[0].replace(/[【】「」]/g, "");
+    const okn = currentTasks.filter((t,i) => taskVisible(r[0],t) && mk(s,t,i) === "ok").length;
+    const meta = document.createElement("div"); meta.className = "meta"; meta.textContent = r[1] + " · 完成 " + okn + "/" + currentTasks.filter(t => taskVisible(r[0],t)).length;
     head.append(name, meta);
     if (s.c){ const x = document.createElement("div"); x.className = "state"; x.textContent = "✓ 已复制 " + s.c; head.append(x); }
     const pre = document.createElement("pre"); pre.hidden = true; pre.textContent = text(r);
@@ -864,10 +873,10 @@ function render(){
     };
     head.append(b);
     const all = document.createElement("button"); all.type = "button"; all.className = "small"; all.textContent = "全部✅";
-    all.onclick = () => { currentTasks.forEach((_,i) => s.m[i] = "ok"); s.c = ""; save(); render(); };
+    all.onclick = () => { currentTasks.forEach((t,i) => { if(taskVisible(r[0],t)) s.m[i] = "ok"; }); s.c = ""; save(); render(); };
     head.append(all);
     const none=document.createElement('button');none.type='button';none.className='small';none.textContent='全部未完成';
-    none.onclick=()=>{currentTasks.forEach((_,i)=>s.m[i]='no');s.c='';save();render();};head.append(none);
+    none.onclick=()=>{currentTasks.forEach((t,i)=>{if(taskVisible(r[0],t))s.m[i]='no';});s.c='';save();render();};head.append(none);
     const editBtn = document.createElement("button"); editBtn.type = "button"; editBtn.className = "small edit-btn";
     editBtn.textContent = openEditors.has(r[0]) ? "收起编辑" : "✎ 编辑/粘贴任务";
     editBtn.onclick = () => {
@@ -912,6 +921,7 @@ function render(){
     }
     const tasks = document.createElement("div"); tasks.className = "tasks";
     currentTasks.forEach((t, i) => {
+      if (!taskVisible(r[0], t)) return;
       const v = mk(s, t, i);
       const row = document.createElement("div"); row.className = "task " + v;
       const m = document.createElement("button"); m.type = "button"; m.className = "mark"; m.id = "m-" + ri + "-" + i;
@@ -969,7 +979,7 @@ function render(){
     }
     tasks.append(opRow);
     el.append(tasks, pre);
-    placeCard(el, !!s.c, "done:" + cur + ":" + r[0], (ri+1) + ". " + r[0].replace(/[【】]/g, ""), s.c, bottomD);
+    placeCard(el, !!s.c, "done:" + cur + ":" + r[0], (ri+1) + ". " + r[0].replace(/[【】「」]/g, ""), s.c, bottomD);
   });
   bottomD.forEach(e => list.append(e));
   summary(rows);
@@ -1120,7 +1130,7 @@ class StudyTasks {
     const folded=[];
     for(const card of this.cards(day)) {
       const identity=day+':'+card.id+':'+mode,copied=this.copied(day,card.id,mode);
-      const cleanName=card.studentName.replace(/[【】]/g, '');
+      const cleanName=card.studentName.replace(/[【】「」]/g, '');
       if(copied&&!this.open.has(identity)) {
         const r=document.createElement('div');r.className='item folded study-folded';r.tabIndex=0;r.setAttribute('role','button');r.setAttribute('aria-expanded','false');
         const when=(typeof copied==='string'&&copied.includes('T'))?new Date(copied).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}):(copied||'');
@@ -1295,7 +1305,7 @@ function npush(){checkCloud?.observe(curN);}
 function nwatch(){if(checkCloud && !noticeOpened.has(curN)){noticeOpened.add(curN);void checkCloud.open(curN);}}
 function currentCloudDay(){return mode==='notice' ? curN : mode==='chasing' ? today : cur;}
 setSync('本机已保存；正在检查云端配置…');
-import('./checks-sync.mjs?v=20261018-07').then(m=>m.boot({config: {"enabled": true, "url": "https://qcjyllyatiawkftwqfjf.supabase.co", "key": "sb_publishable_ljy3uwM1zNach70iWxqWdA_QYVGLvEo"},capture:captureChecks,apply:applyChecks,status:setSync,currentDay:currentCloudDay,hydrate:(client,owner)=>hydrateChasing(m,client,owner)}))
+import('./checks-sync.mjs?v=20261020-01').then(m=>m.boot({config: {"enabled": true, "url": "https://qcjyllyatiawkftwqfjf.supabase.co", "key": "sb_publishable_ljy3uwM1zNach70iWxqWdA_QYVGLvEo"},capture:captureChecks,apply:applyChecks,status:setSync,currentDay:currentCloudDay,hydrate:(client,owner)=>hydrateChasing(m,client,owner)}))
 .then(x=>{checkCloud=x;if(mode==='notice')nwatch();else watch();}).catch(err=>{
   console.error("Cloud boot error:", err);
   const msg=(err&&(err.message||String(err)))||"";
