@@ -526,11 +526,12 @@ const noticeCopied = r => { const v=nc[noticeKey(r)]; return v && v.signature===
 const nload = () => { ncDay = curN; nc = readLocal(nkey(curN)); };
 const nsave = () => { try { localStorage.setItem(nkey(curN), JSON.stringify(nc)); } catch(e) {} npush(); };
 let CHASING = DATA._chasing || [];
+let privateChasingItems = [];
 let ch = {}, chDay = "", cstops = {};
 const chkey = d => "wayon-chasing-" + d;
 const cskey = "wayon-chasing-stops";
 const chload = () => { ch = {}; chDay = today; try { ch = JSON.parse(localStorage.getItem(chkey(today)) || "{}") || {}; } catch(e) {} try { cstops = JSON.parse(localStorage.getItem(cskey) || "{}") || {}; } catch(e) { cstops = {}; } };
-const chsave = () => { try { localStorage.setItem(chkey(today), JSON.stringify(ch)); } catch(e) {} };
+const chsave = () => { try { localStorage.setItem(chkey(today), JSON.stringify(ch)); } catch(e) {} checkCloud?.observe(today); };
 const cssave = () => { try { localStorage.setItem(cskey, JSON.stringify(cstops)); } catch(e) {} checkCloud?.observe(today); };
 function chasingText(r,stoppedIds){
   const items=chasingDisplayItems((r.uncompleted_details||[]).filter(d=>!stoppedIds.includes(String(d.id)) && !chasingDoneIds(r).includes(String(d.id))));
@@ -592,6 +593,7 @@ async function hydrateChasing(m,client,owner){
   try {
     const h=await m.readChasingHistory(client,owner,today);cstops=h.stops;localStorage.setItem(cskey,JSON.stringify(cstops));chDay=today;
     CHASING=JSON.parse(JSON.stringify(DATA._chasing||[]));
+    privateChasingItems=h.manual;
     for(const item of h.manual){
       let row=CHASING.find(x=>x.name===item.name);if(!row){row={name:item.name,uncompleted_details:[],uncompleted_ids:[],uncompleted:[]};CHASING.push(row);}
       item.elapsed_days=Math.max(0,Math.floor((Date.parse(today+"T00:00:00+08:00")-Date.parse(item.date+"T00:00:00+08:00"))/86400000));
@@ -1304,6 +1306,8 @@ function captureChecks(day) {
   const quiz=day===cur && qzDay===cur ? qz : readLocal(qkey(day));
   const plan=day===cur ? ps : readLocal('wayon-plan-'+day);
   const out={};
+  const chasingCopies=day===chDay ? ch : readLocal(chkey(day));
+  for(const [name,time] of Object.entries(chasingCopies))if(typeof time==='string' && time)out[JSON.stringify(['chasing-copy',name])]=time;
   for(const {name,i,key:k} of taskKeys(day, done)) {
     const d=done[name];if(!d) continue;
     if(Object.hasOwn(d.m||{},i)) out[JSON.stringify([...k,'mark'])]=d.m[i];
@@ -1330,7 +1334,7 @@ function captureChecks(day) {
 }
 function applyChecks(day, fields) {
   if(typeof study!=='undefined')study.apply(day,fields);
-  const done={},quiz={},plan={},notices={};
+  const done={},quiz={},plan={},notices={},chasingCopies={};
   for(const [raw,value] of Object.entries(fields)) {
     let k;try{k=JSON.parse(raw);}catch(e){continue;}
     if(k[0]==='student-tasks' && Array.isArray(value)) {
@@ -1348,6 +1352,7 @@ function applyChecks(day, fields) {
     } else if(k[0]==='quiz' && ['pre','post'].includes(k[2]) && value===true) {
       (quiz[k[1]] ||= {pre:false,post:false})[k[2]]=true;
     } else if(k[0]==='plan-copy' && typeof value==='string')plan[k[1]]=value;
+    else if(k[0]==='chasing-copy' && k.length===2 && typeof value==='string')chasingCopies[k[1]]=value;
     else if(k[0]==='done-copy' && typeof value==='string')(done[k[1]] ||= {m:{},n:{},c:''}).c=value;
     else if(k[0]==='chasing-stop') {
       if(value && (typeof value==='object' || Array.isArray(value))) cstops[k[1]]=value;
@@ -1356,6 +1361,8 @@ function applyChecks(day, fields) {
       notices[JSON.stringify(k.slice(2))]=value;
     }
   }
+  localStorage.setItem(chkey(day),JSON.stringify(chasingCopies));
+  if(day===chDay)ch=chasingCopies;
   localStorage.setItem(nkey(day),JSON.stringify(notices));
   if(day===ncDay) nc=notices;
   localStorage.setItem(cskey, JSON.stringify(cstops));
@@ -1366,18 +1373,38 @@ function applyChecks(day, fields) {
   localStorage.setItem(qkey(day),JSON.stringify(quiz));
   localStorage.setItem('wayon-plan-'+day,JSON.stringify(plan));
   if(day===cur) {st=done;ps=plan;qz=quiz;qzDay=day;}
-  if(day===cur || (mode==='notice' && day===curN)) render();
+  if(day===cur || (mode==='chasing' && day===today) || (mode==='notice' && day===curN)) render();
+}
+async function refreshPublishedChasing(module) {
+  const response=await fetch('./workspace-source.html?chasing='+Date.now(),{cache:'no-store',credentials:'omit'});
+  if(!response.ok)throw Error('CHASING_SNAPSHOT_UNAVAILABLE');
+  const snapshot=module.publishedChasing(await response.text());
+  const incoming=Date.parse(snapshot._chasing_checked_at),current=Date.parse(DATA._chasing_checked_at);
+  if(Number.isFinite(current) && incoming<current)return;
+  if(JSON.stringify(snapshot._chasing)===JSON.stringify(DATA._chasing) && snapshot._chasing_checked_at===DATA._chasing_checked_at)return;
+  for(const key of ['_chasing','_chasing_checked_at','_chasing_status','_chasing_unknown']){
+    if(Object.hasOwn(snapshot,key))DATA[key]=snapshot[key];else delete DATA[key];
+  }
+  CHASING=JSON.parse(JSON.stringify(snapshot._chasing));
+  for(const item of privateChasingItems){
+    let row=CHASING.find(x=>x.name===item.name);
+    if(!row){row={name:item.name,uncompleted_details:[],uncompleted_ids:[],uncompleted:[]};CHASING.push(row);}
+    if(!row.uncompleted_details.some(x=>String(x.id)===String(item.id))){
+      row.uncompleted_details.push(item);(row.uncompleted_ids ||= []).push(item.id);(row.uncompleted ||= []).push(item.title);
+    }
+  }
+  if(mode==='chasing')render();
 }
 const syncEl=document.getElementById('sync');
 const setSync=t=>{syncEl.textContent=t;};
 function push(){checkCloud?.observe(cur);}
-function watch(){void checkCloud?.open(cur);}
+function watch(){void checkCloud?.open(currentCloudDay());}
 function npush(){checkCloud?.observe(curN);}
 
 function nwatch(){if(checkCloud && !noticeOpened.has(curN)){noticeOpened.add(curN);void checkCloud.open(curN);}}
 function currentCloudDay(){return mode==='notice' ? curN : mode==='chasing' ? today : cur;}
 setSync('本机已保存；正在检查云端配置…');
-import('./checks-sync.mjs?v=20261020-01').then(m=>m.boot({config: {"enabled": true, "url": "https://qcjyllyatiawkftwqfjf.supabase.co", "key": "sb_publishable_ljy3uwM1zNach70iWxqWdA_QYVGLvEo"},capture:captureChecks,apply:applyChecks,status:setSync,currentDay:currentCloudDay,hydrate:(client,owner)=>hydrateChasing(m,client,owner)}))
+import('./checks-sync.mjs?v=20261020-01').then(m=>m.boot({config: {"enabled": true, "url": "https://qcjyllyatiawkftwqfjf.supabase.co", "key": "sb_publishable_ljy3uwM1zNach70iWxqWdA_QYVGLvEo"},capture:captureChecks,apply:applyChecks,status:setSync,currentDay:currentCloudDay,hydrate:(client,owner)=>hydrateChasing(m,client,owner),refreshPublished:()=>refreshPublishedChasing(m)}))
 .then(x=>{checkCloud=x;if(mode==='notice')nwatch();else watch();}).catch(err=>{
   console.error("Cloud boot error:", err);
   const msg=(err&&(err.message||String(err)))||"";
@@ -1476,3 +1503,4 @@ import('./checks-sync.mjs?v=20261020-01').then(m=>m.boot({config: {"enabled": tr
 </script>
 </body>
 </html>
+
