@@ -197,6 +197,23 @@ export async function boot({config,capture,apply,status,currentDay,hydrate,refre
   }
   const client=sdk.createClient(config.url,config.key);
   let engine=null, user=null;
+  const announceRefresh=async()=>{
+    if(typeof client.functions?.invoke!=='function' || !engine || !user)return;
+    const invoke=async(action,request_id)=>{
+      if(!engine || !user)throw Error('LOGIN_REQUIRED');
+      const {data,error}=await client.functions.invoke('wayon-refresh',{body:{action,...(request_id?{request_id}: {})}});
+      if(error || !data){
+        let code='BACKEND_UNAVAILABLE';try{code=(await error?.context?.json())?.error||code;}catch{}
+        throw Error(code);
+      }
+      return data;
+    };
+    const api={enabled:false,start:id=>invoke('start',id),status:id=>invoke('status',id),
+      reloadPublished:async()=>{if(!refreshPublished)throw Error('PAGE_UNAVAILABLE');return refreshPublished();}};
+    globalThis.wayonRefreshAPI=api;
+    try{api.enabled=(await invoke('capabilities')).enabled===true;}catch{}
+    window.dispatchEvent(new Event('wayon-refresh-ready'));
+  };
   const login=button('登录',()=>passwordLogin({client,emailInput:email,passwordInput:password,status,connect}));
   password.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();login.click();}});
   const retry=button('重新连接',async()=>{if(engine) await engine.refresh(currentDay());else await connect((await client.auth.getSession()).data.session);});
@@ -221,9 +238,9 @@ export async function boot({config,capture,apply,status,currentDay,hydrate,refre
     else document.body.append(panel);
   }
   async function connect(session) {
-    if(!session) {if(settings)settings.open=true;panel.open=true;engine=null;email.hidden=password.hidden=login.hidden=false;status('请登录以保存云端记录；现有本机记录保留');return false;}
+    if(!session) {delete globalThis.wayonRefreshAPI;window.dispatchEvent(new Event('wayon-refresh-ready'));if(settings)settings.open=true;panel.open=true;engine=null;email.hidden=password.hidden=login.hidden=false;status('请登录以保存云端记录；现有本机记录保留');return false;}
     const {data,error}=await client.from('wayon_owner').select('user_id');
-    if(error || data?.length!==1 || data[0].user_id!==session.user.id) {if(settings)settings.open=true;panel.open=true;engine=null;email.hidden=password.hidden=login.hidden=false;status('此账号没有工作台权限');return false;}
+    if(error || data?.length!==1 || data[0].user_id!==session.user.id) {delete globalThis.wayonRefreshAPI;window.dispatchEvent(new Event('wayon-refresh-ready'));if(settings)settings.open=true;panel.open=true;engine=null;email.hidden=password.hidden=login.hidden=false;status('此账号没有工作台权限');return false;}
     if(user && user!==session.user.id) {location.reload();return;}
     user=session.user.id;
     if(!engine) {
@@ -233,6 +250,7 @@ export async function boot({config,capture,apply,status,currentDay,hydrate,refre
       email.hidden=password.hidden=login.hidden=true;panel.open=false;
       await engine.open(currentDay());
     }
+    void announceRefresh();
   }
   await connect((await client.auth.getSession()).data.session);
   client.auth.onAuthStateChange((event,session)=>{
@@ -254,6 +272,7 @@ export async function boot({config,capture,apply,status,currentDay,hydrate,refre
   window.addEventListener('online',async()=>{if(engine)await engine.flush();await refresh();});
   window.addEventListener('focus',()=>void refresh());
   window.addEventListener('pageshow',()=>void refresh());
+  window.addEventListener('wayon-refresh-published',()=>{publishedAt=0;void refresh();});
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void refresh();});
   document.addEventListener('focusout',()=>setTimeout(()=>void refresh(),0));
   void refresh();
