@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Wayon 任务清单 10/21</title>
+<title>Wayon 任务清单 __TD__</title>
 <style id="wayon-apple">
 /* Wayon · macOS-inspired workspace. Shared by the generated task and room templates. */
 :root{color-scheme:light;--bg:#f5f5f7;--card:#fff;--card-elevated:#fff;--fg:#1d1d1f;--fg-secondary:#515156;--muted:#6e6e73;--line:rgba(30,30,40,.09);--line-strong:rgba(30,30,40,.18);--accent:#0071e3;--accent-hover:#0064cb;--accent-subtle:#eaf3ff;--code-bg:#f5f5f7;--done:#248a3d;--done-dark:#207535;--done-bg:#edf7ef;--done-border:#cce6d2;--bad:#d93025;--bad-dark:#b3261e;--bad-bg:#fff1f0;--bad-border:#f1c8c5;--warning-bg:#fff8e8;--warning-fg:#805300;--sidebar:rgba(248,248,250,.94);--shadow-card:0 2px 12px rgba(20,20,35,.035);--sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif}
@@ -1425,6 +1425,54 @@ import('./checks-sync.mjs?v=20261020-01').then(m=>m.boot({config: {"enabled": tr
   translate();
 })();
 
+</script>
+<script>/* Read-only navigation. No credentials, task mutations or business execution. */
+(() => {
+  if (window.wayonWorkflowTools || !document.body.classList.contains('wayon-workbench')) return;
+  window.wayonWorkflowTools = true;
+  const workflowUrl = 'https://github.com/wjdeggzh0316-tech/Wayon/actions/workflows/wayon_completion_refresh.yml';
+  const svg = path => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+path+'</svg>';
+  const refreshIcon = svg('<path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 6a8 8 0 0 1 13.2 3M4.7 15A8 8 0 0 0 18 18"/>');
+  const listIcon = svg('<path d="m3 6 1 1 2-2M9 6h12M3 12l1 1 2-2M9 12h12M3 18l1 1 2-2M9 18h12"/>');
+  const style = document.createElement('style');
+  style.textContent = '.wayon-workbench #workflow-tools{display:flex;align-items:center;gap:6px;flex:none}.wayon-workbench .workflow-icon{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--muted);cursor:pointer;text-decoration:none}.wayon-workbench .workflow-icon:hover{color:var(--accent);border-color:var(--accent)}.wayon-workbench .workflow-icon svg{width:19px;height:19px;pointer-events:none}.wayon-workbench #workflow-guide{box-sizing:border-box;width:min(460px,calc(100vw - 32px));max-height:85vh;padding:24px;border:1px solid var(--line);border-radius:20px;background:var(--card);color:var(--fg);box-shadow:0 20px 80px #0003;font:inherit}.wayon-workbench #workflow-guide::backdrop{background:#0005}.wayon-workbench #workflow-guide h2{font-size:21px;margin:0 0 18px;letter-spacing:-.025em}.wayon-workbench #workflow-guide h3{font-size:13px;color:var(--muted);margin:18px 0 8px}.wayon-workbench #workflow-guide ul{list-style:none;padding:0;margin:0;display:grid;gap:6px}.wayon-workbench #workflow-guide li button{display:block;width:100%;min-height:44px;text-align:left;border:0;border-radius:9px;padding:10px 12px;background:var(--bg);color:var(--fg);font:inherit;cursor:pointer}.wayon-workbench #workflow-guide .workflow-close{float:right}.wayon-workbench #workflow-guide p{font-size:12px;color:var(--muted);line-height:1.65}.wayon-workbench #completion-refresh-state:empty{display:none}.wayon-workbench #completion-refresh-state{font-size:11px;color:var(--muted);line-height:1.5;margin:0;max-width:320px}.wayon-workbench #completion-refresh-state[data-state="unknown"]{color:var(--warn,#9a6700)}@media(max-width:599px){.wayon-workbench .workflow-icon{width:44px;height:44px}.wayon-workbench .workspace-sub-bar{flex-wrap:wrap}.wayon-workbench #completion-refresh-state{max-width:100%;flex-basis:100%}}';
+  document.head.append(style);
+  const guide = document.createElement('dialog'); guide.id = 'workflow-guide'; guide.setAttribute('aria-labelledby','workflow-guide-title');
+  const close = document.createElement('button');close.type='button';close.className='workflow-icon workflow-close';close.title='Close';close.setAttribute('aria-label','Close workflow guide');close.textContent='×';close.onclick=()=>guide.close();
+  const heading=document.createElement('h2');heading.id='workflow-guide-title';heading.textContent='Daily Workflow';guide.append(close,heading);
+  for (const [title, entries] of [
+    ['Before work', [['Tasks · 核对今日安排','tab-plan'],['Assigned · 查看实际已布置','tab-assigned'],['Follow-ups · 处理待催作业','tab-chasing']]],
+    ['During & after work', [['Progress · 记录完成情况与备注','tab-done'],['Vocabulary · 记录线下抽背','tab-quiz'],['Notices · 核对明日课程通知','nav-notice'],['Rooms · 核对教室冲突','nav-rooms']]]
+  ]) {
+    const h=document.createElement('h3');h.textContent=title;const ul=document.createElement('ul');
+    for(const [text,id] of entries){const li=document.createElement('li'),b=document.createElement('button');b.type='button';b.textContent=text;b.onclick=()=>{guide.close();if(id.startsWith('tab-'))document.getElementById('nav-today')?.click();document.getElementById(id)?.click();};li.append(b);ul.append(li);}guide.append(h,ul);
+  }
+  const note=document.createElement('p');note.textContent='此处是操作顺序。复制不等于已发送，页面展示不等于归档成功；18:10 归档结果以当次报告为准。';guide.append(note);
+  const refreshNote=document.createElement('p');refreshNote.textContent='刷新作业状态：打开 GitHub → Run workflow。只重新读取已登记作业，不布置作业、不发微信。完成后重新加载工作台查看核对时间。';guide.append(refreshNote);document.body.append(guide);
+  guide.addEventListener('click',event=>{if(event.target===guide){const r=guide.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)guide.close();}});
+  const tools=document.createElement('div');tools.id='workflow-tools';
+  const refresh=document.createElement('a');refresh.id='completion-refresh';refresh.className='workflow-icon';refresh.href=workflowUrl;refresh.target='_blank';refresh.rel='noopener noreferrer';refresh.title='Refresh homework status · 在 GitHub 点击 Run workflow';refresh.setAttribute('aria-label','Refresh homework status: open GitHub, then Run workflow');refresh.innerHTML=refreshIcon;
+  const button=document.createElement('button');button.type='button';button.className='workflow-icon';button.id='workflow-guide-open';button.title='Daily workflow · 上下班操作顺序';button.setAttribute('aria-label','Open daily workflow');button.innerHTML=listIcon;button.onclick=()=>guide.showModal();tools.append(button,refresh);
+  const status=document.createElement('p');status.id='completion-refresh-state';status.setAttribute('role','status');
+  const mount=()=>{
+    const bar=document.querySelector('.workspace-sub-bar')||document.querySelector('.workspace-top-bar');
+    const rooms=document.body.dataset.mode==='classroom';
+    const target=rooms?(document.querySelector('.sidebar-footer')||document.querySelector('.sidebar')):bar;
+    tools.style.flexDirection=rooms?'column':'row';
+    if(target&&tools.parentNode!==target)target.append(tools);
+    if(bar&&status.parentNode!==bar)bar.append(status);
+  };
+  new MutationObserver(mount).observe(document.body,{childList:true,subtree:true});mount();
+  // One read per page load; this does not start a refresh or poll a backend.
+  fetch('completion-refresh-status.json?v='+Date.now(),{cache:'no-store',credentials:'omit'}).then(r=>r.ok?r.json():null).then(value=>{
+    if(!value||!['verified','unknown','error'].includes(value.status))return;
+    const stamp=value.status==='verified'?value.checked_at:value.last_success_at;
+    const date=typeof stamp==='string'?new Date(stamp):null;
+    const time=date&&!Number.isNaN(date.valueOf())?date.toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false}):'未核实';
+    status.dataset.state=value.status==='verified'?'verified':'unknown';
+    status.textContent=value.status==='verified'?'作业核对（北京时间）：'+time:'最近一次刷新未完成；上次成功核对：'+time;
+  }).catch(()=>{});
+})();
 </script>
 </body>
 </html>
