@@ -1,5 +1,6 @@
 // Public module: no service-role key or Notion credential belongs here.
 export const same = (a,b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+export const MAX_RECOVERY_SNAPSHOTS = 5;
 export function difference(before, after) {
   const patch = {};
   for (const k of new Set([...Object.keys(before), ...Object.keys(after)]))
@@ -16,7 +17,7 @@ export function overlay(fields, operations) {
 export class CheckSync {
   constructor({client,owner,storage,capture,apply,status,uuid}) {
     Object.assign(this,{client,owner,storage,capture,apply,status,uuid});
-    this.days = new Map(); this.running=false;
+    this.days = new Map(); this.running=false;this.deferredRefresh=new Set();
   }
   storageKey(day) {return `wayon-cloud-v1:${this.owner}:${day}`;}
   recoveryKey(day) {return this.storageKey(day)+':recovery';}
@@ -25,8 +26,9 @@ export class CheckSync {
     const key=this.recoveryKey(day),raw=this.storage.getItem(key);
     const backup=raw ? JSON.parse(raw) : {schema:1,owner:this.owner,day,snapshots:[]};
     if(backup.schema!==1 || backup.owner!==this.owner || backup.day!==day || !Array.isArray(backup.snapshots)) throw Error('RECOVERY_INVALID');
-    if(same(backup.snapshots.at(-1)?.fields,fields)) return;
-    backup.snapshots.push({captured_at:new Date().toISOString(),fields});
+    if(!same(backup.snapshots.at(-1)?.fields,fields))
+      backup.snapshots.push({captured_at:new Date().toISOString(),fields});
+    backup.snapshots=backup.snapshots.slice(-MAX_RECOVERY_SNAPSHOTS);
     this.storage.setItem(key,JSON.stringify(backup));
   }
   persist(day) {this.storage.setItem(this.storageKey(day),JSON.stringify(this.days.get(day).queue));}
@@ -82,25 +84,36 @@ export class CheckSync {
       }
       this.status(wrote ? '已保存云端记录' : '已读取云端记录');
     } catch(e) {this.status('云端保存失败，本机待上传；联网后自动重试');}
-    finally {this.running=false;}
+    finally {this.running=false;this.retryDeferredRefreshes();}
+  }
+  retryDeferredRefreshes() {
+    if(this.running) return;
+    for(const day of this.deferredRefresh) {
+      const s=this.days.get(day);
+      if(!s?.ready) {this.deferredRefresh.delete(day);continue;}
+      if(s.queue.length || s.refreshing) continue;
+      this.deferredRefresh.delete(day);void this.refresh(day);
+    }
   }
   async refresh(day) {
     const s=this.days.get(day);if(!s?.ready) return this.open(day);
     if(s.queue.length) return this.flush();
+    if(this.running) {this.deferredRefresh.add(day);return;}
     if(s.refreshing) return s.refreshing;
     s.refreshing=(async()=>{
       try {
         const remote=await this.read(day);
         // A foreground read may finish after a new local edit or a newer RPC.
         // Leave pending drafts and newer revisions intact; the next read catches up.
-        if(s.queue.length || this.running || remote.revision<s.base.revision) return;
+        if(s.queue.length || remote.revision<s.base.revision) return;
+        if(this.running) {this.deferredRefresh.add(day);return;}
         if(remote.revision!==s.base.revision || !same(remote.fields,s.base.fields)) {
           s.base=remote;this.show(day);
         }
         this.status('已读取云端记录');
       } catch(e) {this.status('云端暂不可读，本机记录保留');}
     })();
-    try {await s.refreshing;} finally {s.refreshing=null;}
+    try {await s.refreshing;} finally {s.refreshing=null;this.retryDeferredRefreshes();}
   }
   async resolve(day) {
     const s=this.days.get(day);if(!s?.queue.length || this.running) return;
