@@ -33,6 +33,10 @@
   html=html.replace('这天还没生成','课表待更新；已显示借用预留');
   html=html.replace('.days || {};\\nconst $','.days || {};\nconst $');
   html=html.replace(/import\(\s*(['"])\.\/checks-sync\.mjs(?:\?[^'"]*)?\1\s*\)/g,()=>"import('./checks-sync.mjs?room-release="+Date.now()+"')");
+  if(!html.includes('function roomBlockVisible(')){
+    html=html.replace('function render() {',"// A lesson card appears in its first occupied slot; raw occupancy remains intact.\nfunction roomBlockVisible(x, ri, si) {\n  if (ri === HALL || !x || !/^\\d{2}:\\d{2}-\\d{2}:\\d{2}$/.test(x[3] || '')) return true;\n  for (let previous = 0; previous < si; previous++) {\n    if (items(ri, previous).some(other => other && same(other, x))) return false;\n  }\n  return true;\n}\n"+'function render() {');
+    html=html.replace("arr.forEach((x, i) => c.append(block(x, ri, si, i)));","arr.forEach((x, i) => { if (roomBlockVisible(x, ri, si)) c.append(block(x, ri, si, i)); });");
+  }
   document.open();document.write(html);document.close();
  }catch{document.getElementById('status').textContent='Could not load rooms. Saved records are unchanged.';document.getElementById('retry').hidden=false;}}
  document.getElementById('retry').onclick=load;void load();
