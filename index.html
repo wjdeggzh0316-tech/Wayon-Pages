@@ -22,15 +22,6 @@
       // Critical spacing and subtitle styles apply even when the cloud SDK is unavailable.
       const polish='<style id="wayon-entry-polish">.wayon-workbench .brand-meta{display:none!important}.wayon-workbench #schedule-health:empty{display:none!important}.wayon-workbench:has(#classroom-frame) .workspace-top-bar,.wayon-workbench:has(#classroom-frame) .workspace-sub-bar{display:none!important}.wayon-workbench:has(#classroom-frame) .main-content{padding-top:8px!important}</style>';
       next=next.replace('</head>',polish+'</head>');
-      try {
-        const {formatNoticeRows}=await import('./notice-format.mjs?release='+Date.now());
-        const marker='const DATA = ', start=next.indexOf(marker), end=next.indexOf('; //',start);
-        if(start>=0&&end>start){
-          const data=JSON.parse(next.slice(start+marker.length,end));
-          for(const day of Object.keys(data._notice||{}))data._notice[day]=formatNoticeRows(data._notice[day]);
-          next=next.slice(0,start+marker.length)+JSON.stringify(data).replace(/<\//g,'<\\/')+next.slice(end);
-        }
-      } catch { /* Keep the workspace available when the optional formatter is unavailable. */ }
       document.open();document.write(next);document.close();
     } catch {
       document.getElementById('loading').textContent='Could not load the workspace. Your saved records are unchanged.';
