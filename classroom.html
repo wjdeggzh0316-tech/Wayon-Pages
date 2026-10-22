@@ -174,7 +174,7 @@ body.wayon-workbench{margin:0;font-size:15px;line-height:1.55}
   <div class="hint">只改这张表，不会改小SaaS 课表、不写备忘录。课程块可以按住拖到别的格子。</div>
 </div>
 <script>
-const ALL = ({"days": {"2026-10-22": {"iso": "2026-10-22", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [], []], [[], [], [], [["丁嘉宝", "听说", "王银屏", "17:00-19:00"]]], [[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []]], "teachers": ["王银屏"], "online": ["George吴洋亿 SAT语法 08:30"], "unknown": [], "date": "10/22"}, "2026-10-23": {"iso": "2026-10-23", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []]], "teachers": [], "online": ["「郭璟Jack 」 SAT阅读 08:30"], "unknown": [], "date": "10/23"}}}).days || {};
+const ALL = ({"days": {"2026-10-22": {"iso": "2026-10-22", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [], []], [[], [], [], [["丁嘉宝", "听说", "王银屏", "17:00-19:00"]]], [[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []]], "teachers": ["王银屏"], "online": ["George吴洋亿 SAT语法 08:30"], "unknown": [], "date": "10/22"}, "2026-10-23": {"iso": "2026-10-23", "rows": ["1号教室", "2号教室", "3号教室", "5号教室", "校长室", "大厅（自习）"], "segs": [["A", "08:30", "10:30"], ["B", "10:40", "12:40"], ["C", "13:30", "15:30"], ["D", "15:40", "17:40"]], "cells": [[[], [], [], []], [[], [], [], [["李培生", "听力", "王银屏", "16:00-17:00"]]], [[], [], [], []], [[], [], [], []], [[], [], [], []], [[], [], [], []]], "teachers": ["王银屏"], "online": ["George吴洋亿 SAT语法 08:30", "「郭璟Jack 」 SAT阅读 08:30"], "unknown": [], "date": "10/23"}}}).days || {};
 const $ = id => document.getElementById(id);
 const el = (t, c, x) => { const e = document.createElement(t); if (c) e.className = c; if (x !== undefined) e.textContent = x; return e; };
 // 2026-10-05 Leo：今天、明天两天可切换；打开默认今天（北京时间），不记上次看的日期
@@ -222,6 +222,14 @@ function block(x, ri, si, idx) {
   if (x[3]) b.append(el("div", "tt", x[3]));
   b.addEventListener("pointerdown", e => startDrag(e, b, x, ri, si, idx));
   return b;
+}
+// A lesson card appears in its first occupied slot; raw occupancy remains intact.
+function roomBlockVisible(x, ri, si) {
+  if (ri === HALL || !x || !/^\d{2}:\d{2}-\d{2}:\d{2}$/.test(x[3] || '')) return true;
+  for (let previous = 0; previous < si; previous++) {
+    if (items(ri, previous).some(other => other && same(other, x))) return false;
+  }
+  return true;
 }
 function render() {
   g.textContent = "";
@@ -276,7 +284,7 @@ function render() {
           }
         }
         if (hasConflict) { c.classList.add("bad"); bad++; }
-        arr.forEach((x, i) => c.append(block(x, ri, si, i)));
+        arr.forEach((x, i) => { if (roomBlockVisible(x, ri, si)) c.append(block(x, ri, si, i)); });
       }
       c.onclick = () => { if (!dragged) openSheet(ri, si); };
       c.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSheet(ri, si); } };
@@ -286,7 +294,7 @@ function render() {
   $("cf").className = DATA.missing ? "miss" : (bad || maxHall > SEATS) ? "no" : "ok";
   $("cf").textContent = DATA.missing ? "这天还没生成" : (bad ? "⚠️ " + bad + " 处教室冲突" : "✓ 无冲突") + (maxHall > SEATS ? " · ⚠️ 大厅超员" : " · 大厅最多 " + maxHall + "/" + SEATS);
   const dl = $("days"); dl.textContent = "";
-  [...new Set([today, tomorrow, ...Object.keys(ALL).filter(d => d >= today)])].sort().slice(0, 3).forEach(d => {
+  [...new Set([today, tomorrow, ...Object.keys(ALL).filter(d => d >= today)])].sort().slice(0, 7).forEach(d => {
     const b = el("button", d === curD ? "on" : "", relD(d) + mdD(d)); b.type = "button"; b.onclick = () => { if (d !== curD) useDay(d); }; dl.append(b); });
 }
 // 拖拽：按住课程块移动到别的格子（鼠标和手指都可以）；只动了一点点算点击
@@ -445,5 +453,5 @@ import("./checks-sync.mjs?v=20261020-01").then(m => m.boot({
 useDay(today);
 </script>
 
-<!--WAYON-SCHEDULE-HEALTH--><div role="status" style="padding:8px;color:#854d0e;background:#fef3c7;font-size:13px">2026-10-22 课表核对时间：2026-10-22T07:05:15.452537+08:00<br>2026-10-23 课表核对时间：2026-10-22T07:05:15.452537+08:00</div><!--/WAYON-SCHEDULE-HEALTH--></body>
+<!--WAYON-SCHEDULE-HEALTH--><div role="status" style="padding:8px;color:#854d0e;background:#fef3c7;font-size:13px">2026-10-22 课表核对时间：2026-10-22T18:12:24.455238+08:00<br>2026-10-23 课表核对时间：2026-10-22T18:12:24.455238+08:00</div><!--/WAYON-SCHEDULE-HEALTH--></body>
 </html>
