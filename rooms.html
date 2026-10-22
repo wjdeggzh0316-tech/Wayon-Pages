@@ -2,13 +2,35 @@
 <title>Wayon Rooms</title><style>body{font:15px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;background:#f5f5f7;color:#1d1d1f;padding:24px}</style>
 <p id="status" role="status">Loading rooms…</p><button id="retry" hidden>Retry</button>
 <script>
-// Code-only loader. Existing classroom DATA stays on this origin; no credentials or records are embedded.
 (() => {
  async function load(){try{
   const response=await fetch('./classroom.html?room-release='+Date.now(),{cache:'no-store'});
   if(!response.ok)throw Error('ROOM_UNAVAILABLE');
   let html=await response.text();
-  // Repair the known generated JS separator, leaving every course/room datum unchanged.
+  const reservations=await fetch('./room-reservations.json?room-release='+Date.now(),{cache:'no-store'});
+  if(!reservations.ok)throw Error('BOOKINGS_UNAVAILABLE');
+  const entries=(await reservations.json()).bookings;
+  if(!Array.isArray(entries))throw Error('BOOKINGS_INVALID');
+  const marker='const ALL = (', a=html.indexOf(marker)+marker.length, z=html.indexOf(').days || {};',a);
+  if(a<marker.length || z<a)throw Error('ROOM_DATA_INVALID');
+  const payload=JSON.parse(html.slice(a,z)), days=payload.days;
+  const base=days[Object.keys(days).sort().pop()];
+  if(!base?.rows || !base?.segs)throw Error('ROOM_DATA_INVALID');
+  for(const b of entries){
+   if(!/^\d{4}-\d{2}-\d{2}$/.test(b.day)||!base.rows.includes(b.room)||!/^\d{2}:\d{2}$/.test(b.start)||!/^\d{2}:\d{2}$/.test(b.end)||b.start>=b.end||typeof b.label!=='string'||typeof b.course!=='string')throw Error('BOOKING_INVALID');
+   if(!days[b.day]) days[b.day]={iso:b.day,rows:base.rows,segs:base.segs,cells:base.rows.map(()=>base.segs.map(()=>[['课表待更新','','','']])),teachers:[],online:[],unknown:[],missing:true,booking_preview:true};
+   const day=days[b.day], ri=day.rows.indexOf(b.room);
+   day.segs.forEach((seg,si)=>{
+    const stop=seg[0]==='D'?'21:30':seg[2];if(!(b.start<stop&&b.end>seg[1]))return;
+    const rows=day.cells[ri][si].filter(x=>x?.[0]!=='课表待更新');
+    const span=x=>x[3]||seg[1]+'-'+seg[2];
+    if(!rows.some(x=>x[0]===b.label && span(x)===b.start+'-'+b.end))rows.push([b.label,b.course+'（课表外）','',b.start+'-'+b.end]);
+    day.cells[ri][si]=rows;
+   });
+  }
+  html=html.slice(0,a)+JSON.stringify(payload).replace(/<\//g,'<\\/')+html.slice(z);
+  html=html.replace('.sort().slice(0, 3).forEach(d =>','.sort().slice(0, 7).forEach(d =>');
+  html=html.replace('这天还没生成','课表待更新；已显示借用预留');
   html=html.replace('.days || {};\\nconst $','.days || {};\nconst $');
   html=html.replace(/import\(\s*(['"])\.\/checks-sync\.mjs(?:\?[^'"]*)?\1\s*\)/g,()=>"import('./checks-sync.mjs?room-release="+Date.now()+"')");
   document.open();document.write(html);document.close();
