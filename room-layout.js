@@ -8,8 +8,8 @@
   .wayon-workbench:has(#classroom-frame) .app-brand .brand-title{font-size:52px!important;line-height:1!important;letter-spacing:-.06em}
   .wayon-workbench:has(#classroom-frame) .workspace-heading{display:none!important}
   .wayon-workbench:has(#classroom-frame) .main-content{max-width:none!important;padding:12px 24px 18px!important}
-  .wayon-workbench:has(#classroom-frame) #list{width:100%;columns:1}
-  .wayon-workbench #classroom-frame{height:calc(100dvh - 144px)!important;min-height:620px!important;border:0!important;border-radius:16px!important}
+  .wayon-workbench:has(#classroom-frame) #list{width:100%;max-width:none!important;columns:1}
+  .wayon-workbench #classroom-frame{width:100%!important;max-width:none!important;height:calc(100dvh - 144px)!important;min-height:620px!important;border:0!important;border-radius:16px!important}
   body.wayon-room{background:var(--card);padding:16px!important;gap:10px!important}
   .wayon-room .top{gap:8px 12px;min-height:44px;padding-bottom:10px;flex:none}
   .wayon-room .top>b{font-size:18px}.wayon-room #cf{font-size:13px;line-height:1.4}
