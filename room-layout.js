@@ -4,12 +4,14 @@
   const style = document.createElement('style');
   style.id = 'wayon-room-layout';
   style.textContent = `
-  .wayon-workbench:has(#classroom-frame) .app-brand{padding:12px 28px!important;border-radius:0 0 16px 16px;align-items:center;height:78px}
-  .wayon-workbench:has(#classroom-frame) .app-brand .brand-title{font-size:52px!important;line-height:1!important;letter-spacing:-.06em}
-  .wayon-workbench:has(#classroom-frame) .workspace-heading{display:none!important}
-  .wayon-workbench:has(#classroom-frame) .main-content{max-width:none!important;padding:12px 24px 18px!important}
-  .wayon-workbench:has(#classroom-frame) #list{width:100%;max-width:none!important;columns:1}
-  .wayon-workbench #classroom-frame{width:100%!important;max-width:none!important;height:calc(100dvh - 144px)!important;min-height:620px!important;border:0!important;border-radius:16px!important}
+  body.wayon-workbench .app-layout{grid-template-rows:78px minmax(0,1fr)}
+  body.wayon-workbench .app-layout .app-brand{box-sizing:border-box;padding:12px 28px!important;border-radius:0 0 16px 16px;align-items:center;height:78px;min-height:78px}
+  body.wayon-workbench .app-layout .app-brand .brand-title{font-size:52px!important;line-height:1!important;letter-spacing:-.06em}
+  body.wayon-workbench .app-layout .workspace-heading{display:none!important}
+  body.wayon-workbench .app-layout .main-content{max-width:none!important;padding:12px 24px 18px!important;min-height:0}
+  body.wayon-workbench .app-layout #list{width:100%;max-width:none!important}
+  .wayon-workbench:has(#classroom-frame) #list{columns:1}
+  body.wayon-workbench .app-layout #classroom-frame{display:block;width:100%!important;max-width:none!important;height:var(--room-frame-height,calc(100dvh - 140px))!important;min-height:0!important;border:0!important;border-radius:16px!important}
   body.wayon-room{background:var(--card);padding:16px!important;gap:10px!important}
   .wayon-room .top{gap:8px 12px;min-height:44px;padding-bottom:10px;flex:none}
   .wayon-room .top>b{font-size:18px}.wayon-room #cf{font-size:13px;line-height:1.4}
@@ -17,8 +19,8 @@
   .wayon-room .legend{gap:6px 14px;font-size:12px;min-height:20px;align-items:center;flex:none}
   .wayon-room .legend span{white-space:nowrap}.wayon-room .legend i{width:10px;height:10px;border-radius:3px}
   .wayon-room .room-scroll{border-radius:12px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
-  .wayon-room .room-scroll>.grid{min-width:1000px!important;min-height:590px;grid-template-columns:76px repeat(5,minmax(120px,1fr)) minmax(230px,1.3fr)!important;grid-template-rows:32px repeat(4,minmax(130px,1fr))!important;gap:8px!important}
-  .wayon-room .grid>.h{font-size:14px;line-height:1.4;padding-bottom:4px}
+  .wayon-room .room-scroll>.grid{min-width:880px!important;min-height:0;grid-template-columns:72px repeat(5,minmax(100px,1fr)) minmax(210px,1.2fr)!important;grid-template-rows:42px repeat(4,minmax(0,1fr))!important;gap:8px!important}
+  .wayon-room .grid>.h{font-size:14px;line-height:20px;padding:2px 0 4px;align-self:stretch;display:flex;flex-direction:column;justify-content:flex-end;overflow:visible}.wayon-room .grid>.h small{font-size:11px;line-height:14px}
   .wayon-room .grid>.r{font-size:14px;line-height:1.45;position:sticky;left:0;background:var(--card);z-index:2}
   .wayon-room .r .hcnt{font-size:11px;font-weight:400;white-space:nowrap}
   .wayon-room .c{border-radius:12px;padding:5px;font-size:14px;line-height:1.45}
@@ -44,14 +46,29 @@
   .room-info[open]>.room-info-panel,.room-info:hover>.room-info-panel,.room-info:focus-within>.room-info-panel{display:block}
   .room-info-panel p{margin:0 0 8px}.room-info-panel [role=status]{padding:8px 0 0!important;background:transparent!important;border:0!important;font-size:11px!important}
   .room-info-panel #sync{white-space:normal;display:block;margin-top:6px}
-  @media(max-width:700px){.wayon-workbench:has(#classroom-frame) .app-brand{height:58px;padding:10px 16px!important}.wayon-workbench:has(#classroom-frame) .app-brand .brand-title{font-size:36px!important}.wayon-workbench:has(#classroom-frame) .main-content{padding:8px!important}.wayon-workbench #classroom-frame{min-height:680px!important;height:calc(100dvh - 104px)!important}body.wayon-room{padding:10px!important}.wayon-room .top>b{font-size:17px}.wayon-room #cf{font-size:12px}.wayon-room .days{order:4;flex-basis:100%;margin:0}.wayon-room .days button{min-height:44px;height:44px;flex:1}.room-info>summary{width:44px;height:44px}.room-info-panel{right:0;width:min(320px,calc(100vw - 32px))}.wayon-room .room-scroll>.grid{min-height:600px}.wayon-room .legend{font-size:11px;gap:5px 10px}.wayon-room .c.seat,.wayon-room .k.chip,.wayon-room .hallbox>.seat.room-seat-add{min-height:44px}}
-  .wayon-workbench:has(#classroom-frame) #workflow-tools,.wayon-workbench:has(#classroom-frame) .sidebar #sync{display:none!important}
+  @media(min-width:1024px){body.wayon-workbench .app-layout .sidebar{height:calc(100dvh - 78px)}}
   .wayon-room .sheet{max-height:calc(100dvh - 16px);overflow-y:auto}
-  @media(max-width:700px){.wayon-workbench:has(#classroom-frame) .sidebar{padding:8px 16px!important;gap:4px!important}.wayon-workbench:has(#classroom-frame) .sidebar-top{display:none!important}.wayon-workbench:has(#classroom-frame) .sidebar-footer{padding:0!important;gap:0!important}.wayon-workbench #classroom-frame{height:calc(100dvh - 220px)!important;min-height:480px!important}.wayon-room .sheet button{min-height:44px}}
-  @media(max-width:700px){.wayon-workbench:has(#classroom-frame) .app-layout{display:block!important}.wayon-workbench:has(#classroom-frame) .sidebar{position:relative!important;top:auto!important;left:auto!important;width:100%!important;height:auto!important;overflow:visible!important;display:flex!important;flex-direction:column!important;border-right:0}.wayon-workbench:has(#classroom-frame) #tabs{flex-direction:row!important;justify-content:space-between}.wayon-workbench:has(#classroom-frame) #tabs button{width:auto!important;flex:1;justify-content:center}.wayon-workbench:has(#classroom-frame) .main-content{margin-left:0!important}.wayon-workbench:has(#classroom-frame) .sidebar-footer{position:static!important;display:flex!important;flex-direction:row!important;align-items:center}.wayon-workbench:has(#classroom-frame) .sidebar .cloud-panel{position:static!important;max-height:none!important}}
+  @media(max-height:650px) and (min-width:880px){body.wayon-room{padding:12px!important;gap:6px!important}.wayon-room .top{padding-bottom:6px;min-height:38px}.wayon-room .legend{font-size:11px}.wayon-room .k{padding:7px 9px;gap:1px}.wayon-room .k .w{font-size:14px;line-height:1.3}.wayon-room .k .s{font-size:12px;line-height:1.3}.wayon-room .k .tt,.wayon-room .room-teacher{font-size:11px}.wayon-room .hallbox{gap:3px;grid-auto-rows:minmax(28px,auto)}.wayon-room .c.seat,.wayon-room .k.chip,.wayon-room .hallbox>.seat.room-seat-add{min-height:28px}.wayon-room .k.chip{padding:3px 5px}.wayon-room .foot{font-size:11px}}
+  @media(max-width:1023px){body.wayon-workbench .sidebar-footer{gap:6px!important}body.wayon-workbench .sidebar #workflow-tools{flex-direction:row!important;gap:4px!important;margin:0!important}body.wayon-workbench .app-layout .app-brand{padding:12px 16px!important}body.wayon-workbench .app-layout .main-content{padding:12px 14px 18px!important}}
+  @media(max-width:700px){body.wayon-workbench .app-layout .app-brand{height:58px;min-height:58px;padding:10px 16px!important}body.wayon-workbench .app-layout .app-brand .brand-title{font-size:36px!important}body.wayon-workbench .app-layout .main-content{padding:8px!important}body.wayon-room{padding:10px!important}.wayon-room .top>b{font-size:17px}.wayon-room #cf{font-size:12px}.wayon-room .days{order:4;flex-basis:100%;margin:0}.wayon-room .days button{min-height:44px;height:44px;flex:1}.room-info>summary{width:44px;height:44px}.room-info-panel{right:0;width:min(320px,calc(100vw - 32px))}.wayon-room .room-scroll>.grid{min-height:540px;grid-template-rows:42px repeat(4,minmax(116px,1fr))!important}.wayon-room .legend{font-size:11px;gap:5px 10px}.wayon-room .c.seat,.wayon-room .k.chip,.wayon-room .hallbox>.seat.room-seat-add{min-height:44px}.wayon-room .sheet button{min-height:44px}}
   `;
   document.head.append(style);
   const setup = () => {
+    if (document.body.classList.contains('wayon-workbench')) {
+      let scheduled=false;
+      const fit=()=>{
+        scheduled=false;
+        const frame=document.getElementById('classroom-frame');if(!frame)return;
+        const top=frame.getBoundingClientRect().top+window.scrollY;
+        const minimum=window.innerWidth<=700?620:430;
+        const height=Math.max(minimum,Math.floor(window.innerHeight-top-18));
+        const value=height+'px';if(frame.style.getPropertyValue('--room-frame-height')!==value)frame.style.setProperty('--room-frame-height',value);
+      };
+      const schedule=()=>{if(!scheduled){scheduled=true;requestAnimationFrame(fit);}};
+      new MutationObserver(schedule).observe(document.body,{childList:true,subtree:true});
+      new ResizeObserver(schedule).observe(document.querySelector('.app-layout')||document.body);
+      window.addEventListener('resize',schedule);schedule();return;
+    }
     if (!document.body.classList.contains('wayon-room')) return;
     const top = document.querySelector('.top'), grid = document.getElementById('g');
     if (!top || !grid) return;
