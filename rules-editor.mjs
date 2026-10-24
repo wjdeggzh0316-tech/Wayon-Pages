@@ -1,1674 +1,1419 @@
-export function canonical(value){
-  if(Array.isArray(value))return '['+value.map(canonical).join(',')+']';
-  if(value && typeof value==='object')return '{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+canonical(value[k])).join(',')+'}';
+import {
+  clone,
+  clean,
+  SYSTEMS,
+  todayShanghai,
+  inspectTask,
+  taskLines,
+  manualTask,
+  setManual,
+  moveManual,
+  changedOwners,
+  validateDraft,
+  previewRules,
+  publishedContext,
+} from "./rules-model.mjs?v=20261024-ux2";
+export function canonical(value) {
+  if (Array.isArray(value)) return "[" + value.map(canonical).join(",") + "]";
+  if (value && typeof value === "object")
+    return (
+      "{" +
+      Object.keys(value)
+        .sort()
+        .map((k) => JSON.stringify(k) + ":" + canonical(value[k]))
+        .join(",") +
+      "}"
+    );
   return JSON.stringify(value);
 }
-
-export async function saveCatalog(client,owner,base,payload){
-  const {data,error}=await client.from('wayon_rule_catalog')
-    .update({payload,revision:base.revision+1})
-    .eq('owner_id',owner)
-    .eq('revision',base.revision)
-    .select('revision')
+export async function saveCatalog(client, owner, base, payload) {
+  const { data, error } = await client
+    .from("wayon_rule_catalog")
+    .update({ payload, revision: base.revision + 1 })
+    .eq("owner_id", owner)
+    .eq("revision", base.revision)
+    .select("revision")
     .maybeSingle();
-  if(error || !data)throw Error('CONFLICT');
-  const read=await client.from('wayon_rule_catalog')
-    .select('revision,payload')
-    .eq('owner_id',owner)
+  if (error || !data) throw Error("CONFLICT");
+  const read = await client
+    .from("wayon_rule_catalog")
+    .select("revision,payload")
+    .eq("owner_id", owner)
     .single();
-  if(read.error || read.data.revision!==base.revision+1 || canonical(read.data.payload)!==canonical(payload))throw Error('READBACK_FAILED');
+  if (
+    read.error ||
+    !read.data ||
+    read.data.revision !== base.revision + 1 ||
+    canonical(read.data.payload) !== canonical(payload)
+  )
+    throw Error("READBACK_FAILED");
   return read.data;
 }
-
-const SYSTEM_CONFIG = {
-  ielts: { label: 'IELTS', en: 'IELTS', category: 'ielts', bg: '#eaf3ff', fg: '#0071e3', border: 'rgba(0,113,227,0.25)' },
-  toefl: { label: 'TOEFL', en: 'TOEFL', category: 'toefl', bg: '#f3e8ff', fg: '#7c3aed', border: 'rgba(124,58,237,0.25)' },
-  sat: { label: 'SAT', en: 'SAT', category: 'sat', bg: '#fef3c7', fg: '#b45309', border: 'rgba(180,83,9,0.25)' },
-  ability: { label: 'Ability', en: 'Ability', category: 'other', bg: '#ecfdf5', fg: '#059669', border: 'rgba(5,150,105,0.25)' },
-  other: { label: 'Other', en: 'Other', category: 'other', bg: '#f3f4f6', fg: '#4b5563', border: 'rgba(75,85,99,0.25)' },
-  general: { label: 'Other', en: 'General', category: 'other', bg: '#f3f4f6', fg: '#4b5563', border: 'rgba(75,85,99,0.25)' }
-};
-
-const STUDENT_SYSTEM_MAP = {
-  // 雅思
-  '黄子珊': 'ielts', '聂彦如': 'ielts', '陈书进': 'ielts', '周家琪': 'ielts',
-  '潘韬薄': 'ielts', '苏顺平': 'ielts', '戴荧': 'ielts', '汤馨然': 'ielts',
-  '马浩岚': 'ielts', '岳璐宇': 'ielts', '祝乐言': 'ielts', '徐嘉言': 'ielts',
-  '李培生': 'ielts', '李培生雅思体验课': 'ielts', '陈芊妤': 'ielts',
-  // 托福
-  'frank': 'toefl', 'leo': 'toefl', 'iven': 'toefl', 'dana': 'toefl',
-  '王子居': 'toefl', 'andy': 'toefl', '何昊隆': 'toefl', 'dino': 'toefl',
-  '黄号然': 'toefl', 'tiger': 'toefl', '卢泰戈': 'toefl',
-  // SAT
-  'charlotte': 'sat', 'jack': 'sat', '郭璟jack': 'sat', 'george': 'sat',
-  'george吴洋亿': 'sat', '盛馨雨': 'sat', '沈思齐': 'sat',
-  // 语言能力提升 (Leo 2026-10-24：代佳鸣、赖晨曦为语言能力提升)
-  '丁嘉宝': 'ability', '赵梓轩': 'ability', '代佳鸣': 'ability', '赖晨曦': 'ability',
-  '李洪睿': 'ability', '李洪睿john': 'ability', '王明泽': 'ability', '李子熙': 'ability',
-  'ray': 'ability',
-  // 校内 / 高中 (归入其他)
-  'amy': 'other'
-};
-
-// 2026-10-24 Leo 铁律：随课任务以班级为单位，合班学员不拆开（Leo&Iven、彦如&陈书进等）
-export const MULTI_CLASS_SPECS = [
-  {
-    key: 'leo&iven',
-    name: 'Leo & Iven',
-    system: 'toefl',
-    members: ['leo', 'iven', 'ivan', 'leo&ivan', 'leo&iven', 'leo&iven-托福强化班'],
-    defaultRule: {
-      name: 'Leo & Iven',
-      system: 'toefl',
-      vocab_task: '系统内托福单词100个（50*2）',
-      attendance_tasks: [],
-      subject_rules: {
-        '口语': ['托福阅读一套', '托福听力一套'],
-        '阅读': ['托福听力一套', '托福口语一套'],
-        '听力': ['5篇完形填空', '托福口语一套'],
-        '写作': ['5篇完形填空', '托福口语一套', '托福听力一套']
-      }
-    }
-  },
-  {
-    key: '聂彦如&陈书进',
-    name: '聂彦如 & 陈书进',
-    system: 'ielts',
-    members: ['聂彦如', '陈书进', '彦如', '书进', '张彦如', '陈书进/聂彦如', '聂彦如&陈书进', '聂彦如&陈书进-雅思强化班'],
-    defaultRule: {
-      name: '聂彦如 & 陈书进',
-      system: 'ielts',
-      vocab_task: '系统内单词任务（听力*50+阅读*50）',
-      attendance_tasks: []
-    }
-  },
-  {
-    key: '周家琪/潘韬薄/苏顺平',
-    name: '周家琪 / 潘韬薄 / 苏顺平',
-    system: 'ielts',
-    members: ['周家琪', '潘韬薄', '苏顺平', '周家琪/潘韬薄/苏顺平', '三人班', '雅思基础班', '26年秋季雅思基础班'],
-    defaultRule: {
-      name: '周家琪 / 潘韬薄 / 苏顺平',
-      system: 'ielts',
-      vocab_task: '系统内单词任务（听力*50+阅读*50）',
-      attendance_tasks: []
-    }
-  },
-  {
-    key: '戴荧&汤馨然',
-    name: '戴荧 & 汤馨然',
-    system: 'ielts',
-    members: ['戴荧', '汤馨然', '戴荧&汤馨然', '戴荧&汤馨然-雅思强化'],
-    defaultRule: {
-      name: '戴荧 & 汤馨然',
-      system: 'ielts',
-      vocab_task: '系统内单词任务（听力*15+阅读*15）',
-      attendance_tasks: []
-    }
-  },
-  {
-    key: '王明泽&李子熙',
-    name: '王明泽 & 李子熙',
-    system: 'ability',
-    members: ['王明泽', '李子熙', '王明泽&李子熙', '王明泽&李子熙-sat'],
-    defaultRule: {
-      name: '王明泽 & 李子熙',
-      system: 'ability',
-      vocab_task: null,
-      attendance_tasks: []
-    }
-  },
-  {
-    key: '王子居&andy',
-    name: '王子居 & Andy',
-    system: 'toefl',
-    members: ['王子居', 'andy', '王子居&andy', '王子居&andy-sat'],
-    defaultRule: {
-      name: '王子居 & Andy',
-      system: 'toefl',
-      vocab_task: '系统内托福单词100个（50*2）',
-      attendance_tasks: []
-    }
-  }
+export function inferStudentSystem(name, rule, text) {
+  if (rule?.system) return rule.system;
+  const value = String(text || "") + " " + String(rule?.["课程"] || "");
+  if (/SAT/i.test(value)) return "sat";
+  if (/托福|TOEFL/i.test(value)) return "toefl";
+  if (/雅思|IELTS|王陆|真经/.test(value)) return "ielts";
+  return "other";
+}
+// Presentation only: no alias cleanup or rule migration runs while loading.
+export const MULTI_CLASS_SPECS = [];
+const WEEKDAYS = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"];
+const PRESETS = [
+  ["30个单词", "30个单词"],
+  ["50个单词", "50个单词"],
+  ["IELTS 听读各50词", "系统内单词任务（听力*50+阅读*50）"],
+  ["TOEFL 100词", "系统内托福单词100个（50*2）"],
+  ["SAT 100词", "系统内单词任务（SAT核心词汇100词，选择题模式）"],
+  ["完整阅读一套", "一套完整阅读"],
+  ["听力一套", "一套听力"],
+  ["写作一套", "一套写作"],
+  ["TOEFL口语一套", "托福口语一套"],
+  ["TOEFL完形5篇", "5篇完形填空"],
+  ["校内单词背诵", "校内单词背诵"],
 ];
-
-const clean = s => String(s || '').trim().replace(/[【】「」\s]/g, '').toLowerCase();
-const clone = obj => typeof structuredClone === 'function' ? structuredClone(obj) : JSON.parse(JSON.stringify(obj));
-
-export function inferStudentSystem(name, attRule, taskText) {
-  if (attRule && typeof attRule === 'object') {
-    if (attRule.system && SYSTEM_CONFIG[attRule.system]) {
-      return attRule.system;
-    }
-    if (attRule.system === 'school') return 'other';
-    const c = String(attRule['课程'] || '').toLowerCase();
-    if (c.includes('雅思')) return 'ielts';
-    if (c.includes('托福')) return 'toefl';
-    if (c.includes('sat')) return 'sat';
-    if (c.includes('能力') || c.includes('提升') || c.includes('语法')) return 'ability';
-    if (c.includes('校内') || c.includes('高中')) return 'other';
-  }
-  const k = clean(name);
-  if (STUDENT_SYSTEM_MAP[k]) return STUDENT_SYSTEM_MAP[k];
-  for (const [key, sys] of Object.entries(STUDENT_SYSTEM_MAP)) {
-    if (k.includes(key) || key.includes(k)) return sys;
-  }
-  const text = String(taskText || '').toLowerCase();
-  if (text.includes('雅思') || text.includes('真经') || text.includes('王陆') || text.includes('听力*50')) return 'ielts';
-  if (text.includes('托福') || text.includes('完形')) return 'toefl';
-  if (text.includes('sat')) return 'sat';
-  if (text.includes('能力') || text.includes('提升') || text.includes('语法课')) return 'ability';
-  if (text.includes('校内') || text.includes('高中')) return 'other';
-  return 'other';
-}
-
-function injectStyles(document) {
-  if (document.getElementById('wayon-rules-editor-styles')) return;
-  const style = document.createElement('style');
-  style.id = 'wayon-rules-editor-styles';
-  style.textContent = `
+const STYLE = `
 .wayon-rules-dialog:not([open]){display:none!important}
-.wayon-rules-dialog[open]{position:fixed!important;inset:0!important;margin:auto!important;z-index:99999!important;display:flex!important;flex-direction:column!important;box-sizing:border-box;width:min(1140px,calc(100vw - 24px));height:min(92vh,940px);max-height:92vh;padding:0;border:1px solid var(--line-strong,rgba(0,0,0,0.12));border-radius:20px;background:var(--bg,#f5f5f7);color:var(--fg,#1d1d1f);box-shadow:0 28px 90px rgba(0,0,0,0.35);overflow:hidden;font-family:var(--sans,-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","PingFang SC",sans-serif)}
-.wayon-rules-dialog::backdrop{background:rgba(0,0,0,0.45);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-
-.rules-wrapper{display:flex;flex-direction:column;height:100%;min-height:0;width:100%;overflow:hidden;background:var(--bg,#f5f5f7)}
-
-/* Top Header */
-.rules-header{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 22px;background:var(--card,#fff);border-bottom:1px solid var(--line,rgba(0,0,0,0.08));flex:none;box-sizing:border-box}
-.rules-title-box{display:flex;align-items:center;gap:10px;min-width:0;flex:none}
-.rules-title{font-size:18px;font-weight:700;letter-spacing:-.02em;margin:0;color:var(--fg,#1d1d1f);white-space:nowrap}
-.rules-rev{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:650;padding:2px 7px;border-radius:6px;background:var(--accent-subtle,#eaf3ff);color:var(--accent,#0071e3);font-variant-numeric:tabular-nums}
-
-/* Two Primary Categories: Segmented Tabs in Header */
-.rules-main-tabs{display:inline-flex;align-items:center;padding:3px;background:var(--bg,#f0f0f2);border-radius:10px;border:1px solid var(--line,rgba(0,0,0,0.06));gap:2px}
-.rules-main-tab{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 14px;border:0;border-radius:8px;background:transparent;color:var(--muted,#666);font-size:13px;font-weight:550;cursor:pointer;transition:all .15s ease;white-space:nowrap}
-.rules-main-tab:hover{color:var(--fg,#1d1d1f)}
-.rules-main-tab.active{background:var(--card,#fff);color:var(--fg,#1d1d1f);font-weight:650;box-shadow:0 1px 3px rgba(0,0,0,0.08)}
-.rules-main-tab .tab-badge{display:inline-block;padding:1px 6px;border-radius:10px;background:rgba(0,0,0,0.06);color:var(--muted,#555);font-size:11px;font-weight:600}
-.rules-main-tab.active .tab-badge{background:var(--accent-subtle,#eaf3ff);color:var(--accent,#0071e3)}
-
-.rules-header-actions{display:flex;align-items:center;gap:8px;flex:none}
-.rules-btn-save{min-height:32px;height:32px;padding:0 14px;border-radius:8px;border:0;background:var(--accent,#0071e3);color:#fff;font-size:12.5px;font-weight:600;cursor:pointer;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
-.rules-btn-save:hover{filter:brightness(1.08)}
-.rules-btn-save:disabled{opacity:.5;cursor:default}
-.rules-btn-reload{min-height:32px;height:32px;padding:0 10px;border-radius:8px;border:1px solid var(--line-strong,rgba(0,0,0,0.15));background:var(--card,#fff);color:var(--fg,#1d1d1f);font-size:12.5px;font-weight:500;cursor:pointer}
-.rules-btn-reload:hover{background:var(--line,rgba(0,0,0,0.05))}
-.rules-close{width:30px;height:30px;border-radius:50%;border:0;background:var(--line,rgba(0,0,0,0.06));color:var(--muted,#666);font-size:18px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s ease;line-height:1}
-.rules-close:hover{background:var(--line-strong,rgba(0,0,0,0.12));color:var(--fg,#1d1d1f)}
-
-/* Status Bar */
-.rules-status-bar{padding:6px 22px;background:var(--card,#fff);border-bottom:1px solid var(--line,rgba(0,0,0,0.06));font-size:11.5px;line-height:1.4;color:var(--muted,#666);display:flex;align-items:center;justify-content:space-between;flex:none}
-.rules-status-bar.alert{color:var(--bad,#d93025);background:#fff1f0}
-
-/* Sub-toolbar with filter clusters */
-.rules-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;padding:10px 22px;background:var(--card,#fff);border-bottom:1px solid var(--line,rgba(0,0,0,0.08));flex:none}
-.rules-search{position:relative;width:190px;min-width:150px;flex:none}
-.rules-search input{width:100%;height:30px;padding:0 10px 0 28px;border:1px solid var(--line-strong,rgba(0,0,0,0.15));border-radius:8px;background:var(--bg,#f5f5f7);color:var(--fg,#1d1d1f);font-size:12px;outline:none;box-sizing:border-box}
-.rules-search input:focus{border-color:var(--accent,#0071e3);box-shadow:0 0 0 2px var(--accent-subtle,#eaf3ff)}
-.rules-search svg{position:absolute;left:8px;top:8px;width:14px;height:14px;color:var(--muted,#888);pointer-events:none}
-
-.filter-cluster{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex:1 1 auto}
-.filter-group{display:inline-flex;align-items:center;gap:5px}
-.filter-label{font-size:11px;font-weight:600;color:var(--muted,#777);text-transform:uppercase;letter-spacing:.02em;white-space:nowrap}
-.filter-pills{display:inline-flex;align-items:center;gap:2px;background:var(--bg,#f0f0f2);padding:2px;border-radius:8px;border:1px solid var(--line,rgba(0,0,0,0.05))}
-.filter-pill{height:25px;padding:0 9px;border-radius:6px;border:0;background:transparent;color:var(--muted,#666);font-size:11.5px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .12s ease}
-.filter-pill:hover{color:var(--fg,#1d1d1f)}
-.filter-pill.active{background:var(--card,#fff);color:var(--accent,#0071e3);font-weight:650;box-shadow:0 1px 2px rgba(0,0,0,0.06)}
-
-.rules-btn-add{margin-left:auto;height:28px;padding:0 10px;border-radius:7px;border:1px dashed var(--accent,#0071e3);background:var(--accent-subtle,#eaf3ff);color:var(--accent,#0071e3);font-size:11.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .15s;white-space:nowrap}
-.rules-btn-add:hover{background:var(--accent,#0071e3);color:#fff}
-
-/* Content Area */
-.rules-content{flex:1;overflow-y:auto;padding:18px 22px;display:flex;flex-direction:column;gap:16px;overscroll-behavior:contain}
-.rules-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(420px,1fr));gap:16px}
-@media(max-width:599px){.rules-grid{grid-template-columns:1fr}}
-
-/* Generic Rule Card */
-.rules-card{background:var(--card,#fff);border:1px solid var(--line,rgba(0,0,0,0.08));border-radius:16px;padding:18px 20px;box-shadow:0 1px 3px rgba(0,0,0,0.02);display:flex;flex-direction:column;gap:12px;transition:all .15s ease}
-.rules-card:hover{border-color:var(--line-strong,rgba(0,0,0,0.18));box-shadow:0 3px 12px rgba(0,0,0,0.04)}
-.rules-card.is-paused{background:rgba(250,250,252,0.8);border-color:rgba(0,0,0,0.06)}
-.rules-card.is-paused .rules-card-title{color:var(--muted,#777)}
-
-.rules-card-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:2px}
-.rules-student-badge{display:flex;align-items:center;gap:8px;min-width:0;flex-wrap:wrap}
-.rules-card-title{font-size:19px;font-weight:700;letter-spacing:-.015em;margin:0;color:var(--fg,#1d1d1f);white-space:nowrap}
-.rules-sys-tag{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:6px;border:1px solid transparent;white-space:nowrap}
-
-/* Universal vs Special Rule Tag */
-.rule-type-tag{font-size:11px;font-weight:600;padding:2px 7px;border-radius:6px;white-space:nowrap}
-.rule-type-tag.standard{background:#f3f4f6;color:#6b7280}
-.rule-type-tag.special{background:#fff8e8;color:#b45309;border:1px solid #fde68a}
-
-/* Status Pill Toggle */
-.rules-state-toggle{display:inline-flex;align-items:center;gap:4px;height:28px;padding:0 10px;border-radius:7px;border:1px solid transparent;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s ease;white-space:nowrap}
-.rules-state-toggle.active{background:#edf7ef;color:#1e7e34;border-color:#c3e6cb}
-.rules-state-toggle.paused{background:#fff1f0;color:#c53030;border-color:#fed7d7}
-
-.rules-section-hdr{display:flex;align-items:center;gap:6px;font-size:13.5px;font-weight:650;color:var(--fg,#1d1d1f);margin:2px 0 0}
-.rules-section-hdr svg{width:15px;height:15px;color:var(--muted,#666)}
-
-/* Form controls inside cards */
-.rules-field{display:flex;flex-direction:column;gap:5px}
-.rules-label{font-size:12px;font-weight:600;color:var(--muted,#666);display:flex;align-items:center;justify-content:space-between}
-.rules-input,.rules-textarea,.rules-select{box-sizing:border-box;width:100%;border:1px solid var(--line-strong,rgba(0,0,0,0.14));border-radius:8px;background:var(--bg,#f8f8fa);color:var(--fg,#1d1d1f);font-size:13px;padding:7px 10px;outline:none;font-family:inherit;transition:border-color .15s}
-.rules-input:focus,.rules-textarea:focus,.rules-select:focus{border-color:var(--accent,#0071e3);background:#fff;box-shadow:0 0 0 2px var(--accent-subtle,#eaf3ff)}
-.rules-textarea{min-height:64px;resize:vertical;line-height:1.5}
-
-/* Execution frequency / format buttons */
-.rules-seg-group{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
-.rules-seg-btn{height:28px;padding:0 12px;border-radius:6px;border:1px solid var(--line-strong,rgba(0,0,0,0.14));background:var(--card,#fff);color:var(--muted,#666);font-size:12px;font-weight:500;cursor:pointer;transition:all .12s}
-.rules-seg-btn:hover{color:var(--fg,#1d1d1f);background:var(--line,rgba(0,0,0,0.04))}
-.rules-seg-btn.on{background:var(--accent,#0071e3);color:#fff;border-color:var(--accent,#0071e3);font-weight:600;box-shadow:0 1px 3px rgba(0,113,227,0.25)}
-
-.rules-days-group{display:flex;gap:4px;align-items:center;flex-wrap:wrap;margin-top:4px}
-.rules-day-btn{width:28px;height:28px;padding:0;border-radius:6px;border:1px solid var(--line-strong,rgba(0,0,0,0.14));background:var(--card,#fff);color:var(--muted,#666);font-size:12px;font-weight:550;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .12s}
-.rules-day-btn.on{background:var(--accent,#0071e3);color:#fff;border-color:var(--accent,#0071e3);font-weight:650;box-shadow:0 1px 3px rgba(0,113,227,0.25)}
-
-.rules-dates-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-@media(max-width:480px){.rules-dates-row{grid-template-columns:1fr}}
-
-/* Special text rule banner (replaces bulky dropdowns) */
-.rules-special-box{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;background:#fff8e8;border:1px solid #fde68a;border-radius:8px;font-size:12px;color:#854d0e}
-.rules-special-box .sp-left{display:flex;align-items:center;gap:6px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rules-special-box .sp-actions{display:flex;gap:6px;flex:none}
-.rules-special-btn{background:transparent;border:0;color:var(--accent,#0071e3);font-size:11.5px;font-weight:600;cursor:pointer;padding:0}
-.rules-special-btn.reset{color:var(--muted,#666)}
-.rules-special-btn:hover{text-decoration:underline}
-
-.rules-special-drawer{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px;background:var(--bg,#f8f8fa);border-radius:8px;border:1px dashed var(--line-strong,rgba(0,0,0,0.15));margin-top:2px}
-@media(max-width:480px){.rules-special-drawer{grid-template-columns:1fr}}
-
-.rules-card-foot{display:flex;align-items:center;justify-content:space-between;padding-top:10px;border-top:1px solid var(--line,rgba(0,0,0,0.06));margin-top:4px}
-.rules-btn-del{border:0;background:transparent;color:var(--bad,#d93025);font-size:12px;font-weight:550;cursor:pointer;padding:4px 8px;border-radius:5px;transition:all .12s}
-.rules-btn-del:hover{background:#fff1f0}
-
-/* Attendance card specifics */
-.rules-att-tasks{display:flex;flex-direction:column;gap:6px;margin-top:2px}
-.rules-att-task-row{display:flex;align-items:center;gap:6px}
-.rules-task-badge{font-size:10.5px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.05);color:var(--muted,#666);flex-shrink:0;letter-spacing:0.02em}
-.rules-task-badge.vocab{background:var(--accent-subtle,#eaf3ff);color:var(--accent,#0071e3)}
-.rules-att-task-del{width:24px;height:24px;border:0;background:transparent;color:var(--muted,#888);cursor:pointer;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
-.rules-att-task-del:hover{color:var(--bad,#d93025);background:#fff1f0}
-.rules-quick-presets{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px;margin-bottom:6px}
-.rules-preset-chip{height:24px;padding:0 8px;border-radius:5px;border:1px solid var(--line-strong,rgba(0,0,0,0.14));background:var(--card,#fff);color:var(--muted,#555);font-size:11.5px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;transition:all .12s}
-.rules-preset-chip:hover{color:var(--accent,#0071e3);border-color:var(--accent,#0071e3);background:var(--accent-subtle,#eaf3ff)}
-.rules-quick-sel{width:28px;height:28px;padding:0;text-align:center;text-align-last:center;font-size:13px;line-height:26px;color:var(--ink,#1d1d1f);background:var(--card,#fff);border:1px solid var(--line-strong,rgba(0,0,0,0.14));border-radius:6px;cursor:pointer;flex-shrink:0;transition:all .15s ease;-webkit-appearance:none;appearance:none;box-sizing:border-box}
-.rules-quick-sel:hover{border-color:var(--accent,#0071e3);background:var(--accent-subtle,#eaf3ff)}
-
-/* Subject Rules */
-.rules-subj-section{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line,rgba(0,0,0,0.1));display:flex;flex-direction:column;gap:8px}
-.rules-subj-header{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:650;color:var(--ink,#1d1d1f)}
-.rules-subj-box{background:var(--bg,#f8f8fa);border:1px solid var(--line,rgba(0,0,0,0.08));border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
-.rules-subj-box-head{display:flex;align-items:center;justify-content:space-between}
-.rules-subj-tag{font-size:11.5px;font-weight:600;padding:2px 7px;border-radius:4px;background:#eef5fc;color:#185abc;border:1px solid #d2e3fc}
-.rules-subj-remove{font-size:11.5px;color:var(--bad,#d93025);background:none;border:none;cursor:pointer;padding:2px 5px;border-radius:4px}
-.rules-subj-remove:hover{background:#fff1f0}
-.rules-subj-chips{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:4px}
-
-/* Auth form */
-.rules-auth-card{max-width:380px;margin:50px auto;padding:24px;border-radius:16px;border:1px solid var(--line,rgba(0,0,0,0.1));background:var(--card,#fff);box-shadow:0 10px 30px rgba(0,0,0,0.05);display:flex;flex-direction:column;gap:14px}
-.rules-auth-card h3{margin:0;font-size:17px;font-weight:650}
-
-.rules-empty-state{padding:48px 20px;text-align:center;color:var(--muted);font-size:13.5px;background:var(--card);border-radius:14px;border:1px solid var(--line,rgba(0,0,0,0.08));grid-column:1/-1}
+.wayon-rules-dialog[open]{position:fixed!important;inset:0!important;margin:auto!important;padding:0!important;border:1px solid #dfe4ec;border-radius:20px;width:min(1180px,calc(100vw - 32px))!important;max-width:calc(100vw - 32px)!important;height:min(92dvh,960px)!important;max-height:92dvh!important;overflow:hidden!important;background:#f6f8fb;color:#202b3c;box-shadow:0 30px 100px #12213e40}
+.wayon-rules-dialog::backdrop{background:#17243c70;backdrop-filter:blur(5px)}
+.rules-wrapper{height:100%;min-height:0;display:flex;flex-direction:column;overflow:hidden;background:#f6f8fb;color:#202b3c;font:14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC',sans-serif;text-align:left}
+.rules-wrapper *{box-sizing:border-box}.rules-wrapper button,.rules-wrapper input,.rules-wrapper select,.rules-wrapper textarea{font:inherit}.rules-wrapper button{cursor:pointer}.rules-wrapper button:disabled{opacity:.5;cursor:default}
+.rules-header{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:20px 24px 14px;background:white;border-bottom:1px solid #e6eaf0;flex:none}.rules-title{margin:0;font-size:22px;letter-spacing:-.035em;font-weight:650}.rules-subtitle{margin:3px 0 0;color:#68758a;font-size:12px}.rules-close{width:40px;height:40px;border:1px solid #e3e8ef;border-radius:12px;background:#fff;color:#58677c;font-size:22px}
+.rules-main-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-top:13px;grid-column:1/-1}.rules-main-tab{border:1px solid #dfe5ed;background:#fff;color:#607087;padding:8px 14px;border-radius:10px;min-height:38px}.rules-main-tab.active{background:#edf3ff;border-color:#b8ccf4;color:#2454a5;font-weight:600}
+.rules-toolbar>.rules-select{width:auto;min-width:130px;max-width:200px}.rules-toolbar .rules-search{max-width:480px}.wayon-rules-dialog[open]{outline:none}.rules-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 24px;background:#fff;flex:none}.rules-search{flex:1 1 200px;min-width:0}.rules-search input{width:100%}.rules-control,.rules-search input{border:1px solid #dce3ec;border-radius:9px;background:#fff;padding:8px 10px;color:#26364c;min-height:38px;max-width:100%}.rules-btn{border:1px solid #dce3ec;background:#fff;color:#40536d;border-radius:9px;padding:8px 12px;min-height:38px}.rules-btn:hover,.rules-close:hover{background:#f0f4fa}.rules-btn-primary,.rules-btn-save{background:#285cba;color:white;border:1px solid #285cba;font-weight:600}.rules-btn-save{border-radius:10px;padding:10px 18px;min-height:42px;white-space:nowrap}.rules-btn-danger{color:#a13636;background:#fff7f7;border-color:#efd4d4}.rules-btn-small{font-size:12px;padding:5px 9px;min-height:30px}
+.rules-status-bar{padding:0 24px 12px;color:#64758d;font-size:12px;background:white;flex:none}.rules-status-bar.alert{color:#ad3636}.rules-content{overflow:auto;min-height:0;flex:1;padding:20px 24px;overscroll-behavior:contain}.rules-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;align-items:start}
+.rules-card{background:#fff;border:1px solid #e0e6ef;border-radius:15px;min-width:0;overflow:hidden}.rules-card.is-paused{background:#fafbfc}.rules-card-summary{display:flex;gap:12px;align-items:center;padding:17px 18px;cursor:pointer;list-style:none}.rules-card-summary::-webkit-details-marker{display:none}.rules-card-summary:after{content:'›';margin-left:auto;font-size:24px;color:#8e9db0;transform:rotate(0deg)}.rules-card[open]>.rules-card-summary:after{transform:rotate(90deg)}.rules-card-heading{min-width:0;flex:1}.rules-card-title{font-size:17px;line-height:1.45;font-weight:650;margin:0;overflow-wrap:anywhere;letter-spacing:-.02em}.rules-card-meta{display:flex;flex-wrap:wrap;gap:5px;margin:6px 0}.rules-tag{font-size:11px;line-height:1.4;padding:3px 7px;border-radius:6px;background:#eff3f8;color:#596c86;white-space:nowrap}.rules-tag.good{background:#eaf5ef;color:#2c7650}.rules-tag.warn{background:#fff4df;color:#946015}.rules-tag.bad{background:#fff0f0;color:#a23d3d}.rules-card-brief{font-size:12px;color:#7a879a;line-height:1.5}.rules-card-body{padding:0 18px 18px;border-top:1px solid #edf0f5}.rules-section{margin-top:18px}.rules-section-title{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;font-weight:650;margin:0 0 9px}.rules-hint{font-size:12px;color:#7a879a;margin:5px 0;line-height:1.6}.rules-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.rules-field{display:flex;flex-direction:column;gap:5px;min-width:0}.rules-field>span{font-size:12px;color:#65778e}.rules-input,.rules-select,.rules-textarea{width:100%;min-width:0;border:1px solid #dce3ec;border-radius:9px;padding:8px 10px;background:#fff;color:#283a53;outline:none}.rules-input:focus,.rules-select:focus,.rules-textarea:focus{border-color:#6896e9;box-shadow:0 0 0 3px #e9f1ff}.rules-textarea{resize:vertical;min-height:90px}.rules-task-row{display:grid;grid-template-columns:minmax(0,1fr) 94px 36px;gap:6px;margin:7px 0;align-items:start}.rules-task-row .rules-input{font-size:13px}.rules-mode{font-size:11px;padding:9px 4px}.rules-delete{border:0;border-radius:8px;background:#f6f8fb;color:#a56a6a;min-height:36px;font-size:20px}.rules-task-message{grid-column:1/-1;font-size:11px;margin:0;color:#8b5d1b}.rules-subject{background:#f8fafd;border:1px solid #e5eaf2;border-radius:11px;padding:10px;margin:10px 0}.rules-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.rules-days{display:flex;gap:5px;flex-wrap:wrap}.rules-day{border:1px solid #e0e6ef;background:white;color:#63748c;border-radius:8px;min-width:32px;min-height:32px}.rules-day[aria-pressed=true]{background:#eaf1ff;color:#2454a5;border-color:#b5caf1}.rules-card-foot{display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;border-top:1px solid #edf0f5;padding-top:14px;margin-top:18px}
+.rules-footer{display:flex;justify-content:space-between;align-items:center;gap:14px;background:#fff;border-top:1px solid #e1e6ef;padding:14px 24px;flex:none;box-shadow:0 -4px 18px #23385705}.rules-save-note{font-size:12px;color:#6f7f95}.rules-changes{margin:0;max-width:500px}.rules-changes summary{cursor:pointer;color:#344e74;font-size:13px}.rules-changes p{margin:5px 0;color:#78869a;font-size:12px}.rules-error-list{background:#fff6f5;color:#a03b33;border:1px solid #f0d5d0;border-radius:10px;padding:12px 16px;font-size:12px;grid-column:1/-1}.rules-error-list:empty{display:none}.rules-empty{text-align:center;padding:40px 15px;color:#8190a4;grid-column:1/-1}
+.rules-preview{border:1px solid #dce6f5;border-radius:14px;background:white;padding:16px;margin-bottom:18px}.rules-preview h3{margin:0 0 9px;font-size:16px}.rules-preview-rows{margin-top:12px;display:flex;flex-direction:column;gap:8px}.rules-preview-row{padding:9px 11px;border-radius:9px;background:#f5f8fc;font-size:13px;overflow-wrap:anywhere}.rules-preview-row small{display:block;color:#70819a;font-size:11px;margin-top:3px}.rules-auth{max-width:380px;margin:40px auto;display:flex;flex-direction:column;gap:12px}.rules-auth h3{margin:0}.rules-override{border:1px solid #e0e7f0;border-radius:12px;padding:14px;background:white;margin-bottom:12px}.rules-override-head{display:flex;justify-content:space-between;gap:10px;align-items:start}.rules-checkbox{display:flex;align-items:center;gap:6px;font-size:12px;color:#62748d}.rules-preview-selects{display:flex;flex-wrap:wrap;align-items:end;gap:10px}
+@media(max-width:780px){.rules-toolbar .rules-search{max-width:none}.rules-grid{grid-template-columns:1fr}.rules-header{padding:16px}.rules-toolbar{padding:12px 16px}.rules-status-bar{padding:0 16px 10px}.rules-content{padding:14px 16px}.rules-footer{padding:12px 16px}.rules-title{font-size:20px}.rules-main-tab{padding:7px 10px;flex:1;text-align:center}.rules-main-tabs{gap:5px}.rules-search{flex-basis:100%}.rules-card-summary{padding:14px}.rules-card-body{padding:0 14px 16px}}
+@media(max-width:480px){.wayon-rules-dialog[open]{width:100vw!important;max-width:100vw!important;height:100dvh!important;max-height:100dvh!important;border:0;border-radius:0}.rules-task-row{grid-template-columns:minmax(0,1fr) 44px}.rules-task-row .rules-mode{grid-column:1;font-size:12px;min-height:36px}.rules-task-row .rules-delete{grid-column:2;grid-row:1/3;min-height:44px}.rules-footer{display:grid;grid-template-columns:1fr;gap:8px;align-items:center;padding-bottom:max(12px,env(safe-area-inset-bottom))}.rules-footer>.rules-actions{display:grid;grid-template-columns:1fr 1.3fr;width:100%}.rules-footer .rules-changes{max-width:none}.rules-changes{max-width:180px}.rules-btn,.rules-control,.rules-input,.rules-select,.rules-close,.rules-btn-save{min-height:44px}.rules-btn-small{min-height:36px}.rules-fields{grid-template-columns:1fr}.rules-preview-selects .rules-field{width:100%}.rules-control{min-width:0}.rules-save-note{font-size:10px}.rules-main-tab{font-size:12px}.rules-close{width:44px}}
+@media(prefers-reduced-motion:no-preference){.rules-btn,.rules-card-summary{transition:background .15s ease}}
 `;
-  document.head.append(style);
-}
 
-export async function mountRules({ document, client, container, onClose }) {
-  injectStyles(document);
-  const root = container || document.getElementById('rules') || document.body;
-
+export async function mountRules({
+  document,
+  client,
+  container,
+  onClose,
+  getContext = publishedContext,
+}) {
+  if (!document.getElementById("wayon-rules-editor-styles")) {
+    const style = document.createElement("style");
+    style.id = "wayon-rules-editor-styles";
+    style.textContent = STYLE;
+    document.head.append(style);
+  }
+  const root = container || document.getElementById("rules") || document.body;
   const state = {
     base: null,
     draft: null,
     owner: null,
-    category: 'attendance', // 'attendance' (随课规则) | 'frequency' (非随课规则)
-    // Non-attendance (frequency) filters requested by Leo:
-    // 1: 状态 (全部 | 进行中 | 暂停)
-    freqStatus: 'all', // 'all' | 'active' | 'paused'
-    // 2: 通用学科分类 (全部 | 雅思 | 托福 | SAT | 其他)
-    freqSystem: 'all', // 'all' | 'ielts' | 'toefl' | 'sat' | 'other'
-    // 3: 形式 (全部 | 自习 | 线上 - 线下即自习，仅保留自习与线上)
-    freqMode: 'all', // 'all' | '自习' | '线上'
-    // Attendance filters:
-    attSystem: 'all',
-    search: '',
-    status: '正在连接…',
-    isAlert: false,
-    modified: false
+    tab: "attendance",
+    search: "",
+    system: "all",
+    filter: "all",
+    open: new Set(),
+    status: "正在读取规则…",
+    alert: false,
+    errors: [],
+    preview: false,
+    previewKey: "",
+    day: todayShanghai(),
+    subject: "",
+    context: {},
+    busy: false,
   };
-
-  const status = (msg, isAlert = false) => {
-    state.status = msg;
-    state.isAlert = isAlert;
-    const bar = root.querySelector('.rules-status-bar');
-    if (bar) {
-      bar.textContent = msg;
-      bar.classList.toggle('alert', isAlert);
-    }
-    const revEl = root.querySelector('.rules-rev');
-    if (revEl && state.base) {
-      revEl.textContent = `v${state.base.revision}`;
+  const node = (tag, text, cls) => {
+    const e = document.createElement(tag);
+    if (text !== undefined) e.textContent = text;
+    if (cls) e.className = cls;
+    return e;
+  };
+  const button = (text, fn, cls = "") => {
+    const e = node("button", text, "rules-btn " + cls);
+    e.type = "button";
+    e.onclick = fn;
+    return e;
+  };
+  const tag = (text, tone = "") => node("span", text, "rules-tag " + tone);
+  const status = (text, alert = false) => {
+    state.status = text;
+    state.alert = alert;
+    const s = root.querySelector(".rules-status-bar");
+    if (s) {
+      s.textContent = text;
+      s.classList.toggle("alert", alert);
     }
   };
-
-  async function load() {
-    status('正在读取统一规则库…');
-    const { data: { session } } = await client.auth.getSession();
-    if (!session) {
-      state.owner = null;
-      render();
-      return;
-    }
-    state.owner = session.user.id;
-    const { data, error } = await client
-      .from('wayon_rule_catalog')
-      .select('revision, payload')
-      .eq('owner_id', state.owner)
-      .maybeSingle();
-
-    if (error || !data) {
-      status('未找到规则数据，请核对权限或网络配置', true);
-      render();
-      return;
-    }
-
-    state.base = data;
-    state.draft = clone(data.payload);
-
-    // 自动清洗与规范化随课及非随课规则
-    if (state.draft && state.draft.attendance_rules) {
-      const att = state.draft.attendance_rules;
-      // 1. 历史笔误矫正：张彦如 -> 聂彦如
-      if (att['张彦如']) {
-        const r = att['张彦如'];
-        r.name = '聂彦如';
-        r.system = 'ielts';
-        att['聂彦如'] = r;
-        delete att['张彦如'];
-        state.modified = true;
-      }
-      // 2. 清理重复别名（解决多张 Ray / Jack 卡片问题）
-      if (att['ray英文综合能力提升']) {
-        delete att['ray英文综合能力提升'];
-        state.modified = true;
-      }
-      if (att['郭璟jack'] && att['郭璟jack-sat']) {
-        delete att['郭璟jack'];
-        state.modified = true;
-      }
-      if (att['郭璟jack-sat']) att['郭璟jack-sat'].name = '郭璟 Jack';
-      if (att['郭璟jack']) att['郭璟jack'].name = '郭璟 Jack';
-      // 3. 学科体系归属对齐（Leo 2026-10-24 明确指示）
-      if (att['代佳鸣']) att['代佳鸣'].system = 'ability';
-      if (att['赖晨曦']) att['赖晨曦'].system = 'ability';
-      if (att['何昊隆']) att['何昊隆'].system = 'toefl';
-      if (att['黄号然']) att['黄号然'].system = 'toefl';
-      if (att['tiger']) att['tiger'].system = 'toefl';
-      if (att['Tiger']) att['Tiger'].system = 'toefl';
-      // 4. 随课任务以班级为单位，合班学员不拆开（Leo 2026-10-24 明确指示）
-      for (const spec of MULTI_CLASS_SPECS) {
-        let targetRule = att[spec.key];
-        if (!targetRule) {
-          for (const m of spec.members) {
-            if (att[m]) {
-              targetRule = { ...att[m], name: spec.name, system: spec.system };
-              break;
-            }
-          }
-        }
-        if (!targetRule) {
-          targetRule = clone(spec.defaultRule);
-        } else {
-          targetRule.name = spec.name;
-          if (!targetRule.system) targetRule.system = spec.system;
-          if (spec.key === 'leo&iven' && !targetRule.subject_rules && spec.defaultRule.subject_rules) {
-            targetRule.subject_rules = clone(spec.defaultRule.subject_rules);
-            state.modified = true;
-          }
-        }
-        att[spec.key] = targetRule;
-
-        // 彻底删除班内单人拆开的随课规则条目（leo/iven/彦如/陈书进等）
-        for (const m of spec.members) {
-          if (m !== spec.key && att[m]) {
-            delete att[m];
-            state.modified = true;
-          }
-        }
-      }
-    }
-
-    // 非随课规则去重与清洗（解决多张陈芊妤/马浩岚卡片问题）
-    if (state.draft && Array.isArray(state.draft.frequency_rows)) {
-      let seenCQY = false;
-      const seenSignatures = new Set();
-      const cleanedRows = [];
-      for (const r of state.draft.frequency_rows) {
-        const stu = clean(r['学员']);
-        const task = clean(r['任务内容']);
-
-        // 0. 赖晨曦为纯随课规则（在 attendance_rules 中维护），不属于非随课任务，彻底排除
-        if (stu.includes('赖晨曦')) {
-          state.modified = true;
-          continue;
-        }
-
-        // 1. 陈芊妤历史重复条目去重：只保留 1 条
-        if (stu.includes('陈芊妤') || stu.includes('芊妤')) {
-          if (seenCQY) {
-            state.modified = true;
-            continue;
-          }
-          seenCQY = true;
-        }
-
-        // 2. 马浩岚（浩然）：剔除旧的单纯「每天50个单词」过期条目，保留最新的综合自习任务
-        if (stu.includes('马浩岚') || stu.includes('马浩然') || stu.includes('浩岚') || stu.includes('浩然')) {
-          if (task.includes('每天50个单词') || r['重复'] === '每天') {
-            state.modified = true;
-            continue;
-          }
-        }
-
-        // 3. 通用完全重复保护
-        const sig = `${stu}||${task}||${r['形式']}||${r['重复']}`;
-        if (seenSignatures.has(sig)) {
-          state.modified = true;
-          continue;
-        }
-        seenSignatures.add(sig);
-
-        // 学科体系对齐
-        if (stu === '何昊隆' || stu === '黄号然' || stu === 'tiger' || stu === '卢泰戈') {
-          if (!r.system) r.system = 'toefl';
-        } else if (stu === '代佳鸣') {
-          if (!r.system) r.system = 'ability';
-        }
-
-        cleanedRows.push(r);
-      }
-      state.draft.frequency_rows = cleanedRows;
-    }
-
-    state.modified = false;
-    status(`✓ 已加载统一规则 · 版本 v${data.revision}`);
-    render();
+  const owners = () =>
+    state.base && state.draft
+      ? changedOwners(state.base.payload, state.draft)
+      : [];
+  function updateDirty() {
+    const names = [
+        ...new Set([
+          ...owners(),
+          ...Array.from(state.blankFrequency?.keys() || []).map(
+            (id) =>
+              state.draft.frequency_rows.find((r) => r.id === id)?.["学员"] ||
+              "新增定期任务",
+          ),
+        ]),
+      ],
+      summary = root.querySelector(".rules-change-summary"),
+      detail = root.querySelector(".rules-change-detail"),
+      save = root.querySelector(".rules-btn-save");
+    if (summary)
+      summary.textContent = names.length
+        ? "有 " + names.length + " 处规则未保存"
+        : "所有修改已保存";
+    if (detail) detail.textContent = names.join("、");
+    if (save) save.disabled = state.busy || !names.length;
   }
-
-  function markModified() {
-    state.modified = true;
-    const saveBtn = root.querySelector('.rules-btn-save');
-    if (saveBtn) {
-      saveBtn.style.boxShadow = '0 0 0 2px #fff, 0 0 0 4px var(--accent,#0071e3)';
-    }
-  }
-
-  function render() {
-    root.innerHTML = '';
-    const wrapper = document.createElement('div');
-    wrapper.className = 'rules-wrapper';
-
-    // 1. Header with title, 2 main categories, actions
-    const header = document.createElement('div');
-    header.className = 'rules-header';
-
-    const titleBox = document.createElement('div');
-    titleBox.className = 'rules-title-box';
-    const h2 = document.createElement('h2');
-    h2.className = 'rules-title';
-    h2.textContent = '任务规则配置';
-    const revSpan = document.createElement('span');
-    revSpan.className = 'rules-rev';
-    revSpan.textContent = state.base ? `v${state.base.revision}` : '连接中';
-    titleBox.append(h2, revSpan);
-
-    // If authenticated: show Category Tabs in Header
-    if (state.owner && state.draft) {
-      const attCount = Object.keys(state.draft.attendance_rules || {}).length;
-      const freqCount = (state.draft.frequency_rows || []).length;
-
-      const mainTabs = document.createElement('div');
-      mainTabs.className = 'rules-main-tabs';
-      mainTabs.setAttribute('role', 'tablist');
-
-      // 1. 随课规则 Tab
-      const attTab = document.createElement('button');
-      attTab.type = 'button';
-      attTab.className = 'rules-main-tab' + (state.category === 'attendance' ? ' active' : '');
-      attTab.innerHTML = `随课规则 <span class="tab-badge">${attCount}</span>`;
-      attTab.onclick = () => {
-        state.category = 'attendance';
-        render();
-      };
-
-      // 2. 非随课规则 Tab
-      const freqTab = document.createElement('button');
-      freqTab.type = 'button';
-      freqTab.className = 'rules-main-tab' + (state.category === 'frequency' ? ' active' : '');
-      freqTab.innerHTML = `非随课规则 <span class="tab-badge">${freqCount}</span>`;
-      freqTab.onclick = () => {
-        state.category = 'frequency';
-        render();
-      };
-
-      mainTabs.append(attTab, freqTab);
-      header.append(titleBox, mainTabs);
-    } else {
-      header.append(titleBox);
-    }
-
-    // Actions & Close
-    const actBox = document.createElement('div');
-    actBox.className = 'rules-header-actions';
-
-    if (state.owner) {
-      const reloadBtn = document.createElement('button');
-      reloadBtn.type = 'button';
-      reloadBtn.className = 'rules-btn-reload';
-      reloadBtn.textContent = '重新读取';
-      reloadBtn.onclick = () => load();
-
-      const saveBtn = document.createElement('button');
-      saveBtn.type = 'button';
-      saveBtn.className = 'rules-btn-save';
-      saveBtn.innerHTML = `
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
-          <polyline points="17 21 17 13 7 13 7 21"></polyline>
-          <polyline points="7 3 7 8 15 8"></polyline>
-        </svg>
-        保存修改
-      `;
-      saveBtn.onclick = async () => {
-        // Validate weekly rows
-        for (const r of state.draft.frequency_rows || []) {
-          if (r['重复'] === '每周固定几天' && (!r['周几'] || !r['周几'].length)) {
-            status(`学员「${r['学员']}」的每周规则必须选择至少一个周几！`, true);
-            return;
-          }
-        }
-        saveBtn.disabled = true;
-        status('正在保存并读回核验…');
-        try {
-          state.base = await saveCatalog(client, state.owner, state.base, state.draft);
-          state.modified = false;
-          status(`✓ 规则已更新并读回核验 · 当前版本 v${state.base.revision}，下次调度即时生效`);
-          render();
-        } catch (e) {
-          status(
-            e.message === 'CONFLICT'
-              ? '⚠️ 另一设备已修改规则（版本冲突）。当前修改已保留，请重新读取后再次保存。'
-              : '⚠️ 保存核验未通过，当前修改已保留，请重新读取核对。',
-            true
-          );
-        } finally {
-          saveBtn.disabled = false;
-        }
-      };
-
-      actBox.append(reloadBtn, saveBtn);
-    }
-
-    const closeBtn = document.createElement('button');
-    closeBtn.type = 'button';
-    closeBtn.className = 'rules-close';
-    closeBtn.title = '关闭 (Esc)';
-    closeBtn.innerHTML = '×';
-    closeBtn.onclick = () => {
-      if (typeof onClose === 'function') onClose();
-      else if (typeof root.close === 'function') root.close();
-      else root.style.display = 'none';
+  const modified = () => {
+    state.errors = [];
+    updateDirty();
+    status("修改尚未保存；保存后在下一次例行读取时生效。");
+  };
+  const input = (value, change, type = "text") => {
+    const e = node("input");
+    e.type = type;
+    e.className = "rules-input";
+    e.value = value ?? "";
+    e.oninput = () => {
+      change(e.value);
+      modified();
     };
-    actBox.append(closeBtn);
-    header.append(actBox);
-
-    wrapper.append(header);
-
-    // If unauthenticated: render login
-    if (!state.owner) {
-      const authBox = document.createElement('div');
-      authBox.className = 'rules-auth-card';
-      authBox.innerHTML = `
-        <h3>登录工作台账号</h3>
-        <p style="font-size:13px;color:var(--muted);margin:0">统一规则库受鉴权保护，请先登录账号查看与编辑规则。</p>
-        <form id="rules-login-form" style="display:flex;flex-direction:column;gap:10px;margin-top:6px">
-          <div class="rules-field">
-            <span class="rules-label">邮箱</span>
-            <input class="rules-input" id="rules-email" type="email" autocomplete="username" required>
-          </div>
-          <div class="rules-field">
-            <span class="rules-label">密码</span>
-            <input class="rules-input" id="rules-password" type="password" autocomplete="current-password" required>
-          </div>
-          <button class="rules-btn-save" style="justify-content:center;margin-top:4px" type="submit">登录并加载规则</button>
-        </form>
-      `;
-      wrapper.append(authBox);
-      root.append(wrapper);
-
-      authBox.querySelector('#rules-login-form').onsubmit = async event => {
-        event.preventDefault();
-        const email = authBox.querySelector('#rules-email').value.trim();
-        const password = authBox.querySelector('#rules-password').value;
-        status('正在登录…');
-        const r = await client.auth.signInWithPassword({ email, password });
-        if (r.error) {
-          status('登录失败：' + (r.error.message || '请检查邮箱密码'), true);
+    return e;
+  };
+  const field = (label, control) => {
+    const e = node("label", undefined, "rules-field");
+    if (!control.getAttribute('aria-label')) control.setAttribute('aria-label', label);
+    e.append(node("span", label), control);
+    return e;
+  };
+  const select = (values, value, change) => {
+    const e = node("select", undefined, "rules-select");
+    for (const [v, l] of values) {
+      const o = node("option", l);
+      o.value = v;
+      o.selected = v === value;
+      e.append(o);
+    }
+    e.onchange = () => {
+      const before = state.draft ? canonical(state.draft) : "";
+      change(e.value);
+      if (state.draft && canonical(state.draft) !== before) modified();
+    };
+    return e;
+  };
+  const systemSelect = (rule, name, text) =>
+    select(
+      Object.entries(SYSTEMS),
+      rule.system === "school" ? "other" : inferStudentSystem(name, rule, text),
+      (value) => {
+        rule.system = value;
+        if ("学员" in rule) rule["课程"] = SYSTEMS[value];
+        renderList();
+      },
+    );
+  function keepRender(fn) {
+    const scroll = root.querySelector(".rules-content")?.scrollTop || 0;
+    fn();
+    const c = root.querySelector(".rules-content");
+    if (c) c.scrollTop = scroll;
+  }
+  function summaryText(rule) {
+    const common = [rule.vocab_task, ...(rule.attendance_tasks || [])].filter(
+      Boolean,
+    );
+    const subjects = Object.keys(rule.subject_rules || {});
+    return (
+      (common.length
+        ? common.slice(0, 2).join(" · ") +
+          (common.length > 2 ? " 等" + common.length + "项" : "")
+        : "暂无基础任务") +
+      (subjects.length ? " · " + subjects.length + "种课型附加" : "")
+    );
+  }
+  function taskRow(rule, text, change, remove, { vocabulary = false } = {}) {
+    const row = node("div", undefined, "rules-task-row");
+    let current = text;
+    const control = input(text, (value) => {
+      const old = current;
+      change(value);
+      moveManual(rule, old, value);
+      current = value;
+      showInspection();
+    });
+    control.setAttribute(
+      "aria-label",
+      vocabulary ? "随课单词任务" : "任务内容",
+    );
+    control.placeholder = vocabulary
+      ? "不布置单词可留空"
+      : "填写具体任务，例如：一套听力";
+    const mode = select(
+      [
+        ["auto", "自动识别"],
+        ["manual", "老师处理"],
+      ],
+      manualTask(rule, text) ? "manual" : "auto",
+      (value) => {
+        setManual(rule, current, value === "manual");
+        showInspection();
+      },
+    );
+    mode.classList.add("rules-mode");
+    mode.setAttribute("aria-label", "任务处理方式");
+    const info = node("p", undefined, "rules-task-message");
+    const showInspection = () => {
+      if (vocabulary && !current.trim()) {
+        info.textContent = "未设置随课单词任务";
+        return;
+      }
+      const s = inspectTask(
+        current,
+        rule.system || "other",
+        manualTask(rule, current),
+      );
+      info.textContent = s.label;
+      info.style.color = ["unknown", "invalid"].includes(s.mode)
+        ? "#a16117"
+        : "#73849c";
+    };
+    const del = button(
+      "×",
+      () => {
+        setManual(rule, current, false);
+        remove();
+        modified();
+        keepRender(renderList);
+      },
+      "rules-delete",
+    );
+    del.setAttribute("aria-label", vocabulary ? "取消随课单词" : "删除任务");
+    row.append(control, mode, del, info);
+    showInspection();
+    return row;
+  }
+  function presetControl(rule, setText) {
+    const p = select(
+      [
+        ["", "常用任务…"],
+        ...PRESETS.filter(
+          ([label, value]) =>
+            !rule.system || inspectTask(value, rule.system).mode !== "unknown",
+        ).map(([label, value]) => [value, label]),
+      ],
+      "",
+      (value) => {
+        if (value) {
+          setText(value);
+          modified();
+          keepRender(renderList);
+        }
+      },
+    );
+    p.classList.add("rules-preset-select");
+    p.setAttribute("aria-label", "选择常用任务");
+    return p;
+  }
+  function section(title) {
+    const e = node("section", undefined, "rules-section");
+    e.append(node("h4", title, "rules-section-title"));
+    return e;
+  }
+  function newTask(rule, list, subject = null) {
+    list.push("");
+    modified();
+    keepRender(renderList);
+    const card = root.querySelector(
+      '[data-rule-key="' + CSS.escape(state.lastCard || "") + '"]',
+    );
+    const section = subject
+      ? [...(card?.querySelectorAll(".rules-subject") || [])].find(
+          (x) =>
+            x.querySelector(".rules-section-title span")?.textContent ===
+            subject + "课",
+        )
+      : card?.querySelector(".rules-section");
+    const inputs = section?.querySelectorAll('input[aria-label="任务内容"]');
+    const last = inputs?.[inputs.length - 1];
+    last?.focus();
+  }
+  function cardShell(id, name, tags, brief) {
+    const card = node("details", undefined, "rules-card");
+    card.dataset.ruleKey = id;
+    card.open = state.open.has(id);
+    const head = node("summary", undefined, "rules-card-summary"),
+      heading = node("div", undefined, "rules-card-heading"),
+      title = node("h3", name, "rules-card-title"),
+      meta = node("div", undefined, "rules-card-meta");
+    meta.append(...tags);
+    heading.append(title, meta, node("div", brief, "rules-card-brief"));
+    head.append(heading);
+    card.append(head);
+    card.addEventListener("toggle", () => {
+      if (!card.isConnected) return;
+      if (card.open) state.open.add(id);
+      else state.open.delete(id);
+    });
+    const body = node("div", undefined, "rules-card-body");
+    card.append(body);
+    return { card, body };
+  }
+  function attendanceCard(key, rule) {
+    const id = "attendance:" + key,
+      name = rule.name || key,
+      common = [rule.vocab_task, ...(rule.attendance_tasks || [])].filter(
+        Boolean,
+      ),
+      subjs = Object.keys(rule.subject_rules || {});
+    const { card, body } = cardShell(
+      id,
+      name,
+      [
+        tag(SYSTEMS[rule.system] || "Other"),
+        tag(common.length + "项基础任务"),
+        tag(subjs.length + "种课型"),
+      ],
+      summaryText(rule),
+    );
+    const main = section("有课日基础任务");
+    main.append(
+      node(
+        "p",
+        "这些任务在有课日加入清单；系统作业仍须通过完成核验。",
+        "rules-hint",
+      ),
+    );
+    main.append(field("任务体系", systemSelect(rule, name, rule.vocab_task)));
+    main.append(
+      taskRow(
+        rule,
+        rule.vocab_task || "",
+        (value) => (rule.vocab_task = value),
+        () => (rule.vocab_task = ""),
+        { vocabulary: true },
+      ),
+    );
+    const list = Array.isArray(rule.attendance_tasks)
+      ? rule.attendance_tasks
+      : [];
+    list.forEach((text, i) =>
+      main.append(
+        taskRow(
+          rule,
+          text,
+          (value) => (list[i] = value),
+          () => list.splice(i, 1),
+        ),
+      ),
+    );
+    const actions = node("div", undefined, "rules-actions");
+    actions.append(
+      button(
+        "添加基础任务",
+        () => {
+          rule.attendance_tasks = list;
+          state.lastCard = id;
+          newTask(rule, list);
+        },
+        "rules-btn-small",
+      ),
+      presetControl(rule, (value) => {
+        rule.attendance_tasks = [...list, value];
+      }),
+    );
+    main.append(actions);
+    const extra = section("按课程附加");
+    extra.append(
+      node("p", "有对应课程时追加；没有该课程则不加入当天清单。", "rules-hint"),
+    );
+    for (const [subject, tasks] of Object.entries(rule.subject_rules || {})) {
+      const box = node("div", undefined, "rules-subject"),
+        header = node("div", undefined, "rules-section-title");
+      header.append(
+        node("span", subject + "课"),
+        button(
+          "删除课型",
+          () => {
+            delete rule.subject_rules[subject];
+            modified();
+            keepRender(renderList);
+          },
+          "rules-btn-small rules-btn-danger",
+        ),
+      );
+      box.append(header);
+      tasks.forEach((text, i) =>
+        box.append(
+          taskRow(
+            rule,
+            text,
+            (v) => (tasks[i] = v),
+            () => tasks.splice(i, 1),
+          ),
+        ),
+      );
+      box.append(
+        button(
+          "添加" + subject + "课任务",
+          () => {
+            state.lastCard = id;
+            newTask(rule, tasks, subject);
+          },
+          "rules-btn-small",
+        ),
+      );
+      extra.append(box);
+    }
+    const subjects =
+      rule.system === "sat"
+        ? ["阅读", "语法", "数学"]
+        : rule.system === "ability"
+          ? ["听说", "读写", "词汇与语言应用", "语法"]
+          : ["听力", "口语", "阅读", "写作"];
+    const addSubject = select(
+      [
+        ["", "添加课程类型…"],
+        ...subjects
+          .filter((x) => !Object.hasOwn(rule.subject_rules || {}, x))
+          .map((x) => [x, x + "课"]),
+        ["custom", "自定义课程类型"],
+      ],
+      "",
+      (value) => {
+        if (!value) return;
+        const name =
+          value === "custom"
+            ? globalThis.prompt("课程名称，例如：词汇与语言应用")
+            : value;
+        if (!name?.trim()) return;
+        const subject = name.trim().replace(/课$/, "");
+        if (
+          !subject ||
+          ["__proto__", "constructor", "prototype"].includes(subject) ||
+          Object.hasOwn(rule.subject_rules || {}, subject)
+        )
           return;
+        rule.subject_rules ??= {};
+        rule.subject_rules[subject] = [];
+        modified();
+        keepRender(renderList);
+      },
+    );
+    extra.append(addSubject);
+    const foot = node("div", undefined, "rules-card-foot");
+    foot.append(
+      button("预览布置结果", () => showPreview(key), "rules-btn-small"),
+      button(
+        "临时暂停 / 老师安排",
+        () => {
+          state.overrideStudent = name;
+          state.tab = "overrides";
+          render();
+        },
+        "rules-btn-small",
+      ),
+    );
+    body.append(main, extra, foot);
+    return card;
+  }
+  function frequencyCard(row) {
+    const id = "frequency:" + row.id,
+      paused = row["状态"] !== "进行中",
+      days =
+        row["重复"] === "每周固定几天"
+          ? (row["周几"] || []).join("、")
+          : row["重复"];
+    const { card, body } = cardShell(
+      id,
+      row["学员"] || "新规则",
+      [
+        tag(
+          SYSTEMS[row.system] ||
+            inferStudentSystem(row["学员"], row, row["任务内容"]).toUpperCase(),
+        ),
+        tag(paused ? "已暂停" : "进行中", paused ? "warn" : "good"),
+        tag(days || "未设频率"),
+      ],
+      taskLines(row["任务内容"]).slice(0, 2).join(" · ") || "请填写任务内容",
+    );
+    if (paused) card.classList.add("is-paused");
+    const basics = section("执行安排"),
+      fields = node("div", undefined, "rules-fields");
+    fields.append(
+      field(
+        "学员 / 班级",
+        input(row["学员"], (v) => (row["学员"] = v)),
+      ),
+      field("任务体系", systemSelect(row, row["学员"], row["任务内容"])),
+      field(
+        "状态",
+        select(
+          [
+            ["进行中", "进行中"],
+            ["暂停", "暂停"],
+          ],
+          row["状态"],
+          (v) => {
+            row["状态"] = v;
+            row._canonical_state = true;
+            keepRender(renderList);
+          },
+        ),
+      ),
+      field(
+        "形式",
+        select(
+          [
+            ["线上", "线上"],
+            ["自习", "自习"],
+            ["线下", "线下（历史规则）"],
+          ],
+          row["形式"],
+          (v) => (row["形式"] = v),
+        ),
+      ),
+      field(
+        "频率",
+        select(
+          [
+            ["每天", "每天"],
+            ["每周固定几天", "每周固定几天"],
+            ["随课/每天", "仅有课日（历史规则）"],
+          ],
+          row["重复"],
+          (v) => {
+            row["重复"] = v;
+            keepRender(renderList);
+          },
+        ),
+      ),
+    );
+    basics.append(fields);
+    if (row["重复"] === "每周固定几天") {
+      const ds = node("div", undefined, "rules-days");
+      WEEKDAYS.forEach((day) => {
+        const b = button(
+          day.slice(1),
+          () => {
+            const values = new Set(row["周几"] || []);
+            values.has(day) ? values.delete(day) : values.add(day);
+            row["周几"] = WEEKDAYS.filter((x) => values.has(x));
+            b.setAttribute("aria-pressed", String(values.has(day)));
+            modified();
+          },
+          "rules-day",
+        );
+        b.setAttribute("aria-label", day);
+        b.setAttribute(
+          "aria-pressed",
+          String((row["周几"] || []).includes(day)),
+        );
+        ds.append(b);
+      });
+      basics.append(node("p", "执行日", "rules-hint"), ds);
+    }
+    const dateFields = node("div", undefined, "rules-fields");
+    dateFields.style.marginTop = "12px";
+    dateFields.append(
+      field(
+        "开始日期",
+        input(
+          (row["date:下次日期:start"] || "").slice(0, 10),
+          (v) => {
+            if (v) row["date:下次日期:start"] = v;
+            else delete row["date:下次日期:start"];
+          },
+          "date",
+        ),
+      ),
+      field(
+        "截止日期（含当天）",
+        input(
+          (row["date:重复截止:start"] || "").slice(0, 10),
+          (v) => {
+            if (v) row["date:重复截止:start"] = v;
+            else delete row["date:重复截止:start"];
+          },
+          "date",
+        ),
+      ),
+    );
+    basics.append(dateFields);
+    const complete = node("label", undefined, "rules-checkbox"),
+      cb = node("input");
+    cb.type = "checkbox";
+    cb.checked = row["本次已完成"] === true || row["本次已完成"] === "__YES__";
+    cb.onchange = () => {
+      row["本次已完成"] = cb.checked;
+      modified();
+    };
+    complete.append(cb, document.createTextNode("本次已完成（保留人工确认）"));
+    basics.append(complete);
+    const tasks = section("定期任务");
+    let lines = taskLines(row["任务内容"]);
+    lines.forEach((text, i) =>
+      tasks.append(
+        taskRow(
+          row,
+          text,
+          (value) => {
+            lines[i] = value;
+            row["任务内容"] = lines.join("\n");
+          },
+          () => {
+            lines.splice(i, 1);
+            row["任务内容"] = lines.join("\n");
+          },
+        ),
+      ),
+    );
+    tasks.append(
+      button(
+        "添加定期任务",
+        () => {
+          state.blankFrequency.set(row.id, "");
+          modified();
+          keepRender(renderList);
+        },
+        "rules-btn-small",
+      ),
+      presetControl(row, (value) => {
+        row["任务内容"] = [...taskLines(row["任务内容"]), value].join("\n");
+      }),
+    );
+    if (state.blankFrequency.has(row.id)) {
+      tasks.append(
+        taskRow(
+          row,
+          state.blankFrequency.get(row.id),
+          (value) => {
+            state.blankFrequency.set(row.id, value);
+          },
+          () => {
+            state.blankFrequency.delete(row.id);
+          },
+        ),
+      );
+    }
+    const special = section("布置细节"),
+      specialFields = node("div", undefined, "rules-fields");
+    specialFields.append(
+      field(
+        "单词方式",
+        select(
+          ["跟随任务内容", "仅听力", "仅阅读", "听读交替", "两科分别布置"].map(
+            (x) => [x, x],
+          ),
+          row["单词布置方式"] || "跟随任务内容",
+          (v) => {
+            if (v === "跟随任务内容") delete row["单词布置方式"];
+            else row["单词布置方式"] = v;
+          },
+        ),
+      ),
+      field(
+        "阅读方式",
+        select(
+          [
+            "跟随默认",
+            "完整原卷",
+            "仅同卷P1/P2",
+            "跨卷P1/P2三篇",
+            "老师安排",
+          ].map((x) => [x, x]),
+          row["特殊阅读规则"] || "跟随默认",
+          (v) => {
+            if (v === "跟随默认") delete row["特殊阅读规则"];
+            else row["特殊阅读规则"] = v;
+          },
+        ),
+      ),
+    );
+    special.append(specialFields);
+    const foot = node("div", undefined, "rules-card-foot");
+    foot.append(
+      button("预览布置结果", () => showPreview(row.id), "rules-btn-small"),
+      button(
+        "移除此规则",
+        () => {
+          if (!globalThis.confirm("确定移除这条规则？已发布的作业不会删除。"))
+            return;
+          state.draft.frequency_rows = state.draft.frequency_rows.filter(
+            (x) => x !== row,
+          );
+          modified();
+          keepRender(renderList);
+        },
+        "rules-btn-small rules-btn-danger",
+      ),
+    );
+    body.append(basics, tasks, special, foot);
+    return card;
+  }
+  async function showPreview(key) {
+    state.preview = true;
+    state.previewKey = key;
+    try {
+      state.context = (await getContext(state.day)) || {};
+      state.contextUnknown = false;
+    } catch {
+      state.context = {};
+      state.contextUnknown = true;
+    }
+    keepRender(renderList);
+    root.querySelector(".rules-preview")?.scrollIntoView({ block: "nearest" });
+  }
+  function previewPanel() {
+    const box = node("section", undefined, "rules-preview");
+    box.append(
+      node("h3", "布置预览"),
+      node(
+        "p",
+        "只读取规则与工作台已有回执，不发布作业、不查询实时完成状态。待核验的项目是否新增，由下一次例行决定。",
+        "rules-hint",
+      ),
+    );
+    if (state.contextUnknown || state.context.scheduleKnown === false)
+      box.append(
+        node(
+          "p",
+          "课表快照未读取或该日尚无快照。下面选择的课型仅用于模拟，不表示当天无课。",
+          "rules-hint",
+        ),
+      );
+    const options = [
+      ...Object.entries(state.draft.attendance_rules || {}).map(([k, v]) => [
+        k,
+        v.name || k,
+      ]),
+      ...(state.draft.frequency_rows || []).map((r) => [
+        r.id,
+        r["学员"] + " · 定期任务",
+      ]),
+    ];
+    if (!options.some(([k]) => k === state.previewKey))
+      state.previewKey = options[0]?.[0] || "";
+    const fields = node("div", undefined, "rules-preview-selects");
+    const date = input(
+      state.day,
+      (v) => {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+          state.day = v;
+          void showPreview(state.previewKey);
         }
-        await load();
+      },
+      "date",
+    );
+    date.oninput = null;
+    date.onchange = () => {
+      if (date.value) {
+        state.day = date.value;
+        void showPreview(state.previewKey);
+      }
+    };
+    fields.append(
+      field("日期", date),
+      field(
+        "规则",
+        select(options, state.previewKey, (value) => {
+          state.previewKey = value;
+          state.subject = "";
+          void showPreview(value);
+        }),
+      ),
+    );
+    const profile = state.draft.attendance_rules?.[state.previewKey];
+    const name = profile?.name || state.previewKey;
+    const available = Object.keys(profile?.subject_rules || {});
+    const lessonSubjects = (state.context.lessons || [])
+      .filter(
+        (x) =>
+          clean(x.name) === clean(name) ||
+          name.split(/[&/、]/).some((n) => clean(n) === clean(x.name)),
+      )
+      .flatMap((x) => x.subjects || []);
+    fields.append(
+      field(
+        "预览课型",
+        select(
+          [
+            ["none", "仅预览定期任务"],
+            ...new Set([
+              ...lessonSubjects,
+              ...available,
+              ...["听力", "口语", "阅读", "写作", "语法"],
+            ]),
+          ].map((x) => (Array.isArray(x) ? x : [x, x + "课"])),
+          state.subject || lessonSubjects[0] || "none",
+          (value) => {
+            state.subject = value;
+            keepRender(renderList);
+          },
+        ),
+      ),
+    );
+    box.append(fields);
+    const subject = state.subject || lessonSubjects[0] || "none";
+    const hasClass = subject !== "none";
+    const memberNames =
+      profile?.name
+        ?.split(/[&/、]/)
+        .map((x) => x.trim())
+        .filter(Boolean) || [];
+    const names = memberNames.length > 1 ? memberNames : [profile?.name || ""];
+    const rows = [];
+    if (profile)
+      for (const studentName of names) {
+        const list = previewRules(state.draft, {
+          day: state.day,
+          attendanceKey: state.previewKey,
+          studentName,
+          subjects: hasClass ? [subject] : [],
+          hasClass,
+          facts: state.context.facts || [],
+        });
+        for (const r of list) rows.push({ ...r, name: studentName });
+      }
+    if (!profile) {
+      const r = state.draft.frequency_rows.find(
+        (x) => x.id === state.previewKey,
+      );
+      if (r) {
+        const dummy = {
+          ...state.draft,
+          attendance_rules: {
+            [r.id]: { name: r["学员"], system: r.system, attendance_tasks: [] },
+          },
+        };
+        rows.push(
+          ...previewRules(dummy, {
+            day: state.day,
+            attendanceKey: r.id,
+            hasClass: false,
+            facts: state.context.facts || [],
+          }),
+        );
+      }
+    }
+    const area = node("div", undefined, "rules-preview-rows");
+    const labels = {
+      auto: "待核验后新增",
+      existing: "已有同名记录",
+      blocked: "按规则停发",
+      manual: "老师处理",
+      invalid: "内容未完成",
+      unknown: "待配置",
+    };
+    for (const r of rows) {
+      const line = node("div", undefined, "rules-preview-row");
+      line.append(
+        tag(
+          labels[r.mode] || "待配置",
+          ["invalid", "unknown"].includes(r.mode)
+            ? "warn"
+            : r.mode === "existing"
+              ? "good"
+              : "",
+        ),
+        document.createTextNode(
+          " " + (names.length > 1 ? r.name + "：" : "") + r.text,
+        ),
+        node("small", r.source + " · " + r.reason),
+      );
+      area.append(line);
+    }
+    if (!rows.length)
+      area.append(
+        node("p", "所选日期与课程没有符合条件的任务。", "rules-hint"),
+      );
+    box.append(
+      area,
+      button(
+        "收起预览",
+        () => {
+          state.preview = false;
+          keepRender(renderList);
+        },
+        "rules-btn-small",
+      ),
+    );
+    return box;
+  }
+  function overrideContent(host) {
+    for (const r of state.draft.overrides || []) {
+      const card = node("div", undefined, "rules-override"),
+        head = node("div", undefined, "rules-override-head");
+      head.append(
+        node(
+          "strong",
+          r.student +
+            " · " +
+            (r.subject || (r.kind === "vocab" && "单词") || "自动任务"),
+        ),
+        button(
+          "恢复自动规则",
+          () => {
+            state.draft.overrides = state.draft.overrides.filter(
+              (x) => x !== r,
+            );
+            modified();
+            keepRender(renderList);
+          },
+          "rules-btn-small",
+        ),
+      );
+      card.append(
+        head,
+        node(
+          "p",
+          (r.action === "pause" ? "暂停" : "老师处理") +
+            " · " +
+            (r.start || "立即") +
+            " 至 " +
+            (r.end || "另行恢复"),
+          "rules-hint",
+        ),
+      );
+      const fs = node("div", undefined, "rules-fields");
+      fs.append(
+        field(
+          "开始日期",
+          input(r.start || "", (v) => (r.start = v || null), "date"),
+        ),
+        field(
+          "结束日期（含当天）",
+          input(r.end || "", (v) => (r.end = v || null), "date"),
+        ),
+        field(
+          "说明",
+          input(r.reason || "", (v) => (r.reason = v)),
+        ),
+      );
+      card.append(fs);
+      host.append(card);
+    }
+    const card = node("div", undefined, "rules-override");
+    card.append(node("h3", "添加临时安排"));
+    const form = node("form");
+    const name = input(state.overrideStudent || "", () => {});
+    name.oninput = null;
+    name.required = true;
+    name.placeholder = "填写确切学员姓名";
+    const subject = select(
+      [
+        ["all", "全部自动任务"],
+        ["单词", "单词"],
+        ...["听力", "口语", "阅读", "写作"].map((x) => [x, x]),
+      ],
+      "all",
+      () => {},
+    );
+    subject.onchange = null;
+    const action = select(
+      [
+        ["pause", "暂停"],
+        ["teacher", "交老师处理"],
+      ],
+      "pause",
+      () => {},
+    );
+    action.onchange = null;
+    const fields = node("div", undefined, "rules-fields");
+    fields.append(
+      field("学员", name),
+      field("任务范围", subject),
+      field("处理方式", action),
+    );
+    form.append(fields);
+    const add = node("button", "添加临时安排", "rules-btn rules-btn-primary");
+    add.type = "submit";
+    form.append(add);
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      if (!name.value.trim()) return;
+      const item = {
+        student: name.value.trim(),
+        action: action.value,
+        start: todayShanghai(),
+        end: null,
+        reason: "老师设置的临时安排",
       };
+      if (subject.value === "all") item.kind = "automatic";
+      else if (subject.value === "单词") item.kind = "vocab";
+      else {
+        item.kind = "suite";
+        item.subject = subject.value;
+      }
+      state.draft.overrides ??= [];
+      state.draft.overrides.push(item);
+      modified();
+      keepRender(renderList);
+    };
+    card.append(form);
+    host.append(card);
+  }
+  function captureOpen() {
+    for (const card of root.querySelectorAll('.rules-card')) {
+      if (card.open) state.open.add(card.dataset.ruleKey);
+      else state.open.delete(card.dataset.ruleKey);
+    }
+  }
+  function renderList() {
+    captureOpen();
+    const host = root.querySelector(".rules-content");
+    if (!host || !state.draft) return;
+    host.replaceChildren();
+    if (state.preview) host.append(previewPanel());
+    const errors = node("div", undefined, "rules-error-list");
+    for (const text of state.errors) errors.append(node("div", text));
+    host.append(errors);
+    if (state.tab === "overrides") {
+      overrideContent(host);
       return;
     }
-
-    // Status bar
-    const statusBar = document.createElement('div');
-    statusBar.className = 'rules-status-bar' + (state.isAlert ? ' alert' : '');
-    statusBar.textContent = state.status;
-    wrapper.append(statusBar);
-
-    // Sub-toolbar with filters & search
-    const toolbar = document.createElement('div');
-    toolbar.className = 'rules-toolbar';
-
-    // Search input
-    const searchBox = document.createElement('div');
-    searchBox.className = 'rules-search';
-    searchBox.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-      </svg>
-    `;
-    const searchInput = document.createElement('input');
-    searchInput.type = 'search';
-    searchInput.placeholder = '搜索学员或任务内容...';
-    searchInput.value = state.search;
-    searchInput.oninput = () => {
-      state.search = searchInput.value.trim().toLowerCase();
-      renderContentList(contentArea);
-    };
-    searchBox.append(searchInput);
-    toolbar.append(searchBox);
-
-    const cluster = document.createElement('div');
-    cluster.className = 'filter-cluster';
-
-    if (state.category === 'frequency') {
-      // ─────────────────────────────────────────────────────────────────────────────
-      // 非随课规则三大 Filter 组 (Leo 明确要求: 1进行中/暂停, 2学科分类[雅思/托福/SAT/其他], 3自习或线上)
-      // ─────────────────────────────────────────────────────────────────────────────
-
-      // 1. 状态筛选 (进行中 / 暂停)
-      const statusGrp = document.createElement('div');
-      statusGrp.className = 'filter-group';
-      statusGrp.innerHTML = '<span class="filter-label">状态:</span>';
-      const statusPills = document.createElement('div');
-      statusPills.className = 'filter-pills';
-      for (const [val, lbl] of [['all', '全部'], ['active', '● 进行中'], ['paused', '⏸ 暂停']]) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'filter-pill' + (state.freqStatus === val ? ' active' : '');
-        btn.textContent = lbl;
-        btn.onclick = () => {
-          state.freqStatus = val;
-          render();
-        };
-        statusPills.append(btn);
+    const grid = node("div", undefined, "rules-grid"),
+      q = state.search.toLowerCase();
+    if (state.tab === "attendance") {
+      for (const [key, rule] of Object.entries(
+        state.draft.attendance_rules || {},
+      ).sort((a, b) =>
+        (a[1].name || a[0]).localeCompare(b[1].name || b[0], "zh-CN"),
+      )) {
+        if (
+          q &&
+          !(
+            (rule.name || key) +
+            " " +
+            JSON.stringify(rule.subject_rules || {}) +
+            " " +
+            rule.vocab_task
+          )
+            .toLowerCase()
+            .includes(q)
+        )
+          continue;
+        if (
+          state.system !== "all" &&
+          (rule.system === "school" ? "other" : rule.system) !== state.system
+        )
+          continue;
+        grid.append(attendanceCard(key, rule));
       }
-      statusGrp.append(statusPills);
-
-      // 2. 学科分类按钮 (通用分类: 雅思、托福、SAT、其他)
-      const sysGrp = document.createElement('div');
-      sysGrp.className = 'filter-group';
-      sysGrp.innerHTML = '<span class="filter-label">学科:</span>';
-      const sysPills = document.createElement('div');
-      sysPills.className = 'filter-pills';
-      for (const [val, lbl] of [
-        ['all', '全部学科'],
-        ['ielts', '雅思'],
-        ['toefl', '托福'],
-        ['sat', 'SAT'],
-        ['other', '其他']
+    } else {
+      for (const r of state.draft.frequency_rows || []) {
+        if (q && !(r["学员"] + " " + r["任务内容"]).toLowerCase().includes(q))
+          continue;
+        if (state.system !== "all" && r.system !== state.system) continue;
+        if (state.filter !== "all" && r["状态"] !== state.filter) continue;
+        grid.append(frequencyCard(r));
+      }
+    }
+    if (!grid.childElementCount)
+      grid.append(node("div", "没有符合筛选条件的规则。", "rules-empty"));
+    host.append(grid);
+    updateDirty();
+  }
+  async function save() {
+    const submitted = clone(state.draft);
+    for (const [id, text] of state.blankFrequency) {
+      const row = submitted.frequency_rows.find((r) => r.id === id);
+      if (row && text.trim())
+        row["任务内容"] = [...taskLines(row["任务内容"]), text.trim()].join(
+          "\n",
+        );
+    }
+    state.errors = validateDraft(submitted, state.base.payload);
+    if ([...state.blankFrequency.values()].some((x) => !x.trim()))
+      state.errors.unshift("请填完新增的定期任务，或删除空白行。");
+    if (state.errors.length) {
+      status("还有内容需要补充，已保留当前修改。", true);
+      renderList();
+      root
+        .querySelector(".rules-error-list")
+        ?.scrollIntoView({ block: "nearest" });
+      return;
+    }
+    state.busy = true;
+    updateDirty();
+    status("正在保存并读回核验…");
+    const pending = new Map(state.blankFrequency);
+    try {
+      const base = await saveCatalog(
+        client,
+        state.owner,
+        state.base,
+        submitted,
+      );
+      state.base = base;
+      for (const [id, text] of pending)
+        if (state.blankFrequency.get(id) === text) {
+          const row = state.draft.frequency_rows.find((r) => r.id === id);
+          if (row)
+            row["任务内容"] = submitted.frequency_rows.find((r) => r.id === id)[
+              "任务内容"
+            ];
+          state.blankFrequency.delete(id);
+        }
+      status("保存成功。将在下一次例行读取时生效；本次没有发布作业。");
+    } catch (e) {
+      status(
+        e.message === "CONFLICT"
+          ? "另一设备已修改规则。当前输入已保留，请先查看最新版本再合并。"
+          : "保存读回未核实。当前输入已保留，请重读核对，不要反复保存。",
+        true,
+      );
+    } finally {
+      state.busy = false;
+      updateDirty();
+    }
+  }
+  function render() {
+    captureOpen();
+    root.replaceChildren();
+    const wrap = node("div", undefined, "rules-wrapper"),
+      header = node("header", undefined, "rules-header"),
+      title = node("div");
+    title.append(
+      node("h2", "作业布置规则", "rules-title"),
+      node("p", "先看摘要，展开编辑；保存后下一次例行生效。", "rules-subtitle"),
+    );
+    header.append(
+      title,
+      button(
+        "×",
+        () => {
+          if (
+            root.tagName !== "DIALOG" &&
+            owners().length &&
+            !globalThis.confirm(
+              "有未保存的修改，关闭后仍可在本页重新打开继续编辑。确定关闭？",
+            )
+          )
+            return;
+          onClose?.();
+        },
+        "rules-close",
+      ),
+    );
+    if (state.owner && state.draft) {
+      const tabs = node("div", undefined, "rules-main-tabs");
+      for (const [key, label] of [
+        ["attendance", "随课规则"],
+        ["frequency", "定期任务"],
+        ["overrides", "临时安排"],
       ]) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'filter-pill' + (state.freqSystem === val ? ' active' : '');
-        btn.textContent = lbl;
-        btn.onclick = () => {
-          state.freqSystem = val;
-          render();
-        };
-        sysPills.append(btn);
+        const b = button(
+          label,
+          () => {
+            state.tab = key;
+            state.search = "";
+            state.system = "all";
+            render();
+          },
+          "rules-main-tab " + (state.tab === key ? "active" : ""),
+        );
+        b.setAttribute("aria-pressed", String(state.tab === key));
+        tabs.append(b);
       }
-      sysGrp.append(sysPills);
-
-      // 3. 形式筛选 (Leo: 线下就是自习，留一个就行，只留自习与线上)
-      const modeGrp = document.createElement('div');
-      modeGrp.className = 'filter-group';
-      modeGrp.innerHTML = '<span class="filter-label">形式:</span>';
-      const modePills = document.createElement('div');
-      modePills.className = 'filter-pills';
-      for (const [val, lbl] of [['all', '全部形式'], ['自习', '自习'], ['线上', '线上']]) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'filter-pill' + (state.freqMode === val ? ' active' : '');
-        btn.textContent = lbl;
-        btn.onclick = () => {
-          state.freqMode = val;
-          render();
-        };
-        modePills.append(btn);
+      header.append(tabs);
+    }
+    wrap.append(header);
+    if (state.owner && state.draft) {
+      const tools = node("div", undefined, "rules-toolbar"),
+        searchBox = node("div", undefined, "rules-search"),
+        search = input(state.search, (v) => {
+          state.search = v;
+          renderList();
+        });
+      search.oninput = () => {
+        state.search = search.value;
+        renderList();
+      };
+      search.placeholder = "搜索学员、班级或任务";
+      search.setAttribute("aria-label", "搜索规则");
+      searchBox.append(search);
+      tools.append(searchBox);
+      if (state.tab !== "overrides") {
+        tools.append(
+          select(
+            [["all", "全部体系"], ...Object.entries(SYSTEMS)],
+            state.system,
+            (v) => {
+              state.system = v;
+              renderList();
+            },
+          ),
+        );
+        if (state.tab === "frequency")
+          tools.append(
+            select(
+              [
+                ["all", "全部状态"],
+                ["进行中", "进行中"],
+                ["暂停", "暂停"],
+              ],
+              state.filter,
+              (v) => {
+                state.filter = v;
+                renderList();
+              },
+            ),
+            button(
+              "新增定期规则",
+              () => {
+                const id = crypto.randomUUID();
+                state.draft.frequency_rows.unshift({
+                  id,
+                  学员: "",
+                  任务内容: "",
+                  状态: "进行中",
+                  形式: "线上",
+                  重复: "每天",
+                  周几: [],
+                  system: "ielts",
+                  _canonical_state: true,
+                });
+                state.open.add("frequency:" + id);
+                state.blankFrequency.set(id, "");
+                modified();
+                renderList();
+              },
+              "rules-btn-primary",
+            ),
+          );
+        tools.append(
+          button("预览布置结果", () =>
+            showPreview(
+              state.previewKey ||
+                Object.keys(state.draft.attendance_rules || {})[0] ||
+                state.draft.frequency_rows?.[0]?.id,
+            ),
+          ),
+        );
       }
-      modeGrp.append(modePills);
-
-      cluster.append(statusGrp, sysGrp, modeGrp);
-
-      // + 新增非随课规则按钮
-      const addBtn = document.createElement('button');
-      addBtn.type = 'button';
-      addBtn.className = 'rules-btn-add';
-      addBtn.innerHTML = `
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-          <line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>
-        </svg>
-        新增非随课规则
-      `;
-      addBtn.onclick = () => {
-        const newRow = {
-          id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : 'row_' + Date.now(),
-          学员: '新学员',
-          任务内容: '新打底任务',
-          状态: '进行中',
-          重复: '每天',
-          周几: [],
-          形式: '自习'
-        };
-        state.draft.frequency_rows.unshift(newRow);
-        markModified();
+      wrap.append(tools);
+    }
+    wrap.append(
+      node(
+        "div",
+        state.status,
+        "rules-status-bar" + (state.alert ? " alert" : ""),
+      ),
+    );
+    const content = node("main", undefined, "rules-content");
+    wrap.append(content);
+    if (state.owner && !state.draft)
+      content.append(button("重试读取", () => void load()));
+    if (!state.owner) {
+      const form = node("form", undefined, "rules-auth"),
+        email = input("", () => {}, "email"),
+        password = input("", () => {}, "password");
+      email.oninput = null;
+      password.oninput = null;
+      email.required = true;
+      email.autocomplete = "username";
+      password.required = true;
+      password.autocomplete = "current-password";
+      form.append(
+        node("h3", "登录工作台账号"),
+        field("邮箱", email),
+        field("密码", password),
+      );
+      const submit = node(
+        "button",
+        "登录并读取规则",
+        "rules-btn rules-btn-primary",
+      );
+      submit.type = "submit";
+      form.append(submit);
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        submit.disabled = true;
+        try {
+          const r = await client.auth.signInWithPassword({
+            email: email.value,
+            password: password.value,
+          });
+          password.value = "";
+          if (r.error) status("登录未成功，请核对账号。", true);
+          else await load();
+        } finally {
+          submit.disabled = false;
+        }
+      };
+      content.append(form);
+    }
+    if (state.owner && state.draft) {
+      const footer = node("footer", undefined, "rules-footer"),
+        left = node("div"),
+        changes = node("details", undefined, "rules-changes");
+      changes.append(
+        node("summary", "", "rules-change-summary"),
+        node("p", "", "rules-change-detail"),
+      );
+      left.append(
+        changes,
+        node("div", "只保存规则，不触发布置或微信推送。", "rules-save-note"),
+      );
+      const buttons = node("div", undefined, "rules-actions");
+      buttons.append(
+        button("重新读取", () => void load(true), "rules-btn-reload"),
+        button("保存修改", () => void save(), "rules-btn-save"),
+      );
+      footer.append(left, buttons);
+      wrap.append(footer);
+    }
+    root.append(wrap);
+    if (state.owner && state.draft) {
+      renderList();
+      updateDirty();
+    }
+  }
+  async function load(confirmDiscard = false) {
+    if (
+      confirmDiscard &&
+      owners().length &&
+      !globalThis.confirm("重新读取会放弃尚未保存的修改，是否继续？")
+    )
+      return;
+    status("正在读取规则…");
+    try {
+      const session = await client.auth.getSession();
+      if (!session.data?.session) {
+        state.owner = null;
         render();
-      };
-      toolbar.append(cluster, addBtn);
-    } else {
-      // ─────────────────────────────────────────────────────────────────────────────
-      // 随课规则 Filter (学科分类: 雅思、托福、SAT、其他)
-      // ─────────────────────────────────────────────────────────────────────────────
-      const sysGrp = document.createElement('div');
-      sysGrp.className = 'filter-group';
-      sysGrp.innerHTML = '<span class="filter-label">学科分类:</span>';
-      const sysPills = document.createElement('div');
-      sysPills.className = 'filter-pills';
-      for (const [val, lbl] of [
-        ['all', '全部学科'],
-        ['ielts', '雅思'],
-        ['toefl', '托福'],
-        ['sat', 'SAT'],
-        ['other', '其他']
-      ]) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'filter-pill' + (state.attSystem === val ? ' active' : '');
-        btn.textContent = lbl;
-        btn.onclick = () => {
-          state.attSystem = val;
-          render();
-        };
-        sysPills.append(btn);
-      }
-      sysGrp.append(sysPills);
-      cluster.append(sysGrp);
-      toolbar.append(cluster);
-    }
-
-    wrapper.append(toolbar);
-
-    // Content Area
-    const contentArea = document.createElement('div');
-    contentArea.className = 'rules-content';
-    renderContentList(contentArea);
-
-    wrapper.append(contentArea);
-    root.append(wrapper);
-  }
-
-  function renderContentList(container) {
-    container.innerHTML = '';
-    const p = state.draft;
-    if (!p) return;
-
-    if (state.category === 'frequency') {
-      // ─────────────────────────────────────────────────────────────────────────────
-      // Render 非随课规则 (frequency_rows)
-      // ─────────────────────────────────────────────────────────────────────────────
-      let rows = (p.frequency_rows || []).slice();
-
-      // 1. Status Filter
-      if (state.freqStatus === 'active') {
-        rows = rows.filter(r => r['状态'] === '进行中');
-      } else if (state.freqStatus === 'paused') {
-        rows = rows.filter(r => r['状态'] === '暂停');
-      }
-
-      // 2. System / Subject Filter (ielts, toefl, sat, other)
-      if (state.freqSystem !== 'all') {
-        rows = rows.filter(r => {
-          const att = p.attendance_rules ? p.attendance_rules[clean(r['学员'])] : null;
-          const sys = inferStudentSystem(r['学员'], att, r['任务内容']);
-          const conf = SYSTEM_CONFIG[sys] || SYSTEM_CONFIG.other;
-          return conf.category === state.freqSystem;
-        });
-      }
-
-      // 3. Mode Filter (自习或线上，线下归入自习)
-      if (state.freqMode === '自习') {
-        rows = rows.filter(r => r['形式'] === '自习' || r['形式'] === '线下');
-      } else if (state.freqMode === '线上') {
-        rows = rows.filter(r => r['形式'] === '线上');
-      }
-
-      // 4. Search Filter
-      if (state.search) {
-        const q = state.search;
-        rows = rows.filter(r =>
-          String(r['学员'] || '').toLowerCase().includes(q) ||
-          String(r['任务内容'] || '').toLowerCase().includes(q)
-        );
-      }
-
-      if (!rows.length) {
-        const empty = document.createElement('div');
-        empty.className = 'rules-empty-state';
-        empty.textContent = state.search ? `未找到符合条件的非随课规则「${state.search}」` : '此筛选条件下暂无非随课规则';
-        container.append(empty);
         return;
       }
-
-      const grid = document.createElement('div');
-      grid.className = 'rules-grid';
-      for (const r of rows) {
-        grid.append(renderFrequencyCard(r));
-      }
-      container.append(grid);
-    } else {
-      // ─────────────────────────────────────────────────────────────────────────────
-      // Render 随课规则 (attendance_rules)
-      // ─────────────────────────────────────────────────────────────────────────────
-      let entries = Object.entries(p.attendance_rules || {});
-
-      // 1. System Filter (ielts, toefl, sat, other)
-      if (state.attSystem !== 'all') {
-        entries = entries.filter(([k, rule]) => {
-          const sys = inferStudentSystem(rule.name || k, rule, rule.vocab_task);
-          const conf = SYSTEM_CONFIG[sys] || SYSTEM_CONFIG.other;
-          return conf.category === state.attSystem;
-        });
-      }
-
-      // 2. Search Filter
-      if (state.search) {
-        const q = state.search;
-        entries = entries.filter(([k, rule]) =>
-          String(rule.name || k).toLowerCase().includes(q) ||
-          String(rule.vocab_task || '').toLowerCase().includes(q) ||
-          (Array.isArray(rule.attendance_tasks) && rule.attendance_tasks.some(t => String(t).toLowerCase().includes(q))) ||
-          (rule.subject_rules && Object.values(rule.subject_rules).some(arr => Array.isArray(arr) && arr.some(t => String(t).toLowerCase().includes(q))))
-        );
-      }
-
-      // 随课规则以班级为单位：过滤掉任何属于合班成员的单人条目（防残留，合班不拆开）
-      const classMemberSet = new Set();
-      for (const spec of MULTI_CLASS_SPECS) {
-        for (const m of spec.members) {
-          if (m !== spec.key) classMemberSet.add(clean(m));
-        }
-      }
-      entries = entries.filter(([k, rule]) => {
-        const kClean = clean(k);
-        const nameClean = clean(rule.name || k);
-        return !classMemberSet.has(kClean) && !classMemberSet.has(nameClean);
-      });
-
-      // Sort alphabetically by name
-      entries.sort((a, b) => (a[1].name || a[0]).localeCompare(b[1].name || b[0], 'zh-CN'));
-
-      if (!entries.length) {
-        const empty = document.createElement('div');
-        empty.className = 'rules-empty-state';
-        empty.textContent = state.search ? `未找到匹配学员「${state.search}」的随课规则` : '此筛选条件下暂无随课规则';
-        container.append(empty);
-        return;
-      }
-
-      const grid = document.createElement('div');
-      grid.className = 'rules-grid';
-      const seenNames = new Set();
-      for (const [key, rule] of entries) {
-        let normName = clean(rule.name || key);
-        if (normName === 'ivan') normName = 'iven';
-        if (normName === 'leo&ivan') normName = 'leo&iven';
-        if (seenNames.has(normName)) continue;
-        seenNames.add(normName);
-        grid.append(renderAttendanceCard(key, rule));
-      }
-      container.append(grid);
+      state.owner = session.data.session.user.id;
+      const result = await client
+        .from("wayon_rule_catalog")
+        .select("revision,payload")
+        .eq("owner_id", state.owner)
+        .maybeSingle();
+      if (result.error || !result.data) throw Error("READ_FAILED");
+      state.base = clone(result.data);
+      state.draft = clone(result.data.payload);
+      state.blankFrequency = new Map();
+      state.errors = [];
+      state.status = "已读取最新规则。展开卡片即可编辑。";
+      state.alert = false;
+      render();
+    } catch {
+      status("规则未能读取，保留当前输入，请稍后重试。", true);
+      if (!state.draft) render();
     }
   }
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // 非随课规则单卡片组件 (还原截图并移除多余下拉按钮，特殊规则转为优雅文字)
-  // ─────────────────────────────────────────────────────────────────────────────
-  function renderFrequencyCard(r) {
-    const card = document.createElement('div');
-    const isPaused = r['状态'] === '暂停';
-    card.className = 'rules-card' + (isPaused ? ' is-paused' : '');
-
-    const att = state.draft.attendance_rules ? state.draft.attendance_rules[clean(r['学员'])] : null;
-    const sys = inferStudentSystem(r['学员'], att, r['任务内容']);
-    const sysConf = SYSTEM_CONFIG[sys] || SYSTEM_CONFIG.general;
-
-    // Check if this student has special non-default rules (特殊规则)
-    const hasSpecialVocab = r['单词布置方式'] && r['单词布置方式'] !== '跟随任务内容';
-    const hasSpecialReading = r['特殊阅读规则'] && r['特殊阅读规则'] !== '跟随默认';
-    const isSpecialRule = hasSpecialVocab || hasSpecialReading;
-
-    // Card Head: Student Name + System Pill + Standard/Special Pill + State Toggle
-    const head = document.createElement('div');
-    head.className = 'rules-card-head';
-
-    const bLeft = document.createElement('div');
-    bLeft.className = 'rules-student-badge';
-
-    const nameInp = document.createElement('input');
-    nameInp.className = 'rules-input';
-    nameInp.style.cssText = 'font-size:18px;font-weight:700;width:120px;padding:3px 6px;height:32px;background:transparent;border-color:transparent';
-    nameInp.value = r['学员'] || '';
-    nameInp.title = '点击修改学员姓名';
-    nameInp.onfocus = () => { nameInp.style.background = '#fff'; nameInp.style.borderColor = 'var(--line-strong)'; };
-    nameInp.onblur = () => { nameInp.style.background = 'transparent'; nameInp.style.borderColor = 'transparent'; };
-    nameInp.onchange = () => {
-      r['学员'] = nameInp.value.trim() || r['学员'];
-      markModified();
-    };
-
-    // Editable Subject / System Select
-    const sysSel = document.createElement('select');
-    sysSel.className = 'rules-select rules-sys-select';
-    sysSel.title = '修改学科分类（IELTS/TOEFL/SAT/Ability/Other）';
-    sysSel.style.cssText = 'font-size:11.5px;padding:2px 8px;height:26px;width:auto;font-weight:600;border-radius:6px;cursor:pointer;transition:all .15s ease';
-    for (const [k, conf] of Object.entries(SYSTEM_CONFIG)) {
-      if (k === 'general' || k === 'school') continue;
-      const opt = document.createElement('option');
-      opt.value = k;
-      opt.textContent = conf.en;
-      opt.selected = (r.system || sys) === k;
-      sysSel.append(opt);
-    }
-    const applySysStyle = (k) => {
-      const c = SYSTEM_CONFIG[k] || SYSTEM_CONFIG.general;
-      sysSel.style.background = c.bg;
-      sysSel.style.color = c.fg;
-      sysSel.style.borderColor = c.border;
-    };
-    applySysStyle(r.system || sys);
-
-    sysSel.onchange = () => {
-      r.system = sysSel.value;
-      const conf = SYSTEM_CONFIG[sysSel.value];
-      if (conf) {
-        r['课程'] = conf.label;
-      }
-      applySysStyle(sysSel.value);
-      markModified();
-      const stClean = clean(r['学员']);
-      if (stClean) {
-        STUDENT_SYSTEM_MAP[stClean] = sysSel.value;
-      }
-    };
-
-    const typeTag = document.createElement('span');
-    typeTag.className = 'rule-type-tag ' + (isSpecialRule ? 'special' : 'standard');
-    typeTag.textContent = isSpecialRule ? '⚡ 特殊规则' : '通用规则';
-
-    bLeft.append(nameInp, sysSel, typeTag);
-
-    // State Toggle Button (● 进行中 / ⏸ 暂停)
-    const toggle = document.createElement('button');
-    toggle.type = 'button';
-    toggle.className = 'rules-state-toggle ' + (isPaused ? 'paused' : 'active');
-    toggle.textContent = isPaused ? '⏸ 暂停' : '● 进行中';
-    toggle.title = isPaused ? '点击恢复进行中' : '点击暂停此规则';
-    toggle.onclick = () => {
-      r['状态'] = isPaused ? '进行中' : '暂停';
-      markModified();
-      renderContentList(root.querySelector('.rules-content'));
-    };
-
-    head.append(bLeft, toggle);
-
-    // Section Title: 📅 自习与打底任务规则
-    const secHdr = document.createElement('div');
-    secHdr.className = 'rules-section-hdr';
-    secHdr.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-        <line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line>
-      </svg>
-      自习与打底任务规则
-    `;
-
-    // 1. 检查频率 (Leo 指示: 随课分离出去了，按钮去掉！只保留「每天」和「每周固定几天」)
-    const repField = document.createElement('div');
-    repField.className = 'rules-field';
-    const repLbl = document.createElement('span');
-    repLbl.className = 'rules-label';
-    repLbl.textContent = '检查频率';
-
-    const repGroup = document.createElement('div');
-    repGroup.className = 'rules-seg-group';
-    // If old data was '随课/每天', normalize to '每天'
-    if (r['重复'] === '随课/每天') r['重复'] = '每天';
-
-    for (const opt of ['每天', '每周固定几天']) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'rules-seg-btn' + (r['重复'] === opt ? ' on' : '');
-      b.textContent = opt;
-      b.onclick = () => {
-        r['重复'] = opt;
-        if (opt === '每周固定几天' && (!r['周几'] || !r['周几'].length)) {
-          r['周几'] = ['周五'];
-        }
-        markModified();
-        renderContentList(root.querySelector('.rules-content'));
-      };
-      repGroup.append(b);
-    }
-    repField.append(repLbl, repGroup);
-
-    // If 每周固定几天: 每周执行日
-    if (r['重复'] === '每周固定几天') {
-      const daysLbl = document.createElement('span');
-      daysLbl.className = 'rules-label';
-      daysLbl.style.marginTop = '4px';
-      daysLbl.textContent = '每周执行日';
-
-      const daysGroup = document.createElement('div');
-      daysGroup.className = 'rules-days-group';
-      const days = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
-      const shortDays = ['一', '二', '三', '四', '五', '六', '日'];
-      days.forEach((day, idx) => {
-        const curDays = Array.isArray(r['周几']) ? r['周几'] : [];
-        const isSelected = curDays.includes(day);
-        const dB = document.createElement('button');
-        dB.type = 'button';
-        dB.className = 'rules-day-btn' + (isSelected ? ' on' : '');
-        dB.textContent = shortDays[idx];
-        dB.title = day;
-        dB.onclick = () => {
-          if (!Array.isArray(r['周几'])) r['周几'] = [];
-          if (r['周几'].includes(day)) {
-            r['周几'] = r['周几'].filter(d => d !== day);
-          } else {
-            r['周几'].push(day);
-          }
-          markModified();
-          dB.classList.toggle('on', r['周几'].includes(day));
-        };
-        daysGroup.append(dB);
-      });
-      repField.append(daysLbl, daysGroup);
-    }
-
-    // 2. 执行形式 (Leo 指示: 线下就是自习，留一个就行！只保留「线上」和「自习」两个按钮)
-    const modeField = document.createElement('div');
-    modeField.className = 'rules-field';
-    const modeLbl = document.createElement('span');
-    modeLbl.className = 'rules-label';
-    modeLbl.textContent = '执行形式';
-
-    const modeGroup = document.createElement('div');
-    modeGroup.className = 'rules-seg-group';
-    // Normalize '线下' to '自习'
-    const curMode = (r['形式'] === '线上') ? '线上' : '自习';
-
-    for (const m of ['线上', '自习']) {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'rules-seg-btn' + (curMode === m ? ' on' : '');
-      b.textContent = m;
-      b.onclick = () => {
-        r['形式'] = m;
-        markModified();
-        modeGroup.querySelectorAll('.rules-seg-btn').forEach(btn => btn.classList.remove('on'));
-        b.classList.add('on');
-      };
-      modeGroup.append(b);
-    }
-    modeField.append(modeLbl, modeGroup);
-
-    // 3. 任务内容（支持具体数量，如：50个单词）
-    const taskField = document.createElement('div');
-    taskField.className = 'rules-field';
-    const taskLbl = document.createElement('span');
-    taskLbl.className = 'rules-label';
-    taskLbl.textContent = '任务内容（支持具体数量，如：50个单词）';
-    const taskTa = document.createElement('textarea');
-    taskTa.className = 'rules-textarea';
-    taskTa.value = r['任务内容'] || '';
-    taskTa.placeholder = '输入任务详细描述…';
-    taskTa.oninput = () => {
-      r['任务内容'] = taskTa.value;
-      markModified();
-    };
-    taskField.append(taskLbl, taskTa);
-
-    // 4. 特殊规则设定 (转为优雅轻量文字提示，不放置多余的大下拉框！)
-    let specialContainer = document.createElement('div');
-    specialContainer.className = 'rules-field';
-
-    const renderSpecialRuleUI = () => {
-      specialContainer.innerHTML = '';
-      const vMode = r['单词布置方式'];
-      const rMode = r['特殊阅读规则'];
-      const hasCustom = (vMode && vMode !== '跟随任务内容') || (rMode && rMode !== '跟随默认');
-
-      if (hasCustom) {
-        // Show clean, elegant text box instead of multiple bulky buttons
-        const spBox = document.createElement('div');
-        spBox.className = 'rules-special-box';
-        const spLeft = document.createElement('div');
-        spLeft.className = 'sp-left';
-        spLeft.innerHTML = `<strong>⚡ 特殊规则：</strong>${vMode ? `单词: ${vMode} ` : ''}${rMode ? `阅读: ${rMode}` : ''}`;
-
-        const spActions = document.createElement('div');
-        spActions.className = 'sp-actions';
-
-        const editBtn = document.createElement('button');
-        editBtn.type = 'button';
-        editBtn.className = 'rules-special-btn';
-        editBtn.textContent = '修改';
-        editBtn.onclick = () => showSpecialDrawer();
-
-        const resetBtn = document.createElement('button');
-        resetBtn.type = 'button';
-        resetBtn.className = 'rules-special-btn reset';
-        resetBtn.textContent = '重置为通用默认';
-        resetBtn.onclick = () => {
-          delete r['单词布置方式'];
-          delete r['特殊阅读规则'];
-          markModified();
-          renderSpecialRuleUI();
-          typeTag.className = 'rule-type-tag standard';
-          typeTag.textContent = '通用规则';
-        };
-
-        spActions.append(editBtn, resetBtn);
-        spBox.append(spLeft, spActions);
-        specialContainer.append(spBox);
-      } else {
-        // If standard/default: discreet inline text button to avoid cluttering
-        const addSpBtn = document.createElement('button');
-        addSpBtn.type = 'button';
-        addSpBtn.style.cssText = 'background:transparent;border:0;color:var(--muted);font-size:11.5px;text-align:left;cursor:pointer;padding:2px 0;text-decoration:underline';
-        addSpBtn.textContent = '+ 设定特殊规则（单词布置方式 / 特殊阅读规则）';
-        addSpBtn.onclick = () => showSpecialDrawer();
-        specialContainer.append(addSpBtn);
-      }
-    };
-
-    const showSpecialDrawer = () => {
-      specialContainer.innerHTML = '';
-      const drawer = document.createElement('div');
-      drawer.className = 'rules-special-drawer';
-
-      // 单词布置方式
-      const vDiv = document.createElement('div');
-      vDiv.className = 'rules-field';
-      vDiv.innerHTML = '<span class="rules-label">单词布置方式</span>';
-      const vSel = document.createElement('select');
-      vSel.className = 'rules-select';
-      for (const opt of ['跟随任务内容', '仅听力', '仅阅读', '听读交替', '两科分别布置']) {
-        const o = document.createElement('option');
-        o.value = opt;
-        o.textContent = opt;
-        o.selected = (r['单词布置方式'] || '跟随任务内容') === opt;
-        vSel.append(o);
-      }
-      vSel.onchange = () => {
-        if (vSel.value === '跟随任务内容') delete r['单词布置方式'];
-        else r['单词布置方式'] = vSel.value;
-        markModified();
-      };
-      vDiv.append(vSel);
-
-      // 特殊阅读规则
-      const rDiv = document.createElement('div');
-      rDiv.className = 'rules-field';
-      rDiv.innerHTML = '<span class="rules-label">特殊阅读规则</span>';
-      const rSel = document.createElement('select');
-      rSel.className = 'rules-select';
-      for (const opt of ['跟随默认', '完整原卷', '仅同卷P1/P2', '跨卷P1/P2三篇', '老师安排']) {
-        const o = document.createElement('option');
-        o.value = opt;
-        o.textContent = opt;
-        o.selected = (r['特殊阅读规则'] || '跟随默认') === opt;
-        rSel.append(o);
-      }
-      rSel.onchange = () => {
-        if (rSel.value === '跟随默认') delete r['特殊阅读规则'];
-        else r['特殊阅读规则'] = rSel.value;
-        markModified();
-      };
-      rDiv.append(rSel);
-
-      const doneBtn = document.createElement('button');
-      doneBtn.type = 'button';
-      doneBtn.className = 'rules-seg-btn on';
-      doneBtn.style.gridColumn = '1/-1';
-      doneBtn.textContent = '完成特殊规则设定';
-      doneBtn.onclick = () => {
-        renderSpecialRuleUI();
-        const hasCustom = r['单词布置方式'] || r['特殊阅读规则'];
-        typeTag.className = 'rule-type-tag ' + (hasCustom ? 'special' : 'standard');
-        typeTag.textContent = hasCustom ? '⚡ 特殊规则' : '通用规则';
-      };
-
-      drawer.append(vDiv, rDiv, doneBtn);
-      specialContainer.append(drawer);
-    };
-
-    renderSpecialRuleUI();
-
-    // 5. 下次日期 & 截止日期
-    const datesRow = document.createElement('div');
-    datesRow.className = 'rules-dates-row';
-
-    // 下次日期
-    const nextField = document.createElement('div');
-    nextField.className = 'rules-field';
-    const nextLbl = document.createElement('span');
-    nextLbl.className = 'rules-label';
-    nextLbl.textContent = '下次日期';
-    const nextInp = document.createElement('input');
-    nextInp.type = 'date';
-    nextInp.className = 'rules-input';
-    nextInp.value = (r['date:下次日期:start'] || '').slice(0, 10);
-    nextInp.onchange = () => {
-      if (nextInp.value) r['date:下次日期:start'] = nextInp.value;
-      else delete r['date:下次日期:start'];
-      markModified();
-    };
-    nextField.append(nextLbl, nextInp);
-
-    // 截止日期
-    const dueField = document.createElement('div');
-    dueField.className = 'rules-field';
-    const dueLbl = document.createElement('span');
-    dueLbl.className = 'rules-label';
-    dueLbl.textContent = '截止日期';
-    const dueInp = document.createElement('input');
-    dueInp.type = 'date';
-    dueInp.className = 'rules-input';
-    dueInp.value = (r['date:重复截止:start'] || '').slice(0, 10);
-    dueInp.onchange = () => {
-      if (dueInp.value) r['date:重复截止:start'] = dueInp.value;
-      else delete r['date:重复截止:start'];
-      markModified();
-    };
-    dueField.append(dueLbl, dueInp);
-
-    datesRow.append(nextField, dueField);
-
-    // Card Foot: Delete button
-    const foot = document.createElement('div');
-    foot.className = 'rules-card-foot';
-    const idHint = document.createElement('span');
-    idHint.style.cssText = 'font-size:11px;color:var(--muted);font-family:monospace';
-    idHint.textContent = r.id ? r.id.slice(0, 8) : '';
-
-    const delBtn = document.createElement('button');
-    delBtn.type = 'button';
-    delBtn.className = 'rules-btn-del';
-    delBtn.textContent = '× 移除此项规则';
-    delBtn.onclick = () => {
-      if (confirm(`确定要移除学员「${r['学员']}」的此项规则吗？`)) {
-        state.draft.frequency_rows = state.draft.frequency_rows.filter(item => item !== r);
-        markModified();
-        renderContentList(root.querySelector('.rules-content'));
-      }
-    };
-    foot.append(idHint, delBtn);
-
-    card.append(head, secHdr, repField, modeField, taskField, specialContainer, datesRow, foot);
-    return card;
-  }
-
-  // ─────────────────────────────────────────────────────────────────────────────
-  // 随课规则单卡片组件
-  // ─────────────────────────────────────────────────────────────────────────────
-  function renderAttendanceCard(key, rule) {
-    const card = document.createElement('div');
-    card.className = 'rules-card';
-
-    let displayName = rule.name || key;
-    if (displayName.toLowerCase() === 'ivan') displayName = 'Iven';
-    if (displayName.toLowerCase() === 'leo & ivan') displayName = 'Leo & Iven';
-    if (displayName.includes('郭璟') && displayName.toLowerCase().includes('jack')) displayName = '郭璟 Jack';
-    const sys = inferStudentSystem(displayName, rule, rule.vocab_task);
-    const sysConf = SYSTEM_CONFIG[sys] || SYSTEM_CONFIG.general;
-
-    // Head: Student Name + System Select
-    const head = document.createElement('div');
-    head.className = 'rules-card-head';
-
-    const bLeft = document.createElement('div');
-    bLeft.className = 'rules-student-badge';
-    const nameEl = document.createElement('h3');
-    nameEl.className = 'rules-card-title';
-    nameEl.textContent = displayName;
-
-    const sysSel = document.createElement('select');
-    sysSel.className = 'rules-select rules-sys-select';
-    sysSel.title = '修改学科分类（IELTS/TOEFL/SAT/Ability/Other）';
-    sysSel.style.cssText = 'font-size:11.5px;padding:2px 8px;height:26px;width:auto;font-weight:600;border-radius:6px;cursor:pointer;transition:all .15s ease';
-    for (const [k, conf] of Object.entries(SYSTEM_CONFIG)) {
-      if (k === 'general' || k === 'school') continue;
-      const opt = document.createElement('option');
-      opt.value = k;
-      opt.textContent = conf.en;
-      opt.selected = (rule.system || sys) === k;
-      sysSel.append(opt);
-    }
-    const applyAttSysStyle = (k) => {
-      const c = SYSTEM_CONFIG[k] || SYSTEM_CONFIG.general;
-      sysSel.style.background = c.bg;
-      sysSel.style.color = c.fg;
-      sysSel.style.borderColor = c.border;
-    };
-    applyAttSysStyle(rule.system || sys);
-
-    sysSel.onchange = () => {
-      rule.system = sysSel.value;
-      applyAttSysStyle(sysSel.value);
-      markModified();
-      const stClean = clean(displayName);
-      if (stClean) {
-        STUDENT_SYSTEM_MAP[stClean] = sysSel.value;
-      }
-      renderContentList(root.querySelector('.rules-content'));
-    };
-
-    bLeft.append(nameEl, sysSel);
-    head.append(bLeft);
-
-    // 1. 随课常驻任务规则（合并单词与常驻任务，一体化连贯呈现）
-    const baseField = document.createElement('div');
-    baseField.className = 'rules-field';
-    baseField.style.marginTop = '4px';
-
-    const bLbl = document.createElement('span');
-    bLbl.className = 'rules-label';
-    bLbl.textContent = '随课常驻任务（每节课必做）';
-    baseField.append(bLbl);
-
-    const baseList = document.createElement('div');
-    baseList.className = 'rules-att-tasks';
-
-    // 单词任务行
-    const vRow = document.createElement('div');
-    vRow.className = 'rules-att-task-row';
-
-    const vBadge = document.createElement('span');
-    vBadge.className = 'rules-task-badge vocab';
-    vBadge.textContent = '单词';
-
-    const vInput = document.createElement('input');
-    vInput.className = 'rules-input';
-    vInput.style.cssText = 'font-size:12px;flex:1';
-    vInput.value = rule.vocab_task || '';
-    vInput.placeholder = '输入随课单词任务（如留空则课上免背）';
-    vInput.oninput = () => {
-      rule.vocab_task = vInput.value;
-      markModified();
-    };
-
-    // 快捷填入极简单符号下拉菜单（纯符号 ⚡，不占宽度）
-    const vQuickSel = document.createElement('select');
-    vQuickSel.className = 'rules-quick-sel';
-    vQuickSel.title = '⚡ 快捷填入词汇预设';
-
-    const defaultOpt = document.createElement('option');
-    defaultOpt.value = '';
-    defaultOpt.textContent = '⚡';
-    defaultOpt.disabled = true;
-    defaultOpt.selected = true;
-    vQuickSel.append(defaultOpt);
-
-    const presetItems = [
-      ['⚡ 常用词汇预设（点击填入）：', ''],
-      ['雅思双词书 (听50+阅50)', '系统内单词任务（听力*50+阅读*50）'],
-      ['托福100词 (50*2)', '系统内托福单词100个（50*2）'],
-      ['SAT核心词汇100词', '系统内单词任务（SAT核心词汇100词，选择题模式）'],
-      ['30个SAT单词', '30个SAT单词（选择题模式）'],
-      ['校内单词背诵', '校内单词背诵'],
-      ['四级词汇*2组', '系统内单词任务（四级词汇*两组，每组30词）'],
-      ['免背 / 课上无单词', '']
-    ];
-    presetItems.forEach(([label, val], idx) => {
-      const opt = document.createElement('option');
-      opt.value = val;
-      opt.textContent = label;
-      if (idx === 0) opt.disabled = true;
-      vQuickSel.append(opt);
-    });
-
-    vQuickSel.onchange = () => {
-      if (vQuickSel.value !== undefined) {
-        vInput.value = vQuickSel.value;
-        rule.vocab_task = vQuickSel.value;
-        markModified();
-      }
-      vQuickSel.selectedIndex = 0;
-    };
-
-    vRow.append(vBadge, vInput, vQuickSel);
-    baseList.append(vRow);
-
-    // 其它随课常驻任务行
-    if (!Array.isArray(rule.attendance_tasks)) {
-      rule.attendance_tasks = [];
-    }
-
-    rule.attendance_tasks.forEach((task, idx) => {
-      const row = document.createElement('div');
-      row.className = 'rules-att-task-row';
-
-      const tBadge = document.createElement('span');
-      tBadge.className = 'rules-task-badge';
-      tBadge.textContent = '常驻';
-
-      const tInp = document.createElement('input');
-      tInp.className = 'rules-input';
-      tInp.style.fontSize = '12px';
-      tInp.value = task;
-      tInp.placeholder = '输入常驻任务内容';
-      tInp.oninput = () => {
-        rule.attendance_tasks[idx] = tInp.value;
-        markModified();
-      };
-
-      const delBtn = document.createElement('button');
-      delBtn.type = 'button';
-      delBtn.className = 'rules-att-task-del';
-      delBtn.innerHTML = '×';
-      delBtn.title = '删除此任务';
-      delBtn.onclick = () => {
-        rule.attendance_tasks.splice(idx, 1);
-        markModified();
-        renderContentList(root.querySelector('.rules-content'));
-      };
-
-      row.append(tBadge, tInp, delBtn);
-      baseList.append(row);
-    });
-
-    const addBaseTaskBtn = document.createElement('button');
-    addBaseTaskBtn.type = 'button';
-    addBaseTaskBtn.className = 'rules-preset-chip';
-    addBaseTaskBtn.style.marginTop = '4px';
-    addBaseTaskBtn.textContent = '+ 添加一项常驻任务';
-    addBaseTaskBtn.onclick = () => {
-      rule.attendance_tasks.push('新常驻任务');
-      markModified();
-      renderContentList(root.querySelector('.rules-content'));
-    };
-
-    baseField.append(baseList, addBaseTaskBtn);
-
-    // 2. 分科目专属随课任务 (subject_rules，当天排课自动附加)
-    const subjSection = document.createElement('div');
-    subjSection.className = 'rules-subj-section';
-
-    const subjHdr = document.createElement('div');
-    subjHdr.className = 'rules-subj-header';
-    subjHdr.innerHTML = `
-      <span>按科目专属任务（根据当天排课自动附加）</span>
-    `;
-    subjSection.append(subjHdr);
-
-    if (!rule.subject_rules || typeof rule.subject_rules !== 'object') {
-      rule.subject_rules = {};
-    }
-
-    const currentSubjects = Object.keys(rule.subject_rules);
-
-    currentSubjects.forEach(subj => {
-      const tasks = rule.subject_rules[subj] || [];
-      const box = document.createElement('div');
-      box.className = 'rules-subj-box';
-
-      const boxHead = document.createElement('div');
-      boxHead.className = 'rules-subj-box-head';
-
-      const tag = document.createElement('span');
-      tag.className = 'rules-subj-tag';
-      tag.textContent = `【${subj}课】专属任务`;
-
-      const removeSubjBtn = document.createElement('button');
-      removeSubjBtn.type = 'button';
-      removeSubjBtn.className = 'rules-subj-remove';
-      removeSubjBtn.textContent = '删除该科目规则';
-      removeSubjBtn.onclick = () => {
-        if (confirm(`确定要移除「${subj}课」的专属随课任务吗？`)) {
-          delete rule.subject_rules[subj];
-          markModified();
-          renderContentList(root.querySelector('.rules-content'));
-        }
-      };
-
-      boxHead.append(tag, removeSubjBtn);
-
-      const sTaskList = document.createElement('div');
-      sTaskList.className = 'rules-att-tasks';
-
-      tasks.forEach((st, sIdx) => {
-        const sRow = document.createElement('div');
-        sRow.className = 'rules-att-task-row';
-
-        const sInp = document.createElement('input');
-        sInp.className = 'rules-input';
-        sInp.style.fontSize = '12px';
-        sInp.value = st;
-        sInp.placeholder = `输入${subj}课专属任务`;
-        sInp.oninput = () => {
-          tasks[sIdx] = sInp.value;
-          markModified();
-        };
-
-        const sDelBtn = document.createElement('button');
-        sDelBtn.type = 'button';
-        sDelBtn.className = 'rules-att-task-del';
-        sDelBtn.innerHTML = '×';
-        sDelBtn.title = '删除此任务';
-        sDelBtn.onclick = () => {
-          tasks.splice(sIdx, 1);
-          markModified();
-          renderContentList(root.querySelector('.rules-content'));
-        };
-
-        sRow.append(sInp, sDelBtn);
-        sTaskList.append(sRow);
-      });
-
-      const addSubjTaskBtn = document.createElement('button');
-      addSubjTaskBtn.type = 'button';
-      addSubjTaskBtn.className = 'rules-preset-chip';
-      addSubjTaskBtn.style.marginTop = '4px';
-      addSubjTaskBtn.textContent = `+ 添加一项${subj}课任务`;
-      addSubjTaskBtn.onclick = () => {
-        tasks.push(`新${subj}任务`);
-        markModified();
-        renderContentList(root.querySelector('.rules-content'));
-      };
-
-      box.append(boxHead, sTaskList, addSubjTaskBtn);
-      subjSection.append(box);
-    });
-
-    // Quick add subject toolbar
-    const addSubjBar = document.createElement('div');
-    addSubjBar.className = 'rules-subj-chips';
-    const promptLbl = document.createElement('span');
-    promptLbl.style.cssText = 'font-size:11.5px;color:var(--muted,#777)';
-    promptLbl.textContent = '＋ 定制科目任务：';
-    addSubjBar.append(promptLbl);
-
-    const curSys = String(rule.system || sys || '').toLowerCase();
-    let recSubjs = ['听力', '写作', '阅读', '口语'];
-    if (curSys === 'sat') {
-      recSubjs = ['阅读', '语法', '数学'];
-    } else if (curSys === 'ability') {
-      recSubjs = ['听说', '读写', '词汇与语言应用', '语法'];
-    } else if (curSys === 'other') {
-      recSubjs = ['阅读', '写作', '语法'];
-    }
-    recSubjs.forEach(s => {
-      if (!rule.subject_rules[s]) {
-        const chip = document.createElement('button');
-        chip.type = 'button';
-        chip.className = 'rules-preset-chip';
-        chip.textContent = `+ ${s}课`;
-        chip.onclick = () => {
-          rule.subject_rules[s] = [`${s}课课后专属任务`];
-          markModified();
-          renderContentList(root.querySelector('.rules-content'));
-        };
-        addSubjBar.append(chip);
-      }
-    });
-
-    const customChip = document.createElement('button');
-    customChip.type = 'button';
-    customChip.className = 'rules-preset-chip';
-    customChip.textContent = '+ 自定义科目…';
-    customChip.onclick = () => {
-      const name = prompt('请输入要定制随课任务的科目名称（如：语法、词汇与语言应用、听说等）：');
-      if (name && name.trim()) {
-        const cleanName = name.trim().replace(/课$/, '');
-        if (!rule.subject_rules[cleanName]) {
-          rule.subject_rules[cleanName] = ['新定制任务'];
-          markModified();
-          renderContentList(root.querySelector('.rules-content'));
-        }
-      }
-    };
-    addSubjBar.append(customChip);
-    subjSection.append(addSubjBar);
-
-    card.append(head, baseField, subjSection);
-    return card;
-  }
-
-  // Initial load
+  state.blankFrequency = new Map();
   await load();
+  return {
+    getDraft: () => clone(state.draft),
+    getBase: () => clone(state.base),
+    reload: () => load(true),
+  };
 }

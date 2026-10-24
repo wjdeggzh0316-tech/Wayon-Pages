@@ -158,7 +158,7 @@
         dialog.innerHTML = `
           <div style="padding:40px 24px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif">
             <h3 style="margin:0 0 8px;color:var(--bad,#d93025)">无法载入任务规则</h3>
-            <p style="font-size:13px;color:var(--muted,#666);margin:0 0 16px">${err?.message || '请检查网络或刷新页面后重试'}</p>
+            <p style="font-size:13px;color:var(--muted,#666);margin:0 0 16px">请检查网络或刷新页面后重试；当前页面数据保持原样。</p>
             <button onclick="this.closest('dialog').close()" style="padding:8px 18px;border-radius:8px;border:1px solid #ddd;background:#fff;cursor:pointer">关闭</button>
           </div>
         `;
