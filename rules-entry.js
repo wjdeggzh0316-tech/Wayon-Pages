@@ -8,13 +8,82 @@
   const entryStyle = document.createElement('style');
   entryStyle.id = 'wayon-rules-entry-style';
   entryStyle.textContent = `
-    .sidebar-rules-btn{display:flex;align-items:center;gap:10px;width:100%;min-height:38px;padding:8px 12px;margin:8px 0;border:1px solid var(--line,rgba(0,0,0,0.08));border-radius:10px;background:var(--card,#fff);color:var(--fg-secondary,#555);font-size:13px;font-weight:600;cursor:pointer;transition:all .15s ease;box-shadow:0 1px 3px rgba(0,0,0,0.02)}
-    .sidebar-rules-btn:hover{background:var(--accent-subtle,#eaf3ff);color:var(--accent,#0071e3);border-color:var(--accent,#0071e3)}
-    .sidebar-rules-btn svg{width:17px;height:17px;flex:none;color:currentColor}
-    .wayon-workbench #wayon-rules-open-btn{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--muted);cursor:pointer;transition:all .15s}
-    .wayon-workbench #wayon-rules-open-btn:hover{color:var(--accent);border-color:var(--accent);background:var(--accent-subtle,#eaf3ff)}
-    .wayon-workbench #wayon-rules-open-btn svg{width:18px;height:18px;pointer-events:none}
-    @media(max-width:599px){.wayon-workbench #wayon-rules-open-btn{width:44px;height:44px}}
+    .sidebar-rules-card-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      margin: 10px 14px;
+      padding: 10px 16px;
+      min-height: 40px;
+      height: 40px;
+      border: 1px solid var(--line, rgba(0,0,0,0.1));
+      border-radius: 12px;
+      background: var(--card, #fff);
+      color: var(--accent, #0071e3);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      cursor: pointer;
+      white-space: nowrap !important;
+      box-sizing: border-box;
+      width: calc(100% - 28px);
+      transition: all .15s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
+      flex: none;
+    }
+    .sidebar-rules-card-btn:hover {
+      background: var(--accent-subtle, #eaf3ff);
+      border-color: var(--accent, #0071e3);
+      box-shadow: 0 2px 6px rgba(0,113,227,0.12);
+    }
+    .sidebar-rules-card-btn svg {
+      width: 17px;
+      height: 17px;
+      flex: none;
+      color: currentColor;
+    }
+    .wayon-workbench #wayon-rules-open-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      min-width: 36px;
+      min-height: 36px;
+      padding: 0;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--muted);
+      cursor: pointer;
+      transition: all .15s ease;
+      box-sizing: border-box;
+    }
+    .wayon-workbench #wayon-rules-open-btn:hover {
+      color: var(--accent);
+      border-color: var(--accent);
+      background: var(--accent-subtle, #eaf3ff);
+    }
+    .wayon-workbench #wayon-rules-open-btn svg {
+      width: 18px;
+      height: 18px;
+      pointer-events: none;
+    }
+    @media (max-width: 859px) {
+      .sidebar-rules-card-btn {
+        margin: 6px 8px;
+        width: auto;
+      }
+    }
+    @media (max-width: 599px) {
+      .wayon-workbench #wayon-rules-open-btn {
+        width: 44px;
+        height: 44px;
+        min-width: 44px;
+        min-height: 44px;
+      }
+    }
   `;
   (document.head || document.documentElement).append(entryStyle);
 
@@ -117,20 +186,20 @@
       }
     }
 
-    // 2. Mount sidebar button directly in .sidebar (above footer or after tabs)
+    // 2. Mount sidebar card button directly in .sidebar (below .nav-section)
     const sidebar = document.querySelector('.sidebar');
     if (sidebar && !document.getElementById('wayon-rules-sidebar-btn')) {
       const sBtn = document.createElement('button');
       sBtn.type = 'button';
-      sBtn.className = 'sidebar-rules-btn';
+      sBtn.className = 'sidebar-rules-card-btn';
       sBtn.id = 'wayon-rules-sidebar-btn';
       sBtn.title = '查看与编辑学员任务规则';
-      sBtn.innerHTML = `${svgIcon} <span>任务规则 · Rules</span>`;
+      sBtn.innerHTML = `${svgIcon}<span>任务规则 · Rules</span>`;
       sBtn.onclick = openRulesModal;
 
-      const footer = sidebar.querySelector('.sidebar-footer');
-      if (footer) {
-        sidebar.insertBefore(sBtn, footer);
+      const navSec = sidebar.querySelector('.nav-section');
+      if (navSec && navSec.nextSibling) {
+        sidebar.insertBefore(sBtn, navSec.nextSibling);
       } else {
         sidebar.append(sBtn);
       }
