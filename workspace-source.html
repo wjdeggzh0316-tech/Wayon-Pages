@@ -343,8 +343,13 @@ const pload = () => { ps = {}; try { ps = JSON.parse(localStorage.getItem(pkey()
 const psave = () => { try { localStorage.setItem(pkey(), JSON.stringify(ps)); } catch(e) {} push(); };
 const ptext = p => {
   const s = get(p[0]);
-  const tasks = (Array.isArray(s.tk)) ? s.tk : (p[3] || []);
-  return p[2].replace(/[「」]/g, "") + "\n\n" + tasks.filter(t => taskVisible(p[0],t)).map((t,i) => (i+1) + "、" + (typeof t === "string" ? t : t[0])).join("\n");
+  let tk = s.tk;
+  if (!Array.isArray(tk) && p[5] && p[5].isGroup && Array.isArray(p[5].members)) {
+    tk = p[5].members.map(m => get(m).tk).find(Array.isArray);
+  }
+  const tasks = (Array.isArray(tk)) ? tk : (p[3] || []);
+  const checkName = (p[5] && p[5].isGroup && Array.isArray(p[5].members)) ? p[5].members[0] : p[0];
+  return p[2].replace(/[「」]/g, "") + "\n\n" + tasks.filter(t => taskVisible(checkName, t)).map((t,i) => (i+1) + "、" + (typeof t === "string" ? t : t[0])).join("\n");
 };
 const hhmm = () => new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"});
 // 2026-10-05 Leo：任务安排 / 完成情况 / 课程通知——点了「复制」的卡片收成一行挪到最下面；点一下展开，展开后可「收起」
@@ -365,7 +370,7 @@ const placeCard = (el, copied, id, label, when, bottom) => {   // 没复制的�
   if (!copied) { list.append(el); return; }
   bottom.push(openCards.has(id) ? addCollapse(el, id) : foldRow(id, label, when));
 };
-function planCard(title, meta, txt, k){
+function planCard(title, meta, txt, k, grpMeta){
   const el = document.createElement("div"); el.className = "item" + (ps[k] ? " copied" : "");
   const head = document.createElement("div"); head.className = "head";
   const name = document.createElement("div"); name.className = "name"; name.textContent = title;
@@ -376,7 +381,11 @@ function planCard(title, meta, txt, k){
   const b = document.createElement("button"); b.type = "button"; b.className = "copy"; b.id = "pcopy-" + k;
   b.textContent = ps[k] ? "再复制一次" : "复制";
   b.onclick = () => {
-    const ok = () => { ps[k] = hhmm(); psave(); render(); };
+    const ok = () => {
+      ps[k] = hhmm();
+      if (grpMeta && grpMeta.members) grpMeta.members.forEach(m => { ps[m] = ps[k]; });
+      psave(); render();
+    };
     const fail = () => { b.textContent = "复制失败，请重试"; };
     try { navigator.clipboard.writeText(txt).then(ok, fail); } catch(e) { fail(); }
   };
@@ -389,7 +398,15 @@ function planCard(title, meta, txt, k){
     render();
   };
   head.append(editBtn);
-  if (ps[k]){ const u = document.createElement("button"); u.type = "button"; u.className = "small"; u.textContent = "撤销"; u.onclick = () => { delete ps[k]; psave(); render(); }; head.append(u); }
+  if (ps[k]){
+    const u = document.createElement("button"); u.type = "button"; u.className = "small"; u.textContent = "撤销";
+    u.onclick = () => {
+      delete ps[k];
+      if (grpMeta && grpMeta.members) grpMeta.members.forEach(m => { delete ps[m]; });
+      psave(); render();
+    };
+    head.append(u);
+  }
   el.append(head);
   if (openEditors.has("plan:" + k)) {
     const editor = document.createElement("div"); editor.className = "task-editor";
@@ -411,13 +428,27 @@ function planCard(title, meta, txt, k){
         if (x.mark) s.m[idx] = x.mark;
         if (x.note) s.n[idx] = x.note;
       });
-      s.c = ""; openEditors.delete("plan:" + k); save(); render();
+      s.c = "";
+      if (grpMeta && grpMeta.members) {
+        grpMeta.members.forEach(m => {
+          const sm = get(m);
+          sm.tk = s.tk.slice(); sm.m = {}; sm.n = {}; sm.c = "";
+        });
+      }
+      openEditors.delete("plan:" + k); save(); render();
     };
     const resetBtn = document.createElement("button"); resetBtn.type = "button"; resetBtn.className = "small";
     resetBtn.textContent = "恢复默认任务";
     resetBtn.onclick = () => {
       const s = get(k);
-      delete s.tk; s.m = {}; s.n = {}; s.c = ""; openEditors.delete("plan:" + k); save(); render();
+      delete s.tk; s.m = {}; s.n = {}; s.c = "";
+      if (grpMeta && grpMeta.members) {
+        grpMeta.members.forEach(m => {
+          const sm = get(m);
+          delete sm.tk; sm.m = {}; sm.n = {}; sm.c = "";
+        });
+      }
+      openEditors.delete("plan:" + k); save(); render();
     };
     const closeBtn = document.createElement("button"); closeBtn.type = "button"; closeBtn.className = "small";
     closeBtn.textContent = "关闭";
@@ -429,19 +460,88 @@ function planCard(title, meta, txt, k){
   el.append(pre); return el;
 }
 function renderPlan(){
-  const rows = PLAN[cur] || [];
+  const GROUP_SETS = [
+    { members: ["Leo", "Iven", "Ivan"], label: "Leo & Iven", key: "Leo&Iven" },
+    { members: ["聂彦如", "陈书进"], label: "聂彦如 & 陈书进", key: "聂彦如&陈书进" },
+    { members: ["周家琪", "潘韬薄", "苏顺平"], label: "周家琪 / 潘韬薄 / 苏顺平", key: "周家琪/潘韬薄/苏顺平" },
+    { members: ["戴荧", "汤馨然"], label: "戴荧 & 汤馨然", key: "戴荧&汤馨然" },
+    { members: ["王明泽", "李子熙"], label: "王明泽 & 李子熙", key: "王明泽&李子熙" },
+    { members: ["王子居", "Andy"], label: "王子居 & Andy", key: "王子居&Andy" }
+  ];
+  const _raw = PLAN[cur] || [];
+  const consumed = new Set();
+  const rows = [];
+  _raw.forEach((p, i) => {
+    if (consumed.has(i)) return;
+    const name = (p[0] || "").replace(/[【】]/g, "").trim();
+    const time = p[1];
+    const note = p[4] || "";
+    let matchedGroup = null;
+    let matchedIndices = [];
+    for (const g of GROUP_SETS) {
+      if (!g.members.includes(name)) continue;
+      const found = [];
+      _raw.forEach((q, j) => {
+        if (consumed.has(j)) return;
+        const qName = (q[0] || "").replace(/[【】]/g, "").trim();
+        if (q[1] === time && g.members.includes(qName)) found.push(j);
+      });
+      if (found.length >= 2) { matchedGroup = g; matchedIndices = found; break; }
+    }
+    if (!matchedGroup && note && /[&＆/／、]/.test(note)) {
+      const found = [];
+      _raw.forEach((q, j) => {
+        if (consumed.has(j)) return;
+        if (q[1] === time && q[4] === note) found.push(j);
+      });
+      if (found.length >= 2) matchedIndices = found;
+    }
+    if (matchedIndices.length >= 2) {
+      matchedIndices.forEach(idx => consumed.add(idx));
+      const presentNames = matchedIndices.map(idx => (_raw[idx][0] || "").replace(/[【】]/g, "").trim());
+      let groupLabel = "";
+      if (matchedGroup) {
+        const allPresent = matchedGroup.members.every(m => presentNames.includes(m));
+        groupLabel = allPresent ? matchedGroup.label : presentNames.join(" & ");
+      } else {
+        groupLabel = presentNames.join(" & ");
+      }
+      const groupKey = matchedGroup ? matchedGroup.key : presentNames.join("&");
+      const baseTitle = p[2] || "";
+      const mergedTitle = baseTitle.includes("【") ? baseTitle.replace(/【.*?】/, "【" + groupLabel + "】") : ("【" + groupLabel + "】 " + baseTitle);
+      rows.push([groupLabel, time, mergedTitle, p[3], p[4], { isGroup: true, key: groupKey, members: presentNames }]);
+    } else {
+      consumed.add(i);
+      rows.push(p);
+    }
+  });
   const bottomP = [];
-  if(typeof study!=='undefined')study.renderCards(list,cur,'plan',bottomP);
-  if (!rows.length && !(typeof study!=='undefined' && study.cards(cur).length)){ const e = document.createElement("div"); e.className = "sub"; e.textContent = (cur in PLAN) ? ("🎉 " + rel(cur) + mdOf(cur) + " 暂无排课与自习任务安排。") : ("这天还没生成（" + rel(cur) + mdOf(cur) + " 的任务安排要先跑 tasks / sync-notes）。"); list.append(e); }
+  if (typeof study !== "undefined") study.renderCards(list, cur, "plan", bottomP);
+  if (!rows.length && !(typeof study !== "undefined" && study.cards(cur).length)) {
+    const e = document.createElement("div"); e.className = "sub";
+    e.textContent = (cur in PLAN) ? ("🎉 " + rel(cur) + mdOf(cur) + " 暂无排课与自习任务安排。") : ("这天还没生成（" + rel(cur) + mdOf(cur) + " 的任务安排要先跑 tasks / sync-notes）。");
+    list.append(e);
+  }
   rows.forEach((p, i) => {
-    const card = planCard((i+1) + ". " + p[0].replace(/[【】「」]/g, ""), p[1], ptext(p), p[0]);
-    placeCard(card, !!ps[p[0]], "plan:" + cur + ":" + p[0], (i+1) + ". " + p[0].replace(/[【】「」]/g, ""), ps[p[0]], bottomP);
+    const meta = p[5];
+    const cardKey = (meta && meta.isGroup) ? meta.key : p[0];
+    if (meta && meta.isGroup && !ps[cardKey]) {
+      const existingCopied = meta.members.map(m => ps[m]).find(Boolean);
+      if (existingCopied) ps[cardKey] = existingCopied;
+    }
+    const cardTitle = (i + 1) + ". " + p[0].replace(/[【】「」]/g, "");
+    const card = planCard(cardTitle, p[1], ptext(p), cardKey, meta);
+    placeCard(card, !!ps[cardKey], "plan:" + cur + ":" + cardKey, cardTitle, ps[cardKey], bottomP);
   });
   bottomP.forEach(e => list.append(e));
-  const extra=typeof study!=='undefined'?study.stats(cur,'plan'):{total:0,copied:0};
-  const n=rows.filter(p=>ps[p[0]]).length+extra.copied,total=rows.length+extra.total;
-  document.getElementById('count').textContent=n+' / '+total+' 已复制';
-  document.getElementById('fill').style.width=(total?n/total*100:0)+'%';
+  const extra = typeof study !== "undefined" ? study.stats(cur, "plan") : { total: 0, copied: 0 };
+  const n = rows.filter(p => {
+    const meta = p[5];
+    const cardKey = (meta && meta.isGroup) ? meta.key : p[0];
+    return !!ps[cardKey];
+  }).length + extra.copied, total = rows.length + extra.total;
+  document.getElementById("count").textContent = n + " / " + total + " 已复制";
+  document.getElementById("fill").style.width = (total ? n / total * 100 : 0) + "%";
 }
 function summary(rows){
   const extra=typeof study!=='undefined'?study.stats(cur,'done'):{total:0,copied:0};
