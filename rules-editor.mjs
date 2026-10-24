@@ -308,18 +308,64 @@ export async function mountRules({ document, client, container, onClose }) {
       if (att['黄号然']) att['黄号然'].system = 'toefl';
       if (att['tiger']) att['tiger'].system = 'toefl';
       if (att['Tiger']) att['Tiger'].system = 'toefl';
+      // 4. 统一 Ivan 与 Iven 为 Iven（Leo 2026-10-24 明确指示：同一个人，叫 Iven）
+      if (att['ivan']) {
+        if (!att['iven']) {
+          att['iven'] = { ...att['ivan'], name: 'Iven' };
+        }
+        delete att['ivan'];
+        state.modified = true;
+      }
+      if (att['leo&ivan'] && att['leo&iven']) {
+        delete att['leo&ivan'];
+        state.modified = true;
+      }
     }
 
-    // 非随课规则学科对齐
+    // 非随课规则去重与清洗（解决多张陈芊妤/马浩岚卡片问题）
     if (state.draft && Array.isArray(state.draft.frequency_rows)) {
+      let seenCQY = false;
+      const seenSignatures = new Set();
+      const cleanedRows = [];
       for (const r of state.draft.frequency_rows) {
-        const s = clean(r['学员']);
-        if (s === '何昊隆' || s === '黄号然' || s === 'tiger' || s === '卢泰戈') {
+        const stu = clean(r['学员']);
+        const task = clean(r['任务内容']);
+
+        // 1. 陈芊妤历史重复条目去重：只保留 1 条
+        if (stu.includes('陈芊妤') || stu.includes('芊妤')) {
+          if (seenCQY) {
+            state.modified = true;
+            continue;
+          }
+          seenCQY = true;
+        }
+
+        // 2. 马浩岚（浩然）：剔除旧的单纯「每天50个单词」过期条目，保留最新的综合自习任务
+        if (stu.includes('马浩岚') || stu.includes('马浩然') || stu.includes('浩岚') || stu.includes('浩然')) {
+          if (task.includes('每天50个单词') || r['重复'] === '每天') {
+            state.modified = true;
+            continue;
+          }
+        }
+
+        // 3. 通用完全重复保护
+        const sig = `${stu}||${task}||${r['形式']}||${r['重复']}`;
+        if (seenSignatures.has(sig)) {
+          state.modified = true;
+          continue;
+        }
+        seenSignatures.add(sig);
+
+        // 学科体系对齐
+        if (stu === '何昊隆' || stu === '黄号然' || stu === 'tiger' || stu === '卢泰戈') {
           if (!r.system) r.system = 'toefl';
-        } else if (s === '赖晨曦' || s === '代佳鸣') {
+        } else if (stu === '赖晨曦' || stu === '代佳鸣') {
           if (!r.system) r.system = 'ability';
         }
+
+        cleanedRows.push(r);
       }
+      state.draft.frequency_rows = cleanedRows;
     }
 
     state.modified = false;
@@ -760,7 +806,9 @@ export async function mountRules({ document, client, container, onClose }) {
       grid.className = 'rules-grid';
       const seenNames = new Set();
       for (const [key, rule] of entries) {
-        const normName = clean(rule.name || key);
+        let normName = clean(rule.name || key);
+        if (normName === 'ivan') normName = 'iven';
+        if (normName === 'leo&ivan') normName = 'leo&iven';
         if (seenNames.has(normName)) continue;
         seenNames.add(normName);
         grid.append(renderAttendanceCard(key, rule));
@@ -1165,7 +1213,9 @@ export async function mountRules({ document, client, container, onClose }) {
     const card = document.createElement('div');
     card.className = 'rules-card';
 
-    const displayName = rule.name || key;
+    let displayName = rule.name || key;
+    if (displayName.toLowerCase() === 'ivan') displayName = 'Iven';
+    if (displayName.toLowerCase() === 'leo & ivan') displayName = 'Leo & Iven';
     const sys = inferStudentSystem(displayName, rule, rule.vocab_task);
     const sysConf = SYSTEM_CONFIG[sys] || SYSTEM_CONFIG.general;
 
