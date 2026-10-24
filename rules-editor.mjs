@@ -38,28 +38,38 @@ const STUDENT_SYSTEM_MAP = {
   '李培生': 'ielts', '李培生雅思体验课': 'ielts', '陈芊妤': 'ielts',
   // 托福
   'frank': 'toefl', 'leo': 'toefl', 'iven': 'toefl', 'dana': 'toefl',
-  '王子居': 'toefl', 'andy': 'toefl',
+  '王子居': 'toefl', 'andy': 'toefl', '何昊隆': 'toefl', 'dino': 'toefl',
+  '黄号然': 'toefl', 'tiger': 'toefl', '卢泰戈': 'toefl',
   // SAT
   'charlotte': 'sat', 'jack': 'sat', '郭璟jack': 'sat', 'george': 'sat',
   'george吴洋亿': 'sat', '盛馨雨': 'sat', '沈思齐': 'sat',
-  // 语言能力提升 (归入其他)
-  '丁嘉宝': 'ability', '赵梓轩': 'ability', '代佳鸣': 'ability',
+  // 语言能力提升 (Leo 2026-10-24：代佳鸣、赖晨曦为语言能力提升)
+  '丁嘉宝': 'ability', '赵梓轩': 'ability', '代佳鸣': 'ability', '赖晨曦': 'ability',
   '李洪睿': 'ability', '李洪睿john': 'ability', '王明泽': 'ability', '李子熙': 'ability',
+  'ray': 'ability',
   // 校内 / 高中 (归入其他)
-  '赖晨曦': 'school', 'amy': 'school'
+  'amy': 'school'
 };
 
 const clean = s => String(s || '').trim().replace(/[【】「」\s]/g, '').toLowerCase();
 const clone = obj => typeof structuredClone === 'function' ? structuredClone(obj) : JSON.parse(JSON.stringify(obj));
 
 export function inferStudentSystem(name, attRule, taskText) {
+  if (attRule && typeof attRule === 'object') {
+    if (attRule.system && SYSTEM_CONFIG[attRule.system]) {
+      return attRule.system;
+    }
+    const c = String(attRule['课程'] || '').toLowerCase();
+    if (c.includes('雅思')) return 'ielts';
+    if (c.includes('托福')) return 'toefl';
+    if (c.includes('sat')) return 'sat';
+    if (c.includes('能力') || c.includes('提升') || c.includes('语法')) return 'ability';
+    if (c.includes('校内') || c.includes('高中')) return 'school';
+  }
   const k = clean(name);
   if (STUDENT_SYSTEM_MAP[k]) return STUDENT_SYSTEM_MAP[k];
   for (const [key, sys] of Object.entries(STUDENT_SYSTEM_MAP)) {
     if (k.includes(key) || key.includes(k)) return sys;
-  }
-  if (attRule && attRule.system && SYSTEM_CONFIG[attRule.system]) {
-    return attRule.system;
   }
   const text = String(taskText || '').toLowerCase();
   if (text.includes('雅思') || text.includes('真经') || text.includes('王陆') || text.includes('听力*50')) return 'ielts';
@@ -269,6 +279,49 @@ export async function mountRules({ document, client, container, onClose }) {
 
     state.base = data;
     state.draft = clone(data.payload);
+
+    // 自动清洗与规范化随课及非随课规则
+    if (state.draft && state.draft.attendance_rules) {
+      const att = state.draft.attendance_rules;
+      // 1. 历史笔误矫正：张彦如 -> 聂彦如
+      if (att['张彦如']) {
+        const r = att['张彦如'];
+        r.name = '聂彦如';
+        r.system = 'ielts';
+        att['聂彦如'] = r;
+        delete att['张彦如'];
+        state.modified = true;
+      }
+      // 2. 清理重复别名（解决多张 Ray / Jack 卡片问题）
+      if (att['ray英文综合能力提升']) {
+        delete att['ray英文综合能力提升'];
+        state.modified = true;
+      }
+      if (att['郭璟jack'] && att['郭璟jack-sat']) {
+        delete att['郭璟jack'];
+        state.modified = true;
+      }
+      // 3. 学科体系归属对齐（Leo 2026-10-24 明确指示）
+      if (att['代佳鸣']) att['代佳鸣'].system = 'ability';
+      if (att['赖晨曦']) att['赖晨曦'].system = 'ability';
+      if (att['何昊隆']) att['何昊隆'].system = 'toefl';
+      if (att['黄号然']) att['黄号然'].system = 'toefl';
+      if (att['tiger']) att['tiger'].system = 'toefl';
+      if (att['Tiger']) att['Tiger'].system = 'toefl';
+    }
+
+    // 非随课规则学科对齐
+    if (state.draft && Array.isArray(state.draft.frequency_rows)) {
+      for (const r of state.draft.frequency_rows) {
+        const s = clean(r['学员']);
+        if (s === '何昊隆' || s === '黄号然' || s === 'tiger' || s === '卢泰戈') {
+          if (!r.system) r.system = 'toefl';
+        } else if (s === '赖晨曦' || s === '代佳鸣') {
+          if (!r.system) r.system = 'ability';
+        }
+      }
+    }
+
     state.modified = false;
     status(`✓ 已加载统一规则 · 版本 v${data.revision}`);
     render();
@@ -705,7 +758,11 @@ export async function mountRules({ document, client, container, onClose }) {
 
       const grid = document.createElement('div');
       grid.className = 'rules-grid';
+      const seenNames = new Set();
       for (const [key, rule] of entries) {
+        const normName = clean(rule.name || key);
+        if (seenNames.has(normName)) continue;
+        seenNames.add(normName);
         grid.append(renderAttendanceCard(key, rule));
       }
       container.append(grid);
@@ -748,18 +805,46 @@ export async function mountRules({ document, client, container, onClose }) {
       markModified();
     };
 
-    const sysTag = document.createElement('span');
-    sysTag.className = 'rules-sys-tag';
-    sysTag.style.background = sysConf.bg;
-    sysTag.style.color = sysConf.fg;
-    sysTag.style.borderColor = sysConf.border;
-    sysTag.textContent = sysConf.label + ' ' + sysConf.en;
+    // Editable Subject / System Select
+    const sysSel = document.createElement('select');
+    sysSel.className = 'rules-select rules-sys-select';
+    sysSel.title = '修改学科分类（雅思/托福/SAT/能力提升等）';
+    sysSel.style.cssText = 'font-size:11.5px;padding:2px 8px;height:26px;width:auto;font-weight:600;border-radius:6px;cursor:pointer;transition:all .15s ease';
+    for (const [k, conf] of Object.entries(SYSTEM_CONFIG)) {
+      if (k === 'general') continue;
+      const opt = document.createElement('option');
+      opt.value = k;
+      opt.textContent = conf.label + ' ' + conf.en;
+      opt.selected = (r.system || sys) === k;
+      sysSel.append(opt);
+    }
+    const applySysStyle = (k) => {
+      const c = SYSTEM_CONFIG[k] || SYSTEM_CONFIG.general;
+      sysSel.style.background = c.bg;
+      sysSel.style.color = c.fg;
+      sysSel.style.borderColor = c.border;
+    };
+    applySysStyle(r.system || sys);
+
+    sysSel.onchange = () => {
+      r.system = sysSel.value;
+      const conf = SYSTEM_CONFIG[sysSel.value];
+      if (conf) {
+        r['课程'] = conf.label;
+      }
+      applySysStyle(sysSel.value);
+      markModified();
+      const stClean = clean(r['学员']);
+      if (stClean) {
+        STUDENT_SYSTEM_MAP[stClean] = sysSel.value;
+      }
+    };
 
     const typeTag = document.createElement('span');
     typeTag.className = 'rule-type-tag ' + (isSpecialRule ? 'special' : 'standard');
     typeTag.textContent = isSpecialRule ? '⚡ 特殊规则' : '通用规则';
 
-    bLeft.append(nameInp, sysTag, typeTag);
+    bLeft.append(nameInp, sysSel, typeTag);
 
     // State Toggle Button (● 进行中 / ⏸ 暂停)
     const toggle = document.createElement('button');
@@ -1095,8 +1180,9 @@ export async function mountRules({ document, client, container, onClose }) {
     nameEl.textContent = displayName;
 
     const sysSel = document.createElement('select');
-    sysSel.className = 'rules-select';
-    sysSel.style.cssText = 'font-size:12px;padding:3px 8px;height:28px;width:auto';
+    sysSel.className = 'rules-select rules-sys-select';
+    sysSel.title = '修改学科分类（雅思/托福/SAT/能力提升等）';
+    sysSel.style.cssText = 'font-size:11.5px;padding:2px 8px;height:26px;width:auto;font-weight:600;border-radius:6px;cursor:pointer;transition:all .15s ease';
     for (const [k, conf] of Object.entries(SYSTEM_CONFIG)) {
       if (k === 'general') continue;
       const opt = document.createElement('option');
@@ -1105,9 +1191,22 @@ export async function mountRules({ document, client, container, onClose }) {
       opt.selected = (rule.system || sys) === k;
       sysSel.append(opt);
     }
+    const applyAttSysStyle = (k) => {
+      const c = SYSTEM_CONFIG[k] || SYSTEM_CONFIG.general;
+      sysSel.style.background = c.bg;
+      sysSel.style.color = c.fg;
+      sysSel.style.borderColor = c.border;
+    };
+    applyAttSysStyle(rule.system || sys);
+
     sysSel.onchange = () => {
       rule.system = sysSel.value;
+      applyAttSysStyle(sysSel.value);
       markModified();
+      const stClean = clean(displayName);
+      if (stClean) {
+        STUDENT_SYSTEM_MAP[stClean] = sysSel.value;
+      }
     };
 
     bLeft.append(nameEl, sysSel);
