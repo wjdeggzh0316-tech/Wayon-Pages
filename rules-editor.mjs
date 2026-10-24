@@ -422,6 +422,12 @@ export async function mountRules({ document, client, container, onClose }) {
         const stu = clean(r['学员']);
         const task = clean(r['任务内容']);
 
+        // 0. 赖晨曦为纯随课规则（在 attendance_rules 中维护），不属于非随课任务，彻底排除
+        if (stu.includes('赖晨曦')) {
+          state.modified = true;
+          continue;
+        }
+
         // 1. 陈芊妤历史重复条目去重：只保留 1 条
         if (stu.includes('陈芊妤') || stu.includes('芊妤')) {
           if (seenCQY) {
@@ -450,7 +456,7 @@ export async function mountRules({ document, client, container, onClose }) {
         // 学科体系对齐
         if (stu === '何昊隆' || stu === '黄号然' || stu === 'tiger' || stu === '卢泰戈') {
           if (!r.system) r.system = 'toefl';
-        } else if (stu === '赖晨曦' || stu === '代佳鸣') {
+        } else if (stu === '代佳鸣') {
           if (!r.system) r.system = 'ability';
         }
 
