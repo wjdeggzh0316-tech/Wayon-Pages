@@ -21,13 +21,12 @@ export async function saveCatalog(client,owner,base,payload){
 }
 
 const SYSTEM_CONFIG = {
-  ielts: { label: '雅思', en: 'IELTS', category: 'ielts', bg: '#eaf3ff', fg: '#0071e3', border: 'rgba(0,113,227,0.25)' },
-  toefl: { label: '托福', en: 'TOEFL', category: 'toefl', bg: '#f3e8ff', fg: '#7c3aed', border: 'rgba(124,58,237,0.25)' },
+  ielts: { label: 'IELTS', en: 'IELTS', category: 'ielts', bg: '#eaf3ff', fg: '#0071e3', border: 'rgba(0,113,227,0.25)' },
+  toefl: { label: 'TOEFL', en: 'TOEFL', category: 'toefl', bg: '#f3e8ff', fg: '#7c3aed', border: 'rgba(124,58,237,0.25)' },
   sat: { label: 'SAT', en: 'SAT', category: 'sat', bg: '#fef3c7', fg: '#b45309', border: 'rgba(180,83,9,0.25)' },
-  ability: { label: '语言能力提升', en: 'Ability', category: 'other', bg: '#ecfdf5', fg: '#059669', border: 'rgba(5,150,105,0.25)' },
-  school: { label: '校内英语', en: 'School', category: 'other', bg: '#dcfce7', fg: '#15803d', border: 'rgba(21,128,61,0.25)' },
-  other: { label: '其他', en: 'Other', category: 'other', bg: '#f3f4f6', fg: '#4b5563', border: 'rgba(75,85,99,0.25)' },
-  general: { label: '其他', en: 'General', category: 'other', bg: '#f3f4f6', fg: '#4b5563', border: 'rgba(75,85,99,0.25)' }
+  ability: { label: 'Ability', en: 'Ability', category: 'other', bg: '#ecfdf5', fg: '#059669', border: 'rgba(5,150,105,0.25)' },
+  other: { label: 'Other', en: 'Other', category: 'other', bg: '#f3f4f6', fg: '#4b5563', border: 'rgba(75,85,99,0.25)' },
+  general: { label: 'Other', en: 'General', category: 'other', bg: '#f3f4f6', fg: '#4b5563', border: 'rgba(75,85,99,0.25)' }
 };
 
 const STUDENT_SYSTEM_MAP = {
@@ -48,7 +47,7 @@ const STUDENT_SYSTEM_MAP = {
   '李洪睿': 'ability', '李洪睿john': 'ability', '王明泽': 'ability', '李子熙': 'ability',
   'ray': 'ability',
   // 校内 / 高中 (归入其他)
-  'amy': 'school'
+  'amy': 'other'
 };
 
 // 2026-10-24 Leo 铁律：随课任务以班级为单位，合班学员不拆开（Leo&Iven、彦如&陈书进等）
@@ -141,12 +140,13 @@ export function inferStudentSystem(name, attRule, taskText) {
     if (attRule.system && SYSTEM_CONFIG[attRule.system]) {
       return attRule.system;
     }
+    if (attRule.system === 'school') return 'other';
     const c = String(attRule['课程'] || '').toLowerCase();
     if (c.includes('雅思')) return 'ielts';
     if (c.includes('托福')) return 'toefl';
     if (c.includes('sat')) return 'sat';
     if (c.includes('能力') || c.includes('提升') || c.includes('语法')) return 'ability';
-    if (c.includes('校内') || c.includes('高中')) return 'school';
+    if (c.includes('校内') || c.includes('高中')) return 'other';
   }
   const k = clean(name);
   if (STUDENT_SYSTEM_MAP[k]) return STUDENT_SYSTEM_MAP[k];
@@ -158,7 +158,7 @@ export function inferStudentSystem(name, attRule, taskText) {
   if (text.includes('托福') || text.includes('完形')) return 'toefl';
   if (text.includes('sat')) return 'sat';
   if (text.includes('能力') || text.includes('提升') || text.includes('语法课')) return 'ability';
-  if (text.includes('校内') || text.includes('高中')) return 'school';
+  if (text.includes('校内') || text.includes('高中')) return 'other';
   return 'other';
 }
 
@@ -397,6 +397,8 @@ export async function mountRules({ document, client, container, onClose }) {
         delete att['郭璟jack'];
         state.modified = true;
       }
+      if (att['郭璟jack-sat']) att['郭璟jack-sat'].name = '郭璟 Jack';
+      if (att['郭璟jack']) att['郭璟jack'].name = '郭璟 Jack';
       // 3. 学科体系归属对齐（Leo 2026-10-24 明确指示）
       if (att['代佳鸣']) att['代佳鸣'].system = 'ability';
       if (att['赖晨曦']) att['赖晨曦'].system = 'ability';
@@ -991,13 +993,13 @@ export async function mountRules({ document, client, container, onClose }) {
     // Editable Subject / System Select
     const sysSel = document.createElement('select');
     sysSel.className = 'rules-select rules-sys-select';
-    sysSel.title = '修改学科分类（雅思/托福/SAT/能力提升等）';
+    sysSel.title = '修改学科分类（IELTS/TOEFL/SAT/Ability/Other）';
     sysSel.style.cssText = 'font-size:11.5px;padding:2px 8px;height:26px;width:auto;font-weight:600;border-radius:6px;cursor:pointer;transition:all .15s ease';
     for (const [k, conf] of Object.entries(SYSTEM_CONFIG)) {
-      if (k === 'general') continue;
+      if (k === 'general' || k === 'school') continue;
       const opt = document.createElement('option');
       opt.value = k;
-      opt.textContent = conf.label + ' ' + conf.en;
+      opt.textContent = conf.en;
       opt.selected = (r.system || sys) === k;
       sysSel.append(opt);
     }
@@ -1351,6 +1353,7 @@ export async function mountRules({ document, client, container, onClose }) {
     let displayName = rule.name || key;
     if (displayName.toLowerCase() === 'ivan') displayName = 'Iven';
     if (displayName.toLowerCase() === 'leo & ivan') displayName = 'Leo & Iven';
+    if (displayName.includes('郭璟') && displayName.toLowerCase().includes('jack')) displayName = '郭璟 Jack';
     const sys = inferStudentSystem(displayName, rule, rule.vocab_task);
     const sysConf = SYSTEM_CONFIG[sys] || SYSTEM_CONFIG.general;
 
@@ -1366,13 +1369,13 @@ export async function mountRules({ document, client, container, onClose }) {
 
     const sysSel = document.createElement('select');
     sysSel.className = 'rules-select rules-sys-select';
-    sysSel.title = '修改学科分类（雅思/托福/SAT/能力提升等）';
+    sysSel.title = '修改学科分类（IELTS/TOEFL/SAT/Ability/Other）';
     sysSel.style.cssText = 'font-size:11.5px;padding:2px 8px;height:26px;width:auto;font-weight:600;border-radius:6px;cursor:pointer;transition:all .15s ease';
     for (const [k, conf] of Object.entries(SYSTEM_CONFIG)) {
-      if (k === 'general') continue;
+      if (k === 'general' || k === 'school') continue;
       const opt = document.createElement('option');
       opt.value = k;
-      opt.textContent = conf.label + ' ' + conf.en;
+      opt.textContent = conf.en;
       opt.selected = (rule.system || sys) === k;
       sysSel.append(opt);
     }
@@ -1392,6 +1395,7 @@ export async function mountRules({ document, client, container, onClose }) {
       if (stClean) {
         STUDENT_SYSTEM_MAP[stClean] = sysSel.value;
       }
+      renderContentList(root.querySelector('.rules-content'));
     };
 
     bLeft.append(nameEl, sysSel);
@@ -1444,6 +1448,8 @@ export async function mountRules({ document, client, container, onClose }) {
       ['⚡ 常用词汇预设（点击填入）：', ''],
       ['雅思双词书 (听50+阅50)', '系统内单词任务（听力*50+阅读*50）'],
       ['托福100词 (50*2)', '系统内托福单词100个（50*2）'],
+      ['SAT核心词汇100词', '系统内单词任务（SAT核心词汇100词，选择题模式）'],
+      ['30个SAT单词', '30个SAT单词（选择题模式）'],
       ['校内单词背诵', '校内单词背诵'],
       ['四级词汇*2组', '系统内单词任务（四级词汇*两组，每组30词）'],
       ['免背 / 课上无单词', '']
@@ -1617,7 +1623,15 @@ export async function mountRules({ document, client, container, onClose }) {
     promptLbl.textContent = '＋ 定制科目任务：';
     addSubjBar.append(promptLbl);
 
-    const recSubjs = ['听力', '写作', '阅读', '口语'];
+    const curSys = String(rule.system || sys || '').toLowerCase();
+    let recSubjs = ['听力', '写作', '阅读', '口语'];
+    if (curSys === 'sat') {
+      recSubjs = ['阅读', '语法', '数学'];
+    } else if (curSys === 'ability') {
+      recSubjs = ['听说', '读写', '词汇与语言应用', '语法'];
+    } else if (curSys === 'other') {
+      recSubjs = ['阅读', '写作', '语法'];
+    }
     recSubjs.forEach(s => {
       if (!rule.subject_rules[s]) {
         const chip = document.createElement('button');
