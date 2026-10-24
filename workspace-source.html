@@ -1408,7 +1408,6 @@ class StudyTasks {
     if(!bottom)folded.forEach(el=>host.append(el));
   }
 }
-}
 
 const study = new StudyTasks({storage:localStorage,sync:()=>checkCloud,redraw:()=>render()});
 load(); pload(); render();
