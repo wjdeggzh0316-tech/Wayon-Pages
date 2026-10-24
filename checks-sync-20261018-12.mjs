@@ -33,13 +33,13 @@ export class CheckSync {
   }
   persist(day) {this.storage.setItem(this.storageKey(day),JSON.stringify(this.days.get(day).queue));}
   async read(day) {
-    const {data,error}=await this.client.from('wayon_days').select('day,fields,revision').eq('owner_id',this.owner).eq('day',day).maybeSingle();
+    const {data,error}=await withCloudTimeout(this.client.from('wayon_days').select('day,fields,revision').eq('owner_id',this.owner).eq('day',day).maybeSingle());
     if(error) throw Error('READ_FAILED');
     return data || {day,fields:{},revision:0};
   }
-  async open(day) {
+  async open(day, {initialView}={}) {
     if(this.days.has(day)) {const s=this.days.get(day); if(s.ready) return this.refresh(day); return;}
-    const s={ready:false,queue:[],view:this.capture(day)};this.days.set(day,s);
+    const s={ready:false,queue:[],view:initialView===undefined?this.capture(day):structuredClone(initialView)};this.days.set(day,s);
     try {
       const remote=await this.read(day);
       s.queue=JSON.parse(this.storage.getItem(this.storageKey(day)) || '[]');
@@ -75,12 +75,16 @@ export class CheckSync {
   async flush() {
     if(this.running) return;this.running=true;let wrote=false;
     try {
-      for(const [day,s] of this.days) while(s.ready && s.queue.length) {
+      for(const [day,s] of this.days) {
+        let savedDay=false;
+        while(s.ready && s.queue.length) {
         const op=s.queue[0];
-        const {data,error}=await this.client.rpc('wayon_apply_patch',{p_day:day,p_operation:op.id,p_patch:op.patch});
+        const {data,error}=await withCloudTimeout(this.client.rpc('wayon_apply_patch',{p_day:day,p_operation:op.id,p_patch:op.patch}));
         if(error) {this.status(error.code==='40001' ? '另一设备已修改同一项；本机输入保留，点击「处理冲突」' : '云端保存失败，本机待上传；联网后自动重试');return;}
         // Never replace the user's draft with an older in-flight snapshot.
-        s.base=data;s.queue.shift();this.persist(day);wrote=true;
+        s.base=data;s.queue.shift();this.persist(day);wrote=true;savedDay=true;
+      }
+      if(savedDay)this.show(day);
       }
       this.status(wrote ? '已保存云端记录' : '已读取云端记录');
     } catch(e) {this.status('云端保存失败，本机待上传；联网后自动重试');}
@@ -195,101 +199,135 @@ export function publishedChasing(source) {
        row.uncompleted_details.some(item=>!item || typeof item.title!=='string' || !['string','number'].includes(typeof item.id))))throw Error('CHASING_DATA_INVALID');
   return Object.fromEntries(['_chasing','_chasing_checked_at','_chasing_status','_chasing_unknown'].filter(k=>Object.hasOwn(data,k)).map(k=>[k,data[k]]));
 }
-export async function boot({config,capture,apply,status,currentDay,hydrate,refreshPublished}) {
-  if(!config.enabled) {status('本机已保存；云端保存尚未配置');return null;}
+export const CLOUD_TIMEOUT_MS = 12000;
+export function withCloudTimeout(promise, ms=CLOUD_TIMEOUT_MS) {
+  let timer;
+  return Promise.race([promise,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('CLOUD_TIMEOUT')),ms);})]).finally(()=>clearTimeout(timer));
+}
+export function syncStatusKind(text) {
+  return /请登录|没有工作台权限/.test(text)?'login':/失败|不可用|不可读|冲突|未配置|尚未配置|超时/.test(text)?'error':/已保存云端|已读取云端/.test(text)?'saved':'pending';
+}
+export async function loadCloudSDK() {
+  for(const url of ['https://esm.sh/@supabase/supabase-js@2.49.4','https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm']) {
+    try{return await withCloudTimeout(import(url));}catch{}
+  }
+  throw Error('CLOUD_SDK_UNAVAILABLE');
+}
+// Buttons can remain focused on mobile; only a text draft may delay a visual refresh.
+export function applyCloudView(apply,day,fields,doc=document) {
+  const active=doc.activeElement;
+  const buttonFocused=active?.closest?.('#list')&&!active.matches?.('input,textarea,[contenteditable="true"]');
+  const id=buttonFocused?active.id:null;
+  if(buttonFocused)active.blur();
+  apply(day,fields);
+  if(id)doc.getElementById(id)?.focus({preventScroll:true});
+}
+export async function boot({config,capture,apply,status:report,currentDay,hydrate,refreshPublished,sdkLoader=loadCloudSDK}) {
+  const initialViews=new Map(),remember=day=>{if(!initialViews.has(day))initialViews.set(day,structuredClone(capture(day)));};
+  remember(currentDay());
   const panel=document.createElement('details');panel.className='cloud-panel';panel.open=false;
   const heading=document.createElement('summary');heading.textContent='账户与连接';
   const email=document.createElement('input');email.type='email';email.placeholder='你的登录邮箱';email.autocomplete='email';
   const password=document.createElement('input');password.type='password';password.placeholder='你的工作台密码';password.autocomplete='current-password';
-  const button=(label,action)=>{const b=document.createElement('button');b.textContent=label;b.type='button';b.onclick=()=>Promise.resolve(action()).catch(()=>status('操作失败，请重试'));return b;};
-  let sdk;
-  try { sdk = await import('https://esm.sh/@supabase/supabase-js@2.49.4'); }
-  catch(e1) {
-    try { sdk = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm'); }
-    catch(e2) { sdk = await import('https://unpkg.com/@supabase/supabase-js@2.49.4/dist/module/index.js'); }
+  const button=(label,action)=>{const b=document.createElement('button');b.textContent=label;b.type='button';b.onclick=()=>Promise.resolve().then(action).catch(()=>status('连接失败；本机记录保留，请重新连接'));return b;};
+  const notice=document.createElement('section');notice.className='wayon-sync-notice';notice.setAttribute('role','status');
+  const message=document.createElement('span');message.className='wayon-sync-message';
+  const style=document.createElement('style');style.textContent=`.wayon-sync-notice{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 14px;margin:0 0 16px;border:1px solid #dce3ed;border-radius:12px;background:#f7f9fc;color:#43516a;font-size:13px;line-height:1.6}.wayon-sync-notice[hidden]{display:none}.wayon-sync-message{flex:1 1 220px;overflow-wrap:anywhere}.wayon-sync-notice button{min-height:40px;padding:8px 12px;border:1px solid #d3dbe7;border-radius:9px;background:white;color:#2857a1;font:inherit}.wayon-sync-notice[data-kind=error],.wayon-sync-notice[data-kind=login]{background:#fff8ed;border-color:#f0dbb7;color:#805526}.wayon-sync-notice>.cloud-panel{flex-basis:100%;width:100%;max-width:100%;position:static!important;display:block!important;margin:4px 0;padding:12px;background:white;border:1px solid #dce3ed;border-radius:10px;box-sizing:border-box}.wayon-sync-notice>.cloud-panel input{box-sizing:border-box;width:100%;max-width:420px;min-height:42px;padding:9px;margin:6px 4px 6px 0}.wayon-sync-notice>.cloud-panel button{margin:4px}@media(max-width:599px){.wayon-sync-notice{font-size:13px;padding:10px 12px}.wayon-sync-notice button{min-height:44px}.wayon-sync-notice>.cloud-panel input{max-width:100%;margin-right:0}}`;
+  document.head.append(style);
+  const syncMount=document.getElementById('sync'),settings=document.getElementById('account-settings');
+  const list=document.getElementById('list');
+  if(list)list.before(notice);else if(syncMount)syncMount.after(notice);else document.body.append(notice);
+  let client=null,engine=null,user=null,initializing=null,connecting=null,authEpoch=0,lastAttempt=0;
+  const showAccount=()=>{notice.append(panel);panel.open=true;notice.hidden=false;email.focus();};
+  const reconnect=async()=>{if(engine)await controller.open(currentDay());else await initialize();};
+  const loginAction=button('登录同步',showAccount),retryAction=button('重新连接',reconnect);
+  notice.append(message,loginAction,retryAction);
+  function status(text){
+    report(text);const kind=syncStatusKind(text);notice.dataset.kind=kind;
+    message.textContent=kind==='login'?(text.includes('没有工作台权限')?'当前账号没有工作台权限，请使用电脑上的同一账号登录。':'此设备尚未连接云端，暂时无法显示其他设备的记录。请登录同一账号。'):text;
+    loginAction.hidden=kind!=='login';retryAction.hidden=kind==='saved';
+    notice.hidden=kind==='saved'&&!panel.open;
+    if(syncMount){syncMount.title=text;syncMount.dataset.connection=kind==='login'||kind==='error'?'error':kind;}
   }
-  const client=sdk.createClient(config.url,config.key);
-  let engine=null, user=null;
+  const controller={
+    observe(day){remember(day);if(engine)engine.observe(day);else status(client&&!user&&!initializing&&!connecting?'请登录以同步本次修改；本机输入保留':'尚未连接云端，本机输入保留；连接后自动保存本次修改');},
+    open(day){remember(day);return engine?.open(day,{initialView:initialViews.get(day)});},
+    ready:day=>Boolean(engine?.days.get(day)?.ready)
+  };
+  if(!config.enabled){status('云端保存尚未配置；当前仅保存在本机');loginAction.hidden=retryAction.hidden=true;return controller;}
   const announceRefresh=async()=>{
-    if(typeof client.functions?.invoke!=='function' || !engine || !user)return;
+    if(typeof client?.functions?.invoke!=='function'||!engine||!user)return;
     const invoke=async(action,request_id)=>{
-      if(!engine || !user)throw Error('LOGIN_REQUIRED');
-      const {data,error}=await client.functions.invoke('wayon-refresh',{body:{action,...(request_id?{request_id}: {})}});
-      if(error || !data){
-        let code='BACKEND_UNAVAILABLE';try{code=(await error?.context?.json())?.error||code;}catch{}
-        throw Error(code);
-      }
-      return data;
+      if(!engine||!user)throw Error('LOGIN_REQUIRED');
+      const {data,error}=await client.functions.invoke('wayon-refresh',{body:{action,...(request_id?{request_id}:{})}});
+      if(error||!data)throw Error('BACKEND_UNAVAILABLE');return data;
     };
-    const api={enabled:false,start:id=>invoke('start',id),status:id=>invoke('status',id),
-      reloadPublished:async()=>{if(!refreshPublished)throw Error('PAGE_UNAVAILABLE');return refreshPublished();}};
+    const api={enabled:false,start:id=>invoke('start',id),status:id=>invoke('status',id),reloadPublished:async()=>{if(!refreshPublished)throw Error('PAGE_UNAVAILABLE');return refreshPublished();}};
     globalThis.wayonRefreshAPI=api;
     try{api.enabled=(await invoke('capabilities')).enabled===true;}catch{}
     window.dispatchEvent(new Event('wayon-refresh-ready'));
   };
-  const login=button('登录',()=>passwordLogin({client,emailInput:email,passwordInput:password,status,connect}));
+  const login=button('登录',async()=>{if(!client)await initialize();if(client)return passwordLogin({client,emailInput:email,passwordInput:password,status,connect});});
   password.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();login.click();}});
-  const retry=button('重新连接',async()=>{if(engine) await engine.refresh(currentDay());else await connect((await client.auth.getSession()).data.session);});
-  const conflict=button('处理冲突',async()=>{
-    if(engine && confirm('将当前设备保留的修改保存到云端？其他未修改项目保持原样。')) await engine.resolve(currentDay());
-  });
+  const conflict=button('处理冲突',async()=>{if(engine&&confirm('将当前设备保留的修改保存到云端？其他未修改项目保持原样。'))await engine.resolve(currentDay());});
   const legacy=button('下载旧本机记录',()=>{
-    const day=currentDay(),old=localStorage.getItem('wayon-before-cloud-'+day);
-    const recovery=engine && localStorage.getItem(engine.recoveryKey(day));
-    if(!old && !recovery){status('当天没有旧本机恢复副本');return;}
-    const raw=JSON.stringify({legacy:old ? JSON.parse(old) : null,cloud_recovery:recovery ? JSON.parse(recovery) : null});
-    const a=document.createElement('a'),url=URL.createObjectURL(new Blob([raw],{type:'application/json'}));
-    a.href=url;a.download=`wayon-local-backup-${day}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+    const day=currentDay(),old=localStorage.getItem('wayon-before-cloud-'+day),recovery=engine&&localStorage.getItem(engine.recoveryKey(day));
+    if(!old&&!recovery){status('当天没有旧本机恢复副本');return;}
+    const raw=JSON.stringify({legacy:old?JSON.parse(old):null,cloud_recovery:recovery?JSON.parse(recovery):null});
+    const a=document.createElement('a'),url=URL.createObjectURL(new Blob([raw],{type:'application/json'}));a.href=url;a.download=`wayon-local-backup-${day}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   });
-  const logout=button('退出',async()=>{await client.auth.signOut();location.reload();});
-  panel.append(heading,email,password,login,retry,conflict,legacy,logout);
-  const settings=document.getElementById('account-settings');
-  const syncMount=document.getElementById('sync');
-  if(settings) settings.append(panel);
-  else if(!document.body.classList.contains('wayon-room')) {
-    if(syncMount) syncMount.after(panel);
-    else document.body.append(panel);
-  }
-  async function connect(session) {
-    if(!session) {delete globalThis.wayonRefreshAPI;window.dispatchEvent(new Event('wayon-refresh-ready'));if(settings)settings.open=true;panel.open=true;engine=null;email.hidden=password.hidden=login.hidden=false;status('请登录以保存云端记录；现有本机记录保留');return false;}
-    const {data,error}=await client.from('wayon_owner').select('user_id');
-    if(error || data?.length!==1 || data[0].user_id!==session.user.id) {delete globalThis.wayonRefreshAPI;window.dispatchEvent(new Event('wayon-refresh-ready'));if(settings)settings.open=true;panel.open=true;engine=null;email.hidden=password.hidden=login.hidden=false;status('此账号没有工作台权限');return false;}
-    if(user && user!==session.user.id) {location.reload();return;}
-    user=session.user.id;
-    if(!engine) {
-      if(hydrate) await hydrate(client,user);
-      const uuidGen=()=>(typeof crypto!=='undefined'&&typeof crypto.randomUUID==='function')?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return (c==='x'?r:(r&0x3|0x8)).toString(16);});
-      engine=new CheckSync({client,owner:user,storage:localStorage,capture,apply,status,uuid:uuidGen});
+  const logout=button('退出',async()=>{if(client)await client.auth.signOut();location.reload();});
+  panel.append(heading,email,password,login,button('重新连接',reconnect),conflict,legacy,logout);
+  if(settings)settings.append(panel);else if(!document.body.classList.contains('wayon-room')){if(syncMount)syncMount.after(panel);else document.body.append(panel);}
+  async function connect(session){
+    if(!session){authEpoch++;engine=null;user=null;delete globalThis.wayonRefreshAPI;window.dispatchEvent(new Event('wayon-refresh-ready'));email.hidden=password.hidden=login.hidden=false;status('请登录以保存云端记录；现有本机记录保留');return false;}
+    if(connecting)return connecting;
+    const epoch=authEpoch;
+    connecting=(async()=>{
+      if(engine&&user===session.user.id){await controller.open(currentDay());return true;}
+      const {data,error}=await withCloudTimeout(client.from('wayon_owner').select('user_id'));
+      if(epoch!==authEpoch)return false;
+      if(error||data?.length!==1||data[0].user_id!==session.user.id){status('此账号没有工作台权限');return false;}
+      if(user&&user!==session.user.id){location.reload();return false;}
+      user=session.user.id;
+      if(hydrate)await withCloudTimeout(Promise.resolve().then(()=>hydrate(client,user)));
+      if(epoch!==authEpoch)return false;
+      const uuidGen=()=>crypto.randomUUID?.()||'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:(r&3|8)).toString(16);});
+      engine=new CheckSync({client,owner:user,storage:localStorage,capture,apply:(day,fields)=>applyCloudView(apply,day,fields),status,uuid:uuidGen});
       email.hidden=password.hidden=login.hidden=true;panel.open=false;
-      await engine.open(currentDay());
-    }
-    void announceRefresh();
+      remember(currentDay());
+      const days=[currentDay(),...initialViews.keys()].filter((d,i,a)=>a.indexOf(d)===i);
+      for(const day of days)await engine.open(day,{initialView:initialViews.get(day)});
+      void announceRefresh();return engine.days.get(currentDay())?.ready===true;
+    })().catch(()=>{status('云端连接失败或超时；本机输入保留，请重新连接');return false;}).finally(()=>{connecting=null;});
+    return connecting;
   }
-  await connect((await client.auth.getSession()).data.session);
-  client.auth.onAuthStateChange((event,session)=>{
-    // Avoid awaiting SDK calls while its auth lock is held.
-    if(event==='SIGNED_IN' || event==='TOKEN_REFRESHED') setTimeout(()=>void connect(session),0);
-    if(event==='SIGNED_OUT') void connect(null);
-  });
+  async function initialize(){
+    if(initializing)return initializing;
+    lastAttempt=Date.now();status('正在连接云端，读取其他设备记录…');
+    initializing=(async()=>{
+      if(!client){const sdk=await sdkLoader();client=sdk.createClient(config.url,config.key);client.auth.onAuthStateChange((event,session)=>{
+        if(['SIGNED_IN','TOKEN_REFRESHED','SIGNED_OUT'].includes(event))setTimeout(()=>void connect(session),0);
+      });}
+      const {data,error}=await withCloudTimeout(client.auth.getSession());if(error)throw Error('SESSION_UNAVAILABLE');
+      return connect(data?.session||null);
+    })().catch(()=>{status('云端连接失败或超时；本机输入保留，请重新连接');return false;}).finally(()=>{initializing=null;});
+    return initializing;
+  }
   let publishedAt=0,publishedBusy=false;
   const refresh=async()=>{
     if(document.visibilityState==='hidden')return;
-    if(engine && !document.activeElement?.matches('input,textarea'))await engine.refresh(currentDay());
-    if(refreshPublished && !publishedBusy && Date.now()-publishedAt>=60000){
-      publishedBusy=true;publishedAt=Date.now();
-      try{await refreshPublished();}catch(e){/* Keep the last dated snapshot on transport failure. */}
-      finally{publishedBusy=false;}
-    }
+    if(engine&&!document.activeElement?.matches('input,textarea,[contenteditable="true"]'))await controller.open(currentDay());
+    else if(!engine&&Date.now()-lastAttempt>=30000)await initialize();
+    if(refreshPublished&&!publishedBusy&&Date.now()-publishedAt>=60000){publishedBusy=true;publishedAt=Date.now();try{await refreshPublished();}catch{}finally{publishedBusy=false;}}
   };
   setInterval(()=>void refresh(),15000);
-  window.addEventListener('online',async()=>{if(engine)await engine.flush();await refresh();});
-  window.addEventListener('focus',()=>void refresh());
-  window.addEventListener('pageshow',()=>void refresh());
+  window.addEventListener('online',async()=>{if(engine)await engine.flush();else await initialize();await refresh();});
+  for(const event of ['focus','pageshow'])window.addEventListener(event,()=>void refresh());
   window.addEventListener('wayon-refresh-published',()=>{publishedAt=0;void refresh();});
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')void refresh();});
   document.addEventListener('focusout',()=>setTimeout(()=>void refresh(),0));
-  void refresh();
-  return {observe:day=>engine?.observe(day),open:day=>engine?.open(day),ready:day=>Boolean(engine?.days.get(day)?.ready)};
+  void initialize();return controller;
 }
 
 // Code-only presentation update: existing page DATA stays on the page, never transmitted.
