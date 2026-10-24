@@ -1,4 +1,92 @@
-<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Wayon · 任务规则</title>
-<style>body{margin:0;background:#f5f5f7;color:#1d1d1f;font:16px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif}header{background:white;padding:24px 6vw;border-radius:0 0 24px 24px}h1{font-size:clamp(70px,13vw,150px);letter-spacing:-.06em;margin:0;line-height:1}main{max-width:1000px;margin:28px auto;padding:0 20px 50px}a{color:#007aff}details,form{background:white;border:1px solid #e5e5e7;border-radius:18px;padding:18px;margin:12px 0}summary{font-weight:600;cursor:pointer}label{display:block;color:#555;font-size:14px;margin:14px 0}input,select,textarea,button{font:inherit;box-sizing:border-box;border:1px solid #ddd;border-radius:9px;padding:10px;background:#fff;color:#1d1d1f}input,select,textarea{display:block;width:100%;margin-top:6px}textarea{min-height:88px;resize:vertical}fieldset{display:flex;flex-wrap:wrap;gap:12px;border:0;padding:0}fieldset label{display:flex;gap:6px;align-items:center}input[type=checkbox]{width:auto;margin:0}button{cursor:pointer}#save{background:#007aff;color:white;border:0}#actions{position:sticky;top:0;background:#f5f5f7eF;padding:12px 0;z-index:2}#status{line-height:1.6}.override{padding:15px 0;border-bottom:1px solid #eee}button:disabled{opacity:.5}#actions button{margin-right:8px}</style>
-<header><h1>Wayon</h1></header><main><a href="./">← 返回工作台</a><h2>任务规则</h2><p>这里的频率、任务内容和特殊规则与自动布置共用。修改已保存的规则，不会立即发作业；下次例行会按新规则核验后执行。特殊阅读请使用下方选项；未支持的自然语言要求会列入报告，请老师确认。</p><p id="status" role="status">正在读取…</p><form id="login" hidden><label>工作台邮箱<input id="email" type="email" autocomplete="username" required></label><label>密码<input id="password" type="password" autocomplete="current-password" required></label><button>登录</button></form><div id="actions" hidden><button id="save">保存规则</button><button id="reload">重新读取</button></div><div id="rules"></div></main>
-<script type="module">import{mountRules}from'./rules-editor.mjs';let sdk;try{sdk=await import('https://esm.sh/@supabase/supabase-js@2.49.4')}catch{sdk=await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm')}const config=await(await fetch('./checks-public-config.json',{cache:'no-store'})).json();await mountRules({document,client:sdk.createClient(config.url,config.key)});</script></html>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Wayon · 任务规则</title>
+  <style>
+    body {
+      margin: 0;
+      background: #f5f5f7;
+      color: #1d1d1f;
+      font: 15px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "PingFang SC", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      background: #fff;
+      padding: 16px 24px;
+      border-bottom: 1px solid rgba(0,0,0,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand-link {
+      font-size: 20px;
+      font-weight: 700;
+      color: #1d1d1f;
+      text-decoration: none;
+      letter-spacing: -0.03em;
+    }
+    .back-link {
+      font-size: 13px;
+      color: #0071e3;
+      text-decoration: none;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
+    main {
+      flex: 1;
+      max-width: 1100px;
+      width: 100%;
+      margin: 20px auto;
+      padding: 0 16px 40px;
+      box-sizing: border-box;
+    }
+    #rules-standalone-root {
+      background: #fff;
+      border: 1px solid rgba(0,0,0,0.1);
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+      min-height: 600px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="./" class="brand-link">Wayon</a>
+    <a href="./" class="back-link">← 返回教学工作台</a>
+  </header>
+  <main>
+    <div id="rules-standalone-root">
+      <div style="padding:48px 20px;text-align:center;color:#666">
+        <p style="font-size:15px;margin:0 0 8px">正在连接统一规则库…</p>
+      </div>
+    </div>
+  </main>
+  <script type="module">
+    import { mountRules } from './rules-editor.mjs';
+    let sdk;
+    try {
+      sdk = await import('https://esm.sh/@supabase/supabase-js@2.49.4');
+    } catch {
+      try {
+        sdk = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm');
+      } catch {
+        sdk = await import('https://unpkg.com/@supabase/supabase-js@2.49.4/dist/module/index.js');
+      }
+    }
+    const config = await (await fetch('./checks-public-config.json', { cache: 'no-store' })).json();
+    const client = sdk.createClient(config.url, config.key);
+    await mountRules({
+      document,
+      client,
+      container: document.getElementById('rules-standalone-root'),
+      onClose: () => { window.location.href = './'; }
+    });
+  </script>
+</body>
+</html>

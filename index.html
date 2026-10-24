@@ -22,7 +22,8 @@
       // Critical spacing and subtitle styles apply even when the cloud SDK is unavailable.
       const polish='<style id="wayon-entry-polish">.wayon-workbench .brand-meta{display:none!important}.wayon-workbench #schedule-health:empty{display:none!important}.wayon-workbench:has(#classroom-frame) .workspace-top-bar,.wayon-workbench:has(#classroom-frame) .workspace-sub-bar{display:none!important}.wayon-workbench:has(#classroom-frame) .main-content{padding-top:8px!important}</style>';
       const roomLayout='<script src="./room-layout.js?release='+Date.now()+'"><'+'/script>';
-      next=next.replace('</head>',polish+roomLayout+'<script src="./rules-entry.js"><'+'/script></head>');
+      const rulesEntry='<script src="./rules-entry.js?release='+Date.now()+'"><'+'/script>';
+      next=next.replace('</head>',polish+roomLayout+rulesEntry+'</head>');
       document.open();document.write(next);document.close();
     } catch {
       document.getElementById('loading').textContent='Could not load the workspace. Your saved records are unchanged.';
