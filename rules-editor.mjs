@@ -292,8 +292,8 @@ function injectStyles(document) {
 .rules-quick-presets{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px;margin-bottom:6px}
 .rules-preset-chip{height:24px;padding:0 8px;border-radius:5px;border:1px solid var(--line-strong,rgba(0,0,0,0.14));background:var(--card,#fff);color:var(--muted,#555);font-size:11.5px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;transition:all .12s}
 .rules-preset-chip:hover{color:var(--accent,#0071e3);border-color:var(--accent,#0071e3);background:var(--accent-subtle,#eaf3ff)}
-.rules-quick-sel{height:28px;padding:0 6px;font-size:11.5px;font-weight:550;color:var(--muted,#555);background:var(--card,#fff);border:1px solid var(--line-strong,rgba(0,0,0,0.14));border-radius:6px;cursor:pointer;flex-shrink:0;width:auto;min-width:96px;transition:all .15s ease}
-.rules-quick-sel:hover{color:var(--accent,#0071e3);border-color:var(--accent,#0071e3);background:var(--accent-subtle,#eaf3ff)}
+.rules-quick-sel{width:28px;height:28px;padding:0;text-align:center;text-align-last:center;font-size:13px;line-height:26px;color:var(--ink,#1d1d1f);background:var(--card,#fff);border:1px solid var(--line-strong,rgba(0,0,0,0.14));border-radius:6px;cursor:pointer;flex-shrink:0;transition:all .15s ease;-webkit-appearance:none;appearance:none;box-sizing:border-box}
+.rules-quick-sel:hover{border-color:var(--accent,#0071e3);background:var(--accent-subtle,#eaf3ff)}
 
 /* Subject Rules */
 .rules-subj-section{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line,rgba(0,0,0,0.1));display:flex;flex-direction:column;gap:8px}
@@ -1428,36 +1428,40 @@ export async function mountRules({ document, client, container, onClose }) {
       markModified();
     };
 
-    // 快捷填入单行极简下拉菜单（收纳隐藏平铺按键，单行不占额外空间）
+    // 快捷填入极简单符号下拉菜单（纯符号 ⚡，不占宽度）
     const vQuickSel = document.createElement('select');
     vQuickSel.className = 'rules-quick-sel';
-    vQuickSel.title = '从常用预设中快捷填入单词任务';
+    vQuickSel.title = '⚡ 快捷填入词汇预设';
 
     const defaultOpt = document.createElement('option');
     defaultOpt.value = '';
-    defaultOpt.textContent = '⚡ 快捷填入 ▾';
+    defaultOpt.textContent = '⚡';
     defaultOpt.disabled = true;
     defaultOpt.selected = true;
     vQuickSel.append(defaultOpt);
 
     const presetItems = [
+      ['⚡ 常用词汇预设（点击填入）：', ''],
       ['雅思双词书 (听50+阅50)', '系统内单词任务（听力*50+阅读*50）'],
       ['托福100词 (50*2)', '系统内托福单词100个（50*2）'],
       ['校内单词背诵', '校内单词背诵'],
       ['四级词汇*2组', '系统内单词任务（四级词汇*两组，每组30词）'],
       ['免背 / 课上无单词', '']
     ];
-    presetItems.forEach(([label, val]) => {
+    presetItems.forEach(([label, val], idx) => {
       const opt = document.createElement('option');
       opt.value = val;
       opt.textContent = label;
+      if (idx === 0) opt.disabled = true;
       vQuickSel.append(opt);
     });
 
     vQuickSel.onchange = () => {
-      vInput.value = vQuickSel.value;
-      rule.vocab_task = vQuickSel.value;
-      markModified();
+      if (vQuickSel.value !== undefined) {
+        vInput.value = vQuickSel.value;
+        rule.vocab_task = vQuickSel.value;
+        markModified();
+      }
       vQuickSel.selectedIndex = 0;
     };
 
