@@ -51,6 +51,82 @@ const STUDENT_SYSTEM_MAP = {
   'amy': 'school'
 };
 
+// 2026-10-24 Leo 铁律：随课任务以班级为单位，合班学员不拆开（Leo&Iven、彦如&陈书进等）
+export const MULTI_CLASS_SPECS = [
+  {
+    key: 'leo&iven',
+    name: 'Leo & Iven',
+    system: 'toefl',
+    members: ['leo', 'iven', 'ivan', 'leo&ivan', 'leo&iven', 'leo&iven-托福强化班'],
+    defaultRule: {
+      name: 'Leo & Iven',
+      system: 'toefl',
+      vocab_task: '系统内托福单词100个（50*2）',
+      attendance_tasks: []
+    }
+  },
+  {
+    key: '聂彦如&陈书进',
+    name: '聂彦如 & 陈书进',
+    system: 'ielts',
+    members: ['聂彦如', '陈书进', '彦如', '书进', '张彦如', '陈书进/聂彦如', '聂彦如&陈书进', '聂彦如&陈书进-雅思强化班'],
+    defaultRule: {
+      name: '聂彦如 & 陈书进',
+      system: 'ielts',
+      vocab_task: '系统内单词任务（听力*50+阅读*50）',
+      attendance_tasks: []
+    }
+  },
+  {
+    key: '周家琪/潘韬薄/苏顺平',
+    name: '周家琪 / 潘韬薄 / 苏顺平',
+    system: 'ielts',
+    members: ['周家琪', '潘韬薄', '苏顺平', '周家琪/潘韬薄/苏顺平', '三人班', '雅思基础班', '26年秋季雅思基础班'],
+    defaultRule: {
+      name: '周家琪 / 潘韬薄 / 苏顺平',
+      system: 'ielts',
+      vocab_task: '系统内单词任务（听力*50+阅读*50）',
+      attendance_tasks: []
+    }
+  },
+  {
+    key: '戴荧&汤馨然',
+    name: '戴荧 & 汤馨然',
+    system: 'ielts',
+    members: ['戴荧', '汤馨然', '戴荧&汤馨然', '戴荧&汤馨然-雅思强化'],
+    defaultRule: {
+      name: '戴荧 & 汤馨然',
+      system: 'ielts',
+      vocab_task: '系统内单词任务（听力*15+阅读*15）',
+      attendance_tasks: []
+    }
+  },
+  {
+    key: '王明泽&李子熙',
+    name: '王明泽 & 李子熙',
+    system: 'ability',
+    members: ['王明泽', '李子熙', '王明泽&李子熙', '王明泽&李子熙-sat'],
+    defaultRule: {
+      name: '王明泽 & 李子熙',
+      system: 'ability',
+      vocab_task: null,
+      attendance_tasks: []
+    }
+  },
+  {
+    key: '王子居&andy',
+    name: '王子居 & Andy',
+    system: 'toefl',
+    members: ['王子居', 'andy', '王子居&andy', '王子居&andy-sat'],
+    defaultRule: {
+      name: '王子居 & Andy',
+      system: 'toefl',
+      vocab_task: '系统内托福单词100个（50*2）',
+      attendance_tasks: []
+    }
+  }
+];
+
 const clean = s => String(s || '').trim().replace(/[【】「」\s]/g, '').toLowerCase();
 const clone = obj => typeof structuredClone === 'function' ? structuredClone(obj) : JSON.parse(JSON.stringify(obj));
 
@@ -308,17 +384,32 @@ export async function mountRules({ document, client, container, onClose }) {
       if (att['黄号然']) att['黄号然'].system = 'toefl';
       if (att['tiger']) att['tiger'].system = 'toefl';
       if (att['Tiger']) att['Tiger'].system = 'toefl';
-      // 4. 统一 Ivan 与 Iven 为 Iven（Leo 2026-10-24 明确指示：同一个人，叫 Iven）
-      if (att['ivan']) {
-        if (!att['iven']) {
-          att['iven'] = { ...att['ivan'], name: 'Iven' };
+      // 4. 随课任务以班级为单位，合班学员不拆开（Leo 2026-10-24 明确指示）
+      for (const spec of MULTI_CLASS_SPECS) {
+        let targetRule = att[spec.key];
+        if (!targetRule) {
+          for (const m of spec.members) {
+            if (att[m]) {
+              targetRule = { ...att[m], name: spec.name, system: spec.system };
+              break;
+            }
+          }
         }
-        delete att['ivan'];
-        state.modified = true;
-      }
-      if (att['leo&ivan'] && att['leo&iven']) {
-        delete att['leo&ivan'];
-        state.modified = true;
+        if (!targetRule) {
+          targetRule = clone(spec.defaultRule);
+        } else {
+          targetRule.name = spec.name;
+          if (!targetRule.system) targetRule.system = spec.system;
+        }
+        att[spec.key] = targetRule;
+
+        // 彻底删除班内单人拆开的随课规则条目（leo/iven/彦如/陈书进等）
+        for (const m of spec.members) {
+          if (m !== spec.key && att[m]) {
+            delete att[m];
+            state.modified = true;
+          }
+        }
       }
     }
 
@@ -790,6 +881,19 @@ export async function mountRules({ document, client, container, onClose }) {
           (Array.isArray(rule.attendance_tasks) && rule.attendance_tasks.some(t => String(t).toLowerCase().includes(q)))
         );
       }
+
+      // 随课规则以班级为单位：过滤掉任何属于合班成员的单人条目（防残留，合班不拆开）
+      const classMemberSet = new Set();
+      for (const spec of MULTI_CLASS_SPECS) {
+        for (const m of spec.members) {
+          if (m !== spec.key) classMemberSet.add(clean(m));
+        }
+      }
+      entries = entries.filter(([k, rule]) => {
+        const kClean = clean(k);
+        const nameClean = clean(rule.name || k);
+        return !classMemberSet.has(kClean) && !classMemberSet.has(nameClean);
+      });
 
       // Sort alphabetically by name
       entries.sort((a, b) => (a[1].name || a[0]).localeCompare(b[1].name || b[0], 'zh-CN'));
