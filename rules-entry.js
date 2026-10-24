@@ -8,81 +8,86 @@
   const entryStyle = document.createElement('style');
   entryStyle.id = 'wayon-rules-entry-style';
   entryStyle.textContent = `
-    .sidebar-rules-card-btn {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      margin: 10px 14px;
-      padding: 10px 16px;
-      min-height: 40px;
-      height: 40px;
-      border: 1px solid var(--line, rgba(0,0,0,0.1));
-      border-radius: 12px;
-      background: var(--card, #fff);
-      color: var(--accent, #0071e3);
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: -0.01em;
-      cursor: pointer;
-      white-space: nowrap !important;
-      box-sizing: border-box;
-      width: calc(100% - 28px);
-      transition: all .15s ease;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.03);
-      flex: none;
+    .sidebar-rules-icon-btn {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 40px !important;
+      min-width: 40px !important;
+      height: 40px !important;
+      min-height: 40px !important;
+      padding: 0 !important;
+      border: 1px solid var(--line, rgba(30,30,40,.09)) !important;
+      border-radius: 10px !important;
+      background: var(--card, #fff) !important;
+      color: var(--muted, #6e6e73) !important;
+      cursor: pointer !important;
+      flex: none !important;
+      box-sizing: border-box !important;
+      transition: all .15s ease !important;
+      text-decoration: none !important;
+      line-height: 1 !important;
     }
-    .sidebar-rules-card-btn:hover {
-      background: var(--accent-subtle, #eaf3ff);
-      border-color: var(--accent, #0071e3);
-      box-shadow: 0 2px 6px rgba(0,113,227,0.12);
+    .sidebar-rules-icon-btn:hover {
+      color: var(--accent, #0071e3) !important;
+      border-color: var(--accent, #0071e3) !important;
+      background: var(--accent-subtle, #eaf3ff) !important;
     }
-    .sidebar-rules-card-btn svg {
-      width: 17px;
-      height: 17px;
-      flex: none;
-      color: currentColor;
+    .sidebar-rules-icon-btn svg {
+      width: 19px !important;
+      height: 19px !important;
+      flex: none !important;
+      pointer-events: none !important;
     }
+    .sidebar-rules-card-btn,
+    .rules-subbar-pill,
     .wayon-workbench #wayon-rules-open-btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 36px;
-      height: 36px;
-      min-width: 36px;
-      min-height: 36px;
-      padding: 0;
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: var(--card);
-      color: var(--muted);
-      cursor: pointer;
-      transition: all .15s ease;
-      box-sizing: border-box;
+      display: none !important;
     }
-    .wayon-workbench #wayon-rules-open-btn:hover {
-      color: var(--accent);
-      border-color: var(--accent);
-      background: var(--accent-subtle, #eaf3ff);
-    }
-    .wayon-workbench #wayon-rules-open-btn svg {
-      width: 18px;
-      height: 18px;
-      pointer-events: none;
-    }
-    @media (max-width: 859px) {
-      .sidebar-rules-card-btn {
-        margin: 6px 8px;
-        width: auto;
+    @media (max-width: 1023px) {
+      .sidebar-rules-icon-btn {
+        width: 40px !important;
+        min-width: 40px !important;
+        height: 40px !important;
+        min-height: 40px !important;
       }
     }
     @media (max-width: 599px) {
-      .wayon-workbench #wayon-rules-open-btn {
-        width: 44px;
-        height: 44px;
-        min-width: 44px;
-        min-height: 44px;
+      .sidebar-rules-icon-btn {
+        width: 44px !important;
+        min-width: 44px !important;
+        height: 44px !important;
+        min-height: 44px !important;
+        border-radius: 10px !important;
       }
+    }
+    .wayon-rules-dialog:not([open]) {
+      display: none !important;
+    }
+    .wayon-rules-dialog[open] {
+      position: fixed !important;
+      inset: 0 !important;
+      margin: auto !important;
+      z-index: 99999 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      box-sizing: border-box;
+      width: min(1100px, calc(100vw - 24px));
+      height: min(90vh, 920px);
+      max-height: 90vh;
+      padding: 0;
+      border: 1px solid var(--line-strong, rgba(0,0,0,0.12));
+      border-radius: 20px;
+      background: var(--bg, #f5f5f7);
+      color: var(--fg, #1d1d1f);
+      box-shadow: 0 28px 90px rgba(0,0,0,0.35);
+      overflow: hidden;
+      font-family: var(--sans, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "PingFang SC", sans-serif);
+    }
+    .wayon-rules-dialog::backdrop {
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
     }
   `;
   (document.head || document.documentElement).append(entryStyle);
@@ -166,42 +171,31 @@
   window.wayonOpenRules = openRulesModal;
 
   const mountButtons = () => {
-    // 1. Mount toolbar icon into #workflow-tools
-    const tools = document.getElementById('workflow-tools');
-    if (tools && !document.getElementById('wayon-rules-open-btn')) {
+    // 1. Clean up any deprecated or extra buttons
+    document.getElementById('wayon-rules-open-btn')?.remove();
+    document.getElementById('wayon-rules-sidebar-btn')?.remove();
+    document.getElementById('wayon-rules-subbar-btn')?.remove();
+
+    // 2. Mount single icon-only button near Settings in .sidebar-footer
+    if (!document.getElementById('wayon-rules-btn')) {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'workflow-icon';
-      btn.id = 'wayon-rules-open-btn';
+      btn.id = 'wayon-rules-btn';
+      btn.className = 'sidebar-rules-icon-btn';
       btn.title = '任务规则 · Task Rules';
       btn.setAttribute('aria-label', '任务规则 · Task Rules');
       btn.innerHTML = svgIcon;
       btn.onclick = openRulesModal;
 
-      const refreshBtn = document.getElementById('completion-refresh');
-      if (refreshBtn && refreshBtn.parentNode === tools) {
-        tools.insertBefore(btn, refreshBtn);
+      const settings = document.getElementById('account-settings');
+      const footer = document.querySelector('.sidebar-footer');
+      if (settings && settings.parentNode) {
+        settings.parentNode.insertBefore(btn, settings);
+      } else if (footer) {
+        footer.append(btn);
       } else {
-        tools.append(btn);
-      }
-    }
-
-    // 2. Mount sidebar card button directly in .sidebar (below .nav-section)
-    const sidebar = document.querySelector('.sidebar');
-    if (sidebar && !document.getElementById('wayon-rules-sidebar-btn')) {
-      const sBtn = document.createElement('button');
-      sBtn.type = 'button';
-      sBtn.className = 'sidebar-rules-card-btn';
-      sBtn.id = 'wayon-rules-sidebar-btn';
-      sBtn.title = '查看与编辑学员任务规则';
-      sBtn.innerHTML = `${svgIcon}<span>任务规则 · Rules</span>`;
-      sBtn.onclick = openRulesModal;
-
-      const navSec = sidebar.querySelector('.nav-section');
-      if (navSec && navSec.nextSibling) {
-        sidebar.insertBefore(sBtn, navSec.nextSibling);
-      } else {
-        sidebar.append(sBtn);
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) sidebar.append(btn);
       }
     }
   };

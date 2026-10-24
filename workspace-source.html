@@ -1106,16 +1106,26 @@ function render(){
       tx.title = "点击可直接编辑修改任务";
       tx.setAttribute("aria-label",r[0]+"的第"+(i+1)+"项任务");
       const sizeText=()=>{tx.style.height="auto";tx.style.height=tx.scrollHeight+"px";};
-      tx.oninput=sizeText;requestAnimationFrame(sizeText);
-      tx.onchange = () => {
-        const next = tx.value.trim() || t[0];
-        if (next === t[0]) return;
+      const commitTask = (nextVal) => {
+        const next = (nextVal !== undefined ? nextVal : tx.value).trim() || t[0];
         if (!Array.isArray(s.tk)) s.tk = currentTasks.map(x => x[0]);
-        s.tk[i] = next;
+        if (s.tk[i] === next) return;
+        s.tk[i] = next; t[0] = next;
         if (s.m) delete s.m[i];
         if (s.n) delete s.n[i];
         s.c = ""; save(); pre.textContent = text(r); summary(rows);
       };
+      tx.oninput = () => {
+        sizeText();
+        if (!Array.isArray(s.tk)) s.tk = currentTasks.map(x => x[0]);
+        s.tk[i] = tx.value; pre.textContent = text(r);
+      };
+      requestAnimationFrame(sizeText);
+      tx.onkeydown = (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); commitTask(tx.value); tx.blur(); }
+      };
+      tx.onchange = () => commitTask(tx.value);
+      tx.onblur = () => commitTask(tx.value);
       const note = document.createElement("input"); note.className = "note"; note.id = "n-" + ri + "-" + i; note.placeholder = "备注（可不填）"; note.value = nt(s, t, i); note.setAttribute("aria-label",r[0]+"的第"+(i+1)+"项备注");
       note.oninput = () => { s.n[i] = note.value; if (s.c) { s.c = ""; } save(); pre.textContent = text(r); summary(rows); };
       const del = document.createElement("button"); del.type = "button"; del.className = "del-btn"; del.id = "del-" + ri + "-" + i;
@@ -1142,9 +1152,15 @@ function render(){
     const addBtn = document.createElement("button"); addBtn.type = "button"; addBtn.className = "small add-btn";
     addBtn.textContent = "+ 添加一项任务";
     addBtn.onclick = () => {
+      if (document.activeElement && document.activeElement.classList.contains("txt")) document.activeElement.blur();
       if (!Array.isArray(s.tk)) s.tk = currentTasks.map(x => x[0]);
       s.tk.push("新任务");
       s.c = ""; save(); render();
+      requestAnimationFrame(() => {
+        const tasksEl = el.querySelectorAll(".tasks .task .txt");
+        const newTx = tasksEl[tasksEl.length - 1];
+        if (newTx) { newTx.focus(); newTx.select(); }
+      });
     };
     opRow.append(addBtn);
     if (Array.isArray(s.tk)) {
@@ -1348,11 +1364,23 @@ class StudyTasks {
         const tx=document.createElement('textarea');tx.rows=1;tx.className='txt';tx.value=task.text;tx.title='点击可直接编辑修改任务';
         tx.setAttribute('aria-label',cleanName+'的第'+(i+1)+'项任务');
         const sizeText=()=>{tx.style.height='auto';tx.style.height=tx.scrollHeight+'px';};
-        tx.oninput=sizeText;requestAnimationFrame(sizeText);
-        tx.onchange=()=>{
-          const next=tx.value.trim()||task.text;if(next===task.text)return;
+        const commitTask = (nextVal) => {
+          const next = (nextVal !== undefined ? nextVal : tx.value).trim() || task.text;
+          if (next === task.text) return;
+          task.text = next;
           run(()=>this.change(day,card.id,task.id,'text',next));
         };
+        tx.oninput = () => { sizeText(); task.text = tx.value; };
+        requestAnimationFrame(sizeText);
+        tx.onkeydown = (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            commitTask(tx.value);
+            tx.blur();
+          }
+        };
+        tx.onchange = () => commitTask(tx.value);
+        tx.onblur = () => commitTask(tx.value);
         taskMain.append(num,tx);row.append(taskMain);
         if(mode==='done'){
           const note=document.createElement('input');note.className='note';note.placeholder='备注（可不填）';note.setAttribute('aria-label',task.text+' 备注');note.maxLength=2000;note.value=task.note;
@@ -1379,6 +1407,7 @@ class StudyTasks {
     }
     if(!bottom)folded.forEach(el=>host.append(el));
   }
+}
 }
 
 const study = new StudyTasks({storage:localStorage,sync:()=>checkCloud,redraw:()=>render()});
@@ -1473,7 +1502,13 @@ function applyChecks(day, fields) {
   localStorage.setItem(qkey(day),JSON.stringify(quiz));
   localStorage.setItem('wayon-plan-'+day,JSON.stringify(plan));
   if(day===cur) {st=done;ps=plan;qz=quiz;qzDay=day;}
-  if(day===cur || (mode==='chasing' && day===today) || (mode==='notice' && day===curN)) render();
+  if(day===cur || (mode==='chasing' && day===today) || (mode==='notice' && day===curN)) {
+    if (document.activeElement && document.activeElement.closest && document.activeElement.closest('#list')) {
+      const activeEl = document.activeElement;
+      const onDone = () => { activeEl.removeEventListener('blur', onDone); render(); };
+      activeEl.addEventListener('blur', onDone, { once: true });
+    } else { render(); }
+  }
 }
 async function refreshPublishedChasing(module) {
   const response=await fetch('./workspace-source.html?chasing='+Date.now(),{cache:'no-store',credentials:'omit'});
@@ -1677,15 +1712,93 @@ import('./checks-sync.mjs?v=20261020-01').then(m=>m.boot({config: {"enabled": tr
 
   const svgIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>';
 
-  // Style for sidebar button
+  // Style for rules buttons and toolbar integration
   const entryStyle = document.createElement('style');
   entryStyle.id = 'wayon-rules-entry-style';
   entryStyle.textContent = `
-    .sidebar-rules-btn{display:flex;align-items:center;gap:8px;width:100%;min-height:36px;padding:6px 12px;margin:4px 0;border:1px solid var(--line,rgba(0,0,0,0.08));border-radius:9px;background:var(--card,#fff);color:var(--fg-secondary,#555);font-size:12.5px;font-weight:550;cursor:pointer;transition:all .15s}
-    .sidebar-rules-btn:hover{background:var(--line,rgba(0,0,0,0.05));color:var(--accent,#0071e3);border-color:var(--accent,#0071e3)}
-    .sidebar-rules-btn svg{width:16px;height:16px;flex:none}
+    .sidebar-rules-icon-btn {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 40px !important;
+      min-width: 40px !important;
+      height: 40px !important;
+      min-height: 40px !important;
+      padding: 0 !important;
+      border: 1px solid var(--line, rgba(30,30,40,.09)) !important;
+      border-radius: 10px !important;
+      background: var(--card, #fff) !important;
+      color: var(--muted, #6e6e73) !important;
+      cursor: pointer !important;
+      flex: none !important;
+      box-sizing: border-box !important;
+      transition: all .15s ease !important;
+      text-decoration: none !important;
+      line-height: 1 !important;
+    }
+    .sidebar-rules-icon-btn:hover {
+      color: var(--accent, #0071e3) !important;
+      border-color: var(--accent, #0071e3) !important;
+      background: var(--accent-subtle, #eaf3ff) !important;
+    }
+    .sidebar-rules-icon-btn svg {
+      width: 19px !important;
+      height: 19px !important;
+      flex: none !important;
+      pointer-events: none !important;
+    }
+    .sidebar-rules-card-btn,
+    .rules-subbar-pill,
+    .wayon-workbench #wayon-rules-open-btn {
+      display: none !important;
+    }
+    @media (max-width: 1023px) {
+      .sidebar-rules-icon-btn {
+        width: 40px !important;
+        min-width: 40px !important;
+        height: 40px !important;
+        min-height: 40px !important;
+      }
+    }
+    @media (max-width: 599px) {
+      .sidebar-rules-icon-btn {
+        width: 44px !important;
+        min-width: 44px !important;
+        height: 44px !important;
+        min-height: 44px !important;
+        border-radius: 10px !important;
+      }
+    }
+    .wayon-rules-dialog:not([open]) {
+      display: none !important;
+    }
+    .wayon-rules-dialog[open] {
+      position: fixed !important;
+      inset: 0 !important;
+      margin: auto !important;
+      z-index: 99999 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      box-sizing: border-box;
+      width: min(1100px, calc(100vw - 24px));
+      height: min(90vh, 920px);
+      max-height: 90vh;
+      padding: 0;
+      border: 1px solid var(--line-strong, rgba(0,0,0,0.12));
+      border-radius: 20px;
+      background: var(--bg, #f5f5f7);
+      color: var(--fg, #1d1d1f);
+      box-shadow: 0 28px 90px rgba(0,0,0,0.35);
+      overflow: hidden;
+      font-family: var(--sans, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "PingFang SC", sans-serif);
+    }
+    .wayon-rules-dialog::backdrop {
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
   `;
-  document.head.append(entryStyle);
+  (document.head || document.documentElement).append(entryStyle);
 
   let dialog = null;
   let isMounted = false;
@@ -1722,8 +1835,8 @@ import('./checks-sync.mjs?v=20261020-01').then(m=>m.boot({config: {"enabled": tr
       isMounted = true;
       dialog.innerHTML = `
         <div style="padding:48px 20px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif">
-          <p style="font-size:15px;color:var(--fg-secondary,#555);margin:0 0 12px">正在载入统一规则管理面板…</p>
-          <div style="font-size:12px;color:var(--muted,#888)">已对接 Supabase 统一规则库</div>
+          <p style="font-size:16px;font-weight:600;color:var(--fg,#1d1d1f);margin:0 0 8px">正在载入统一规则管理面板…</p>
+          <div style="font-size:12px;color:var(--muted,#888)">正在连接 Supabase 规则库</div>
         </div>
       `;
 
@@ -1739,7 +1852,7 @@ import('./checks-sync.mjs?v=20261020-01').then(m=>m.boot({config: {"enabled": tr
           }
         }
 
-        const config = await (await fetch('./checks-public-config.json', { cache: 'no-store' })).json();
+        const config = await (await fetch('./checks-public-config.json?v=' + Date.now(), { cache: 'no-store' })).json();
         const client = sdk.createClient(config.url, config.key);
         const { mountRules } = await import('./rules-editor.mjs?v=' + Date.now());
         await mountRules({
@@ -1762,49 +1875,60 @@ import('./checks-sync.mjs?v=20261020-01').then(m=>m.boot({config: {"enabled": tr
     }
   }
 
+  // Expose global trigger
+  window.wayonOpenRules = openRulesModal;
+
   const mountButtons = () => {
-    // 1. Mount toolbar icon into #workflow-tools
-    const tools = document.getElementById('workflow-tools');
-    if (tools && !document.getElementById('wayon-rules-open-btn')) {
+    // 1. Clean up any deprecated or extra buttons
+    document.getElementById('wayon-rules-open-btn')?.remove();
+    document.getElementById('wayon-rules-sidebar-btn')?.remove();
+    document.getElementById('wayon-rules-subbar-btn')?.remove();
+
+    // 2. Mount single icon-only button near Settings in .sidebar-footer
+    if (!document.getElementById('wayon-rules-btn')) {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = 'workflow-icon';
-      btn.id = 'wayon-rules-open-btn';
+      btn.id = 'wayon-rules-btn';
+      btn.className = 'sidebar-rules-icon-btn';
       btn.title = '任务规则 · Task Rules';
       btn.setAttribute('aria-label', '任务规则 · Task Rules');
       btn.innerHTML = svgIcon;
       btn.onclick = openRulesModal;
-      // Prepend before refresh or append to tools
-      const refreshBtn = document.getElementById('completion-refresh');
-      if (refreshBtn && refreshBtn.parentNode === tools) {
-        tools.insertBefore(btn, refreshBtn);
+
+      const settings = document.getElementById('account-settings');
+      const footer = document.querySelector('.sidebar-footer');
+      if (settings && settings.parentNode) {
+        settings.parentNode.insertBefore(btn, settings);
+      } else if (footer) {
+        footer.append(btn);
       } else {
-        tools.append(btn);
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) sidebar.append(btn);
       }
     }
+  };
 
-    // 2. Mount sidebar button into #account-settings or .sidebar-footer
-    const settings = document.getElementById('account-settings') || document.querySelector('.sidebar-footer');
-    if (settings && !document.getElementById('wayon-rules-sidebar-btn')) {
-      const sBtn = document.createElement('button');
-      sBtn.type = 'button';
-      sBtn.className = 'sidebar-rules-btn';
-      sBtn.id = 'wayon-rules-sidebar-btn';
-      sBtn.title = '查看与编辑学员任务规则';
-      sBtn.innerHTML = `${svgIcon} <span>任务规则 · Rules</span>`;
-      sBtn.onclick = openRulesModal;
-      settings.prepend(sBtn);
+  const startObserving = () => {
+    mountButtons();
+    const target = document.body || document.documentElement;
+    if (target) {
+      new MutationObserver(mountButtons).observe(target, { childList: true, subtree: true });
     }
   };
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', mountButtons, { once: true });
+    document.addEventListener('DOMContentLoaded', startObserving, { once: true });
+    const rootEl = document.documentElement;
+    if (rootEl) {
+      try {
+        new MutationObserver(mountButtons).observe(rootEl, { childList: true, subtree: true });
+      } catch {}
+    }
   } else {
-    mountButtons();
+    startObserving();
   }
 
-  // Observe in case #workflow-tools is dynamically created
-  new MutationObserver(mountButtons).observe(document.body, { childList: true, subtree: true });
+  window.addEventListener('load', mountButtons);
 })();
 </script>
 </body>

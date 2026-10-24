@@ -43,7 +43,8 @@ function injectStyles(document) {
   const style = document.createElement('style');
   style.id = 'wayon-rules-editor-styles';
   style.textContent = `
-.wayon-rules-dialog{box-sizing:border-box;width:min(1100px,calc(100vw - 24px));height:min(90vh,920px);max-height:90vh;padding:0;border:1px solid var(--line-strong,rgba(0,0,0,0.12));border-radius:20px;background:var(--bg,#f5f5f7);color:var(--fg,#1d1d1f);box-shadow:0 28px 90px rgba(0,0,0,0.3);display:flex;flex-direction:column;overflow:hidden;font-family:var(--sans,-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","PingFang SC",sans-serif)}
+.wayon-rules-dialog:not([open]){display:none!important}
+.wayon-rules-dialog[open]{position:fixed!important;inset:0!important;margin:auto!important;z-index:99999!important;display:flex!important;flex-direction:column!important;box-sizing:border-box;width:min(1100px,calc(100vw - 24px));height:min(90vh,920px);max-height:90vh;padding:0;border:1px solid var(--line-strong,rgba(0,0,0,0.12));border-radius:20px;background:var(--bg,#f5f5f7);color:var(--fg,#1d1d1f);box-shadow:0 28px 90px rgba(0,0,0,0.35);overflow:hidden;font-family:var(--sans,-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","PingFang SC",sans-serif)}
 .wayon-rules-dialog::backdrop{background:rgba(0,0,0,0.45);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
 .rules-wrapper{display:flex;flex-direction:column;height:100%;min-height:0;width:100%;overflow:hidden;background:var(--bg,#f5f5f7)}
 .rules-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 22px;background:var(--card,#fff);border-bottom:1px solid var(--line,rgba(0,0,0,0.08));flex:none}
