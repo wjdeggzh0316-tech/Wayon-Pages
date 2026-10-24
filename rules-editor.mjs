@@ -62,7 +62,13 @@ export const MULTI_CLASS_SPECS = [
       name: 'Leo & Iven',
       system: 'toefl',
       vocab_task: '系统内托福单词100个（50*2）',
-      attendance_tasks: []
+      attendance_tasks: [],
+      subject_rules: {
+        '口语': ['托福阅读一套', '托福听力一套'],
+        '阅读': ['托福听力一套', '托福口语一套'],
+        '听力': ['5篇完形填空', '托福口语一套'],
+        '写作': ['5篇完形填空', '托福口语一套', '托福听力一套']
+      }
     }
   },
   {
@@ -279,11 +285,23 @@ function injectStyles(document) {
 /* Attendance card specifics */
 .rules-att-tasks{display:flex;flex-direction:column;gap:6px;margin-top:2px}
 .rules-att-task-row{display:flex;align-items:center;gap:6px}
-.rules-att-task-del{width:24px;height:24px;border:0;background:transparent;color:var(--muted,#888);cursor:pointer;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:15px}
+.rules-task-badge{font-size:10.5px;font-weight:600;padding:2px 6px;border-radius:4px;background:rgba(0,0,0,0.05);color:var(--muted,#666);flex-shrink:0;letter-spacing:0.02em}
+.rules-task-badge.vocab{background:var(--accent-subtle,#eaf3ff);color:var(--accent,#0071e3)}
+.rules-att-task-del{width:24px;height:24px;border:0;background:transparent;color:var(--muted,#888);cursor:pointer;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
 .rules-att-task-del:hover{color:var(--bad,#d93025);background:#fff1f0}
-.rules-quick-presets{display:flex;gap:5px;flex-wrap:wrap;margin-top:4px}
-.rules-preset-chip{height:24px;padding:0 8px;border-radius:5px;border:1px solid var(--line-strong,rgba(0,0,0,0.14));background:var(--card,#fff);color:var(--muted,#555);font-size:11.5px;font-weight:500;cursor:pointer}
+.rules-quick-presets{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px;margin-bottom:6px}
+.rules-preset-chip{height:24px;padding:0 8px;border-radius:5px;border:1px solid var(--line-strong,rgba(0,0,0,0.14));background:var(--card,#fff);color:var(--muted,#555);font-size:11.5px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;transition:all .12s}
 .rules-preset-chip:hover{color:var(--accent,#0071e3);border-color:var(--accent,#0071e3);background:var(--accent-subtle,#eaf3ff)}
+
+/* Subject Rules */
+.rules-subj-section{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line,rgba(0,0,0,0.1));display:flex;flex-direction:column;gap:8px}
+.rules-subj-header{display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:650;color:var(--ink,#1d1d1f)}
+.rules-subj-box{background:var(--bg,#f8f8fa);border:1px solid var(--line,rgba(0,0,0,0.08));border-radius:8px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+.rules-subj-box-head{display:flex;align-items:center;justify-content:space-between}
+.rules-subj-tag{font-size:11.5px;font-weight:600;padding:2px 7px;border-radius:4px;background:#eef5fc;color:#185abc;border:1px solid #d2e3fc}
+.rules-subj-remove{font-size:11.5px;color:var(--bad,#d93025);background:none;border:none;cursor:pointer;padding:2px 5px;border-radius:4px}
+.rules-subj-remove:hover{background:#fff1f0}
+.rules-subj-chips{display:flex;gap:5px;flex-wrap:wrap;align-items:center;margin-top:4px}
 
 /* Auth form */
 .rules-auth-card{max-width:380px;margin:50px auto;padding:24px;border-radius:16px;border:1px solid var(--line,rgba(0,0,0,0.1));background:var(--card,#fff);box-shadow:0 10px 30px rgba(0,0,0,0.05);display:flex;flex-direction:column;gap:14px}
@@ -400,6 +418,10 @@ export async function mountRules({ document, client, container, onClose }) {
         } else {
           targetRule.name = spec.name;
           if (!targetRule.system) targetRule.system = spec.system;
+          if (spec.key === 'leo&iven' && !targetRule.subject_rules && spec.defaultRule.subject_rules) {
+            targetRule.subject_rules = clone(spec.defaultRule.subject_rules);
+            state.modified = true;
+          }
         }
         att[spec.key] = targetRule;
 
@@ -884,7 +906,8 @@ export async function mountRules({ document, client, container, onClose }) {
         entries = entries.filter(([k, rule]) =>
           String(rule.name || k).toLowerCase().includes(q) ||
           String(rule.vocab_task || '').toLowerCase().includes(q) ||
-          (Array.isArray(rule.attendance_tasks) && rule.attendance_tasks.some(t => String(t).toLowerCase().includes(q)))
+          (Array.isArray(rule.attendance_tasks) && rule.attendance_tasks.some(t => String(t).toLowerCase().includes(q))) ||
+          (rule.subject_rules && Object.values(rule.subject_rules).some(arr => Array.isArray(arr) && arr.some(t => String(t).toLowerCase().includes(q))))
         );
       }
 
@@ -1372,35 +1395,41 @@ export async function mountRules({ document, client, container, onClose }) {
     bLeft.append(nameEl, sysSel);
     head.append(bLeft);
 
-    // Section Title
-    const secHdr = document.createElement('div');
-    secHdr.className = 'rules-section-hdr';
-    secHdr.innerHTML = `
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M22 10v6M2 10l10-5 10 5-10 5z"></path>
-        <path d="M6 12v5c3 3 9 3 12 0v-5"></path>
-      </svg>
-      随课上课任务规则
-    `;
+    // 1. 随课常驻任务规则（合并单词与常驻任务，一体化连贯呈现）
+    const baseField = document.createElement('div');
+    baseField.className = 'rules-field';
+    baseField.style.marginTop = '4px';
 
-    // Vocab Rule Section
-    const vocabField = document.createElement('div');
-    vocabField.className = 'rules-field';
-    const vLbl = document.createElement('span');
-    vLbl.className = 'rules-label';
-    vLbl.textContent = '随课单词背诵规则';
+    const bLbl = document.createElement('span');
+    bLbl.className = 'rules-label';
+    bLbl.textContent = '随课常驻任务（每节课必做）';
+    baseField.append(bLbl);
+
+    const baseList = document.createElement('div');
+    baseList.className = 'rules-att-tasks';
+
+    // 单词任务行
+    const vRow = document.createElement('div');
+    vRow.className = 'rules-att-task-row';
+
+    const vBadge = document.createElement('span');
+    vBadge.className = 'rules-task-badge vocab';
+    vBadge.textContent = '单词';
 
     const vInput = document.createElement('input');
     vInput.className = 'rules-input';
+    vInput.style.fontSize = '12px';
     vInput.value = rule.vocab_task || '';
-    vInput.placeholder = '输入随课单词任务（留空则不布置单词）';
+    vInput.placeholder = '输入随课单词任务（如留空则课上免背）';
     vInput.oninput = () => {
       rule.vocab_task = vInput.value;
       markModified();
     };
-    vocabField.append(vLbl, vInput);
 
-    // Quick presets
+    vRow.append(vBadge, vInput);
+    baseList.append(vRow);
+
+    // 单词快捷预设标签
     const presets = document.createElement('div');
     presets.className = 'rules-quick-presets';
     const presetItems = [
@@ -1422,19 +1451,9 @@ export async function mountRules({ document, client, container, onClose }) {
       };
       presets.append(chip);
     });
-    vocabField.append(presets);
+    baseList.append(presets);
 
-    // Attendance Tasks Section
-    const tasksField = document.createElement('div');
-    tasksField.className = 'rules-field';
-    const tLbl = document.createElement('span');
-    tLbl.className = 'rules-label';
-    tLbl.innerHTML = '课堂常驻任务清单';
-    tasksField.append(tLbl);
-
-    const taskList = document.createElement('div');
-    taskList.className = 'rules-att-tasks';
-
+    // 其它随课常驻任务行
     if (!Array.isArray(rule.attendance_tasks)) {
       rule.attendance_tasks = [];
     }
@@ -1443,10 +1462,15 @@ export async function mountRules({ document, client, container, onClose }) {
       const row = document.createElement('div');
       row.className = 'rules-att-task-row';
 
+      const tBadge = document.createElement('span');
+      tBadge.className = 'rules-task-badge';
+      tBadge.textContent = '常驻';
+
       const tInp = document.createElement('input');
       tInp.className = 'rules-input';
       tInp.style.fontSize = '12px';
       tInp.value = task;
+      tInp.placeholder = '输入常驻任务内容';
       tInp.oninput = () => {
         rule.attendance_tasks[idx] = tInp.value;
         markModified();
@@ -1463,24 +1487,156 @@ export async function mountRules({ document, client, container, onClose }) {
         renderContentList(root.querySelector('.rules-content'));
       };
 
-      row.append(tInp, delBtn);
-      taskList.append(row);
+      row.append(tBadge, tInp, delBtn);
+      baseList.append(row);
     });
 
-    const addTaskBtn = document.createElement('button');
-    addTaskBtn.type = 'button';
-    addTaskBtn.className = 'rules-preset-chip';
-    addTaskBtn.style.marginTop = '4px';
-    addTaskBtn.textContent = '+ 添加一项课堂任务';
-    addTaskBtn.onclick = () => {
-      rule.attendance_tasks.push('新课堂任务');
+    const addBaseTaskBtn = document.createElement('button');
+    addBaseTaskBtn.type = 'button';
+    addBaseTaskBtn.className = 'rules-preset-chip';
+    addBaseTaskBtn.style.marginTop = '4px';
+    addBaseTaskBtn.textContent = '+ 添加一项常驻任务';
+    addBaseTaskBtn.onclick = () => {
+      rule.attendance_tasks.push('新常驻任务');
       markModified();
       renderContentList(root.querySelector('.rules-content'));
     };
 
-    tasksField.append(taskList, addTaskBtn);
+    baseField.append(baseList, addBaseTaskBtn);
 
-    card.append(head, secHdr, vocabField, tasksField);
+    // 2. 分科目专属随课任务 (subject_rules，当天排课自动附加)
+    const subjSection = document.createElement('div');
+    subjSection.className = 'rules-subj-section';
+
+    const subjHdr = document.createElement('div');
+    subjHdr.className = 'rules-subj-header';
+    subjHdr.innerHTML = `
+      <span>按科目专属任务（根据当天排课自动附加）</span>
+    `;
+    subjSection.append(subjHdr);
+
+    if (!rule.subject_rules || typeof rule.subject_rules !== 'object') {
+      rule.subject_rules = {};
+    }
+
+    const currentSubjects = Object.keys(rule.subject_rules);
+
+    currentSubjects.forEach(subj => {
+      const tasks = rule.subject_rules[subj] || [];
+      const box = document.createElement('div');
+      box.className = 'rules-subj-box';
+
+      const boxHead = document.createElement('div');
+      boxHead.className = 'rules-subj-box-head';
+
+      const tag = document.createElement('span');
+      tag.className = 'rules-subj-tag';
+      tag.textContent = `【${subj}课】专属任务`;
+
+      const removeSubjBtn = document.createElement('button');
+      removeSubjBtn.type = 'button';
+      removeSubjBtn.className = 'rules-subj-remove';
+      removeSubjBtn.textContent = '删除该科目规则';
+      removeSubjBtn.onclick = () => {
+        if (confirm(`确定要移除「${subj}课」的专属随课任务吗？`)) {
+          delete rule.subject_rules[subj];
+          markModified();
+          renderContentList(root.querySelector('.rules-content'));
+        }
+      };
+
+      boxHead.append(tag, removeSubjBtn);
+
+      const sTaskList = document.createElement('div');
+      sTaskList.className = 'rules-att-tasks';
+
+      tasks.forEach((st, sIdx) => {
+        const sRow = document.createElement('div');
+        sRow.className = 'rules-att-task-row';
+
+        const sInp = document.createElement('input');
+        sInp.className = 'rules-input';
+        sInp.style.fontSize = '12px';
+        sInp.value = st;
+        sInp.placeholder = `输入${subj}课专属任务`;
+        sInp.oninput = () => {
+          tasks[sIdx] = sInp.value;
+          markModified();
+        };
+
+        const sDelBtn = document.createElement('button');
+        sDelBtn.type = 'button';
+        sDelBtn.className = 'rules-att-task-del';
+        sDelBtn.innerHTML = '×';
+        sDelBtn.title = '删除此任务';
+        sDelBtn.onclick = () => {
+          tasks.splice(sIdx, 1);
+          markModified();
+          renderContentList(root.querySelector('.rules-content'));
+        };
+
+        sRow.append(sInp, sDelBtn);
+        sTaskList.append(sRow);
+      });
+
+      const addSubjTaskBtn = document.createElement('button');
+      addSubjTaskBtn.type = 'button';
+      addSubjTaskBtn.className = 'rules-preset-chip';
+      addSubjTaskBtn.style.marginTop = '4px';
+      addSubjTaskBtn.textContent = `+ 添加一项${subj}课任务`;
+      addSubjTaskBtn.onclick = () => {
+        tasks.push(`新${subj}任务`);
+        markModified();
+        renderContentList(root.querySelector('.rules-content'));
+      };
+
+      box.append(boxHead, sTaskList, addSubjTaskBtn);
+      subjSection.append(box);
+    });
+
+    // Quick add subject toolbar
+    const addSubjBar = document.createElement('div');
+    addSubjBar.className = 'rules-subj-chips';
+    const promptLbl = document.createElement('span');
+    promptLbl.style.cssText = 'font-size:11.5px;color:var(--muted,#777)';
+    promptLbl.textContent = '＋ 定制科目任务：';
+    addSubjBar.append(promptLbl);
+
+    const recSubjs = ['听力', '写作', '阅读', '口语'];
+    recSubjs.forEach(s => {
+      if (!rule.subject_rules[s]) {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'rules-preset-chip';
+        chip.textContent = `+ ${s}课`;
+        chip.onclick = () => {
+          rule.subject_rules[s] = [`${s}课课后专属任务`];
+          markModified();
+          renderContentList(root.querySelector('.rules-content'));
+        };
+        addSubjBar.append(chip);
+      }
+    });
+
+    const customChip = document.createElement('button');
+    customChip.type = 'button';
+    customChip.className = 'rules-preset-chip';
+    customChip.textContent = '+ 自定义科目…';
+    customChip.onclick = () => {
+      const name = prompt('请输入要定制随课任务的科目名称（如：语法、词汇与语言应用、听说等）：');
+      if (name && name.trim()) {
+        const cleanName = name.trim().replace(/课$/, '');
+        if (!rule.subject_rules[cleanName]) {
+          rule.subject_rules[cleanName] = ['新定制任务'];
+          markModified();
+          renderContentList(root.querySelector('.rules-content'));
+        }
+      }
+    };
+    addSubjBar.append(customChip);
+    subjSection.append(addSubjBar);
+
+    card.append(head, baseField, subjSection);
     return card;
   }
 
