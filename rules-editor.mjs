@@ -292,6 +292,8 @@ function injectStyles(document) {
 .rules-quick-presets{display:flex;gap:5px;flex-wrap:wrap;margin-top:3px;margin-bottom:6px}
 .rules-preset-chip{height:24px;padding:0 8px;border-radius:5px;border:1px solid var(--line-strong,rgba(0,0,0,0.14));background:var(--card,#fff);color:var(--muted,#555);font-size:11.5px;font-weight:500;cursor:pointer;display:inline-flex;align-items:center;transition:all .12s}
 .rules-preset-chip:hover{color:var(--accent,#0071e3);border-color:var(--accent,#0071e3);background:var(--accent-subtle,#eaf3ff)}
+.rules-quick-sel{height:28px;padding:0 6px;font-size:11.5px;font-weight:550;color:var(--muted,#555);background:var(--card,#fff);border:1px solid var(--line-strong,rgba(0,0,0,0.14));border-radius:6px;cursor:pointer;flex-shrink:0;width:auto;min-width:96px;transition:all .15s ease}
+.rules-quick-sel:hover{color:var(--accent,#0071e3);border-color:var(--accent,#0071e3);background:var(--accent-subtle,#eaf3ff)}
 
 /* Subject Rules */
 .rules-subj-section{margin-top:10px;padding-top:10px;border-top:1px dashed var(--line,rgba(0,0,0,0.1));display:flex;flex-direction:column;gap:8px}
@@ -1418,7 +1420,7 @@ export async function mountRules({ document, client, container, onClose }) {
 
     const vInput = document.createElement('input');
     vInput.className = 'rules-input';
-    vInput.style.fontSize = '12px';
+    vInput.style.cssText = 'font-size:12px;flex:1';
     vInput.value = rule.vocab_task || '';
     vInput.placeholder = '输入随课单词任务（如留空则课上免背）';
     vInput.oninput = () => {
@@ -1426,12 +1428,18 @@ export async function mountRules({ document, client, container, onClose }) {
       markModified();
     };
 
-    vRow.append(vBadge, vInput);
-    baseList.append(vRow);
+    // 快捷填入单行极简下拉菜单（收纳隐藏平铺按键，单行不占额外空间）
+    const vQuickSel = document.createElement('select');
+    vQuickSel.className = 'rules-quick-sel';
+    vQuickSel.title = '从常用预设中快捷填入单词任务';
 
-    // 单词快捷预设标签
-    const presets = document.createElement('div');
-    presets.className = 'rules-quick-presets';
+    const defaultOpt = document.createElement('option');
+    defaultOpt.value = '';
+    defaultOpt.textContent = '⚡ 快捷填入 ▾';
+    defaultOpt.disabled = true;
+    defaultOpt.selected = true;
+    vQuickSel.append(defaultOpt);
+
     const presetItems = [
       ['雅思双词书 (听50+阅50)', '系统内单词任务（听力*50+阅读*50）'],
       ['托福100词 (50*2)', '系统内托福单词100个（50*2）'],
@@ -1440,18 +1448,21 @@ export async function mountRules({ document, client, container, onClose }) {
       ['免背 / 课上无单词', '']
     ];
     presetItems.forEach(([label, val]) => {
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = 'rules-preset-chip';
-      chip.textContent = label;
-      chip.onclick = () => {
-        vInput.value = val;
-        rule.vocab_task = val;
-        markModified();
-      };
-      presets.append(chip);
+      const opt = document.createElement('option');
+      opt.value = val;
+      opt.textContent = label;
+      vQuickSel.append(opt);
     });
-    baseList.append(presets);
+
+    vQuickSel.onchange = () => {
+      vInput.value = vQuickSel.value;
+      rule.vocab_task = vQuickSel.value;
+      markModified();
+      vQuickSel.selectedIndex = 0;
+    };
+
+    vRow.append(vBadge, vInput, vQuickSel);
+    baseList.append(vRow);
 
     // 其它随课常驻任务行
     if (!Array.isArray(rule.attendance_tasks)) {
