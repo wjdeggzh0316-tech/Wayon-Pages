@@ -230,7 +230,7 @@ export async function boot({config,capture,apply,status:report,currentDay,hydrat
   const email=document.createElement('input');email.type='email';email.placeholder='你的登录邮箱';email.autocomplete='email';
   const password=document.createElement('input');password.type='password';password.placeholder='你的工作台密码';password.autocomplete='current-password';
   const button=(label,action)=>{const b=document.createElement('button');b.textContent=label;b.type='button';b.onclick=()=>Promise.resolve().then(action).catch(()=>status('连接失败；本机记录保留，请重新连接'));return b;};
-  const notice=document.createElement('section');notice.className='wayon-sync-notice';notice.setAttribute('role','status');
+  const notice=document.createElement('section');notice.className='wayon-sync-notice';notice.hidden=true;notice.setAttribute('role','status');
   const message=document.createElement('span');message.className='wayon-sync-message';
   const style=document.createElement('style');style.textContent=`.wayon-sync-notice{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 14px;margin:0 0 16px;border:1px solid #dce3ed;border-radius:12px;background:#f7f9fc;color:#43516a;font-size:13px;line-height:1.6}.wayon-sync-notice[hidden]{display:none}.wayon-sync-message{flex:1 1 220px;overflow-wrap:anywhere}.wayon-sync-notice button{min-height:40px;padding:8px 12px;border:1px solid #d3dbe7;border-radius:9px;background:white;color:#2857a1;font:inherit}.wayon-sync-notice[data-kind=error],.wayon-sync-notice[data-kind=login]{background:#fff8ed;border-color:#f0dbb7;color:#805526}.wayon-sync-notice>.cloud-panel{flex-basis:100%;width:100%;max-width:100%;position:static!important;display:block!important;margin:4px 0;padding:12px;background:white;border:1px solid #dce3ed;border-radius:10px;box-sizing:border-box}.wayon-sync-notice>.cloud-panel input{box-sizing:border-box;width:100%;max-width:420px;min-height:42px;padding:9px;margin:6px 4px 6px 0}.wayon-sync-notice>.cloud-panel button{margin:4px}@media(max-width:599px){.wayon-sync-notice{font-size:13px;padding:10px 12px}.wayon-sync-notice button{min-height:44px}.wayon-sync-notice>.cloud-panel input{max-width:100%;margin-right:0}}`;
   document.head.append(style);
@@ -246,7 +246,8 @@ export async function boot({config,capture,apply,status:report,currentDay,hydrat
     report(text);const kind=syncStatusKind(text);notice.dataset.kind=kind;
     message.textContent=kind==='login'?(text.includes('没有工作台权限')?'当前账号没有工作台权限，请使用电脑上的同一账号登录。':'此设备尚未连接云端，暂时无法显示其他设备的记录。请登录同一账号。'):text;
     loginAction.hidden=kind!=='login';retryAction.hidden=kind==='saved';
-    notice.hidden=kind==='saved'&&!panel.open;
+    // Routine reads/writes use the fixed sidebar indicator; do not insert/remove a layout row per click.
+    notice.hidden=!panel.open && kind!=='login' && kind!=='error';
     if(syncMount){syncMount.title=text;syncMount.dataset.connection=kind==='login'||kind==='error'?'error':kind;}
   }
   const controller={
