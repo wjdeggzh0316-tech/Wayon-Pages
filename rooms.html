@@ -43,11 +43,11 @@
     day.cells[ri][si]=rows;
    });
   }
+  html=html.slice(0,a)+JSON.stringify(payload).replace(/<\//g,'<\\/')+html.slice(z);
   if(skippedBookings>0){
    const warn='<span class="miss" id="booking-warning" style="font-size:12px;margin-left:8px;font-weight:600" role="status" title="预留数据异常">⚠️ '+skippedBookings+'条借用预留格式异常已忽略</span>';
    html=html.replace('<b>教室使用</b>','<b>教室使用</b>'+warn);
   }
-  html=html.slice(0,a)+JSON.stringify(payload).replace(/<\//g,'<\\/')+html.slice(z);
   html=html.replace('.sort().slice(0, 3).forEach(d =>','.sort().slice(0, 7).forEach(d =>');
   html=html.replace('这天还没生成','课表待更新；已显示借用预留');
   html=html.replace('.days || {};\\nconst $','.days || {};\nconst $');
