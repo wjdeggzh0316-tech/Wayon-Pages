@@ -20,8 +20,19 @@
   const payload=JSON.parse(html.slice(a,z)), days=payload.days;
   const base=days[Object.keys(days).sort().pop()];
   if(!base?.rows || !base?.segs)throw Error('ROOM_DATA_INVALID');
+  let skippedBookings=0;
   for(const b of entries){
-   if(!/^\d{4}-\d{2}-\d{2}$/.test(b.day)||!base.rows.includes(b.room)||!/^\d{2}:\d{2}$/.test(b.start)||!/^\d{2}:\d{2}$/.test(b.end)||b.start>=b.end||typeof b.label!=='string'||typeof b.course!=='string')throw Error('BOOKING_INVALID');
+   if(!b || typeof b!=='object' ||
+      typeof b.day!=='string' || !/^\d{4}-\d{2}-\d{2}$/.test(b.day) ||
+      typeof b.room!=='string' || !base.rows.includes(b.room) ||
+      typeof b.start!=='string' || !/^\d{2}:\d{2}$/.test(b.start) ||
+      typeof b.end!=='string' || !/^\d{2}:\d{2}$/.test(b.end) ||
+      b.start>=b.end ||
+      typeof b.label!=='string' ||
+      typeof b.course!=='string'){
+    skippedBookings++;
+    continue;
+   }
    if(!days[b.day]) days[b.day]={iso:b.day,rows:base.rows,segs:base.segs,cells:base.rows.map(()=>base.segs.map(()=>[['课表待更新','','','']])),teachers:[],online:[],unknown:[],missing:true,booking_preview:true};
    const day=days[b.day], ri=day.rows.indexOf(b.room);
    day.segs.forEach((seg,si)=>{
@@ -31,6 +42,10 @@
     if(!rows.some(x=>x[0]===b.label && span(x)===b.start+'-'+b.end))rows.push([b.label,b.course+'（课表外）','',b.start+'-'+b.end]);
     day.cells[ri][si]=rows;
    });
+  }
+  if(skippedBookings>0){
+   const warn='<span class="miss" id="booking-warning" style="font-size:12px;margin-left:8px;font-weight:600" role="status" title="预留数据异常">⚠️ '+skippedBookings+'条借用预留格式异常已忽略</span>';
+   html=html.replace('<b>教室使用</b>','<b>教室使用</b>'+warn);
   }
   html=html.slice(0,a)+JSON.stringify(payload).replace(/<\//g,'<\\/')+html.slice(z);
   html=html.replace('.sort().slice(0, 3).forEach(d =>','.sort().slice(0, 7).forEach(d =>');
