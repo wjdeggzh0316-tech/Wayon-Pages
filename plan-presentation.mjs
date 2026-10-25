@@ -34,6 +34,25 @@ export function planDisplayText(value) {
 })();
 
 
+// Copy text helper with execCommand fallback for environments without clipboard API permission.
+export function copyChasingText(text, ok, fail) {
+  let copied = false;
+  try {
+    const tmp = document.createElement('textarea');
+    tmp.value = text;
+    tmp.setAttribute('readonly', '');
+    tmp.style.position = 'absolute';
+    tmp.style.left = '-9999px';
+    document.body.append(tmp);
+    tmp.select();
+    copied = document.execCommand('copy') === true;
+    tmp.remove();
+  } catch(e) { copied = false; }
+  if (copied) { ok(); }
+  else if (navigator.clipboard?.writeText) { navigator.clipboard.writeText(text).then(ok, fail); }
+  else { fail(); }
+}
+
 // Copy format only. Dates come from the remaining items, never the device clock.
 export function formatChasingReminder(name,items) {
   if(!items.length)return '当前没有需要催交的项目。';
@@ -81,7 +100,7 @@ export async function admittedReminderRows(rows,policy) {
   script.textContent=`(() => {
     if(globalThis.wayonChasingCopyFormatInstalled)return;
     globalThis.wayonChasingCopyFormatInstalled=true;
-    const format=${formatChasingReminder.toString()},admit=${admittedReminderRows.toString()};
+    const format=${formatChasingReminder.toString()},admit=${admittedReminderRows.toString()},copyText=${copyChasingText.toString()};
     const bound=new WeakSet();let busy=false,again=false;
     const bind=async()=>{
       if(busy){again=true;return;}
@@ -112,7 +131,7 @@ export async function admittedReminderRows(rows,policy) {
           button.onclick=()=>{
             const ok=()=>{ch[row.name]=hhmm();chsave();render();};
             const fail=()=>{button.textContent='复制失败，请重试';};
-            try{navigator.clipboard.writeText(value()).then(ok,fail);}catch{fail();}
+            copyText(value(),ok,fail);
           };
           bound.add(button);
         }

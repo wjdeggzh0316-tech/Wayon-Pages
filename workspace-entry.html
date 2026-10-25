@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wayon</title>
+<style>body{margin:48px;font:16px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;color:#1d1d1f;background:#f5f5f7}h1{font-size:56px;letter-spacing:-.06em}button{padding:10px 18px;border:0;border-radius:10px;background:#0071e3;color:white;font:inherit}</style>
+<h1>Wayon</h1><p id="loading" role="status">Loading the latest workspace…</p>
+<button id="retry" hidden>Retry</button>
+<script>
+// Data-free entry point: retrieve the existing same-origin page and version its shared module.
+// No credentials, teaching data or saved state are embedded or transmitted to another host.
+(() => {
+  const load=async()=>{
+    try {
+      const response=await fetch('./workspace-source.html?release='+Date.now(),{cache:'no-store'});
+      if(!response.ok)throw Error('PAGE_UNAVAILABLE');
+      const source=await response.text();
+      const pattern=/import\(\s*(['"])\.\/checks-sync(?:-\d{8}-\d{2})?\.mjs(?:\?[^'"]*)?\1\s*\)/g;
+      let replacements=0;
+      let next=source.replace(pattern,()=>{replacements++;return "import('./checks-sync-20261024-02.mjs?release="+Date.now()+"')";});
+      if(replacements!==1)throw Error('ENTRY_CHANGED');
+      // Critical spacing and subtitle styles apply even when the cloud SDK is unavailable.
+      const polish='<style id="wayon-entry-polish">.wayon-workbench .brand-meta{display:none!important}.wayon-workbench #schedule-health:empty{display:none!important}.wayon-workbench:has(#classroom-frame) .workspace-top-bar,.wayon-workbench:has(#classroom-frame) .workspace-sub-bar{display:none!important}.wayon-workbench:has(#classroom-frame) .main-content{padding-top:8px!important}</style>';
+      const roomLayout='<script src="./room-layout.js?release='+Date.now()+'"><'+'/script>';
+      const planView='<script type="module" src="./plan-presentation.mjs?release='+Date.now()+'"><'+'/script>';
+      const rulesEntry='<script src="./rules-entry.js?release='+Date.now()+'"><'+'/script>';
+      next=next.replace('</head>',polish+roomLayout+rulesEntry+planView+'</head>');
+      document.open();document.write(next);document.close();
+    } catch {
+      document.getElementById('loading').textContent='Could not load the workspace. Your saved records are unchanged.';
+      document.getElementById('retry').hidden=false;
+    }
+  };
+  document.getElementById('retry').onclick=load;void load();
+})();
+</script>
+</html>
+
+
+
