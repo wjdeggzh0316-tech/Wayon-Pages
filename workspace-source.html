@@ -335,7 +335,7 @@ const mk = (s, t, i) => s.m[i] === undefined ? (t[1] || "") : s.m[i];   // 没�
 const nt = (s, t, i) => s.n[i] === undefined ? (t[2] || "") : s.n[i];
 const text = r => { const s = get(r[0]);
   const tasks = getTasks(r[0], r[3]);
-  return "【" + r[2].replace(/[「」]/g, "").trim() + "】 " + md() + "任务完成情况 👇\n\n" + tasks.map((t,i) => ({t,i})).filter(x => taskVisible(r[0],x.t)).map(({t,i},n) => (n+1) + "、" + t[0] + (ICON[mk(s,t,i)] || "") + (nt(s,t,i) ? (" " + nt(s,t,i)) : "")).join("\n"); };
+  return "【" + (globalThis.wayonDisplayName?.(r[2]) || r[2]).replace(/[「」]/g, "").trim() + "】 " + md() + "任务完成情况 👇\n\n" + tasks.map((t,i) => ({t,i})).filter(x => taskVisible(r[0],x.t)).map(({t,i},n) => (n+1) + "、" + t[0] + (ICON[mk(s,t,i)] || "") + (nt(s,t,i) ? (" " + nt(s,t,i)) : "")).join("\n"); };
 const list = document.getElementById("list");
 let mode = bjHour < 13 ? "plan" : "done";   // 上午默认「任务安排」，下午默认「完成情况」
 let ps = {};
@@ -887,11 +887,11 @@ function renderNotice(){
     const meta = document.createElement("div"); meta.className = "meta"; meta.textContent = r[1];
     head.append(name, meta);
     if (done) { const x = document.createElement("div"); x.className = "state"; x.textContent = "✓ 已复制 " + done; head.append(x); }
-    const pre = document.createElement("pre"); pre.textContent = r[2];
+    const pre = document.createElement("pre"); pre.textContent = globalThis.wayonDisplayCopyText?.(r[2]) || r[2];
     const b = document.createElement("button"); b.type = "button"; b.className = "copy"; b.id = "ncopy-" + i;
     b.textContent = done ? "再复制一次" : "复制";
     b.onclick = () => { const ok = () => { nc[noticeKey(r)] = {copied_at:hhmm(),signature:noticeSignature(r)}; nsave(); render(); }; const fail = () => { b.textContent = "复制失败，请重试"; };
-      try { navigator.clipboard.writeText(r[2]).then(ok, fail); } catch(e) { fail(); } };
+      try { navigator.clipboard.writeText(globalThis.wayonDisplayCopyText?.(r[2]) || r[2]).then(ok, fail); } catch(e) { fail(); } };
     head.append(b);
     if (done) { const u = document.createElement("button"); u.type = "button"; u.className = "small"; u.textContent = "撤销"; u.onclick = () => { delete nc[noticeKey(r)]; nsave(); render(); }; head.append(u); }
     el.append(head, pre);
@@ -916,7 +916,7 @@ function renderAssigned(){
   const message=value=>{const p=document.createElement('div');p.className='sub';p.textContent=value;list.append(p);};
   if(status==='unavailable'){count.textContent='布置记录未读取';message('该日布置记录尚未读取');return;}
   const students=(Array.isArray(record.students)?record.students:[]).map(student=>({
-    name:typeof student.name==='string'?student.name.replace(/[【】「」]/g,'').trim():'',
+    name:typeof student.name==='string'?(globalThis.wayonDisplayName?.(student.name)||student.name.replace(/[【】「」]/g,'').trim()):'',
     tasks:(Array.isArray(student.tasks)?student.tasks:[]).filter(task=>typeof task.text==='string'&&task.text.trim()).map(task=>({
       text:task.text.trim(),details:[...new Set((Array.isArray(task.details)?task.details:[]).filter(value=>typeof value==='string'&&value.trim()).map(value=>value.trim()))]
     }))
@@ -1304,7 +1304,7 @@ class StudyTasks {
   stats(day,mode) {const cards=this.cards(day);return {total:cards.length,copied:cards.filter(c=>this.copied(day,c.id,mode)).length};}
   copyText(day,card,mode) {
     const d=day.split('-'),date=Number(d[1])+'月'+Number(d[2])+'日';
-    return '【'+card.studentName+'】'+date+(mode==='plan'?'自习任务安排':'自习任务完成情况')+'\n\n'+
+    return '【'+(globalThis.wayonDisplayName?.(card.studentName)||card.studentName)+'】'+date+(mode==='plan'?'自习任务安排':'自习任务完成情况')+'\n\n'+
       card.tasks.map((t,i)=>(i+1)+'、'+t.text+(mode==='done'?' '+({ok:'✅',no:'❌'}[t.mark]||'未标记')+(t.note?'（'+t.note+'）':''):'')).join('\n');
   }
   toolbar(host,day,names) {
@@ -1948,6 +1948,6 @@ import('./checks-sync.mjs?v=20261020-01').then(m=>m.boot({config: {"enabled": tr
   window.addEventListener('load', mountButtons);
 })();
 </script>
-<script type="module" src="./plan-presentation.mjs?v=20261025-01"></script>
+<script type="module" src="./plan-presentation.mjs?v=20261025-02"></script>
 </body>
 </html>

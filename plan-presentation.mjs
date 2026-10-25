@@ -1,6 +1,13 @@
 // Presentation only: identity keys and saved task definitions remain untouched.
 export function planDisplayName(value) {
-  return String(value||'').replace(/[【】「」]/g,'').replace(/(?:[-－—]\s*)?(?:高中同步课程|初中同步课程|小学同步课程|英语能力提升课程|雅思(?:基础|强化)?(?:课程|班)|托福(?:基础|强化)?(?:课程|班))$/,'').trim();
+  return String(value||'').replace(/[【】「」]/g,'').trim().replace(/(?:[-－—]\s*)?(?:高中同步课程|初中同步课程|小学同步课程|英语能力提升课程|雅思(?:基础|强化)?(?:课程|班)|托福(?:基础|强化)?(?:课程|班))$/,'').trim();
+}
+// Names only: completion marks, notes and numbered tasks must remain byte-for-byte intact.
+export function studentDisplayText(value) {
+  return String(value||'').split('\n').map((line,index)=>{
+    if(index===0)line=line.replace(/【([^】]+)】/,(_,name)=>'【'+planDisplayName(name)+'】');
+    return line.replace(/^(\s*学生[：:]\s*)(.+)$/,(_,prefix,name)=>prefix+planDisplayName(name));
+  }).join('\n');
 }
 export function planDisplayTasks(values) {
   const tasks=values.map(x=>String(x).trim()).filter(Boolean);
@@ -21,14 +28,31 @@ export function planDisplayText(value) {
  if(typeof document==='undefined')return;
  const script=document.createElement('script');
  script.textContent=`(() => {
-   if(typeof planCard!=='function'||typeof foldRow!=='function'||document.documentElement.dataset.wayonPlanDisplay==='1')return;
+   if(typeof planCard!=='function'||typeof foldRow!=='function'||document.documentElement.dataset.wayonStudentNames==='1')return;
    document.documentElement.dataset.wayonPlanDisplay='1';
+   document.documentElement.dataset.wayonStudentNames='1';
    const name=${planDisplayName.toString()},tasks=${planDisplayTasks.toString()};
    const planDisplayName=name,planDisplayTasks=tasks,copyText=${planDisplayText.toString()};
+   globalThis.wayonDisplayName=name;
+   globalThis.wayonDisplayCopyText=${studentDisplayText.toString()};
    const card=planCard,fold=foldRow;
    planCard=function(title,time,text,key,group){return card(name(title),time,copyText(text),key,group);};
-   foldRow=function(id,label,when){return fold(id,String(id).startsWith('plan:')?name(label):label,when);};
-   if(typeof mode!=='undefined'&&mode==='plan'&&typeof render==='function')render();
+   foldRow=function(id,label,when){return fold(id,name(label),when);};
+   const titles=()=>{
+     if(typeof mode!=='undefined'&&mode==='chasing')return;
+     for(const heading of document.querySelectorAll('#list .head .name,#list .qhead,#list .qname,#list .study-folded')){
+       for(const node of heading.childNodes){
+         if(node.nodeType!==3)continue;
+         const text=node.textContent,split=text.indexOf(' · 自习');
+         const next=split<0?name(text):name(text.slice(0,split))+text.slice(split);
+         if(next!==text)node.textContent=next;
+       }
+     }
+   };
+   const list=document.getElementById('list');
+   if(list)new MutationObserver(titles).observe(list,{childList:true,subtree:true,characterData:true});
+   if(typeof render==='function')render();
+   titles();
  })();`;
  document.body.append(script);script.remove();
 })();
