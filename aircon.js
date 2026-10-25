@@ -28,11 +28,17 @@
       if (offline) occupied.push(date);
     }
     if (!slots.length) return {status:'none',days,text:''};
-    const end=Math.max(...slots.map(s=>s[1]));
     const weekend=weekday===0 || weekday===6;
-    if (!weekend && end<=1080) return {status:'none',days,text:''};
-    const start=weekend?Math.min(510,...slots.map(s=>s[0])):1080;
-    const stop=weekend && end<=1060?1050:end;
+    const special=slots.filter(([start,end])=>start===1020 && end===1140);
+    const regular=slots.filter(([start,end])=>start!==1020 || end!==1140);
+    const windows=special.map(()=>[1110,1170]); // 17:00–19:00 class → 18:30–19:30 cooling.
+    if(regular.length){
+      const end=Math.max(...regular.map(s=>s[1]));
+      if(weekend)windows.push([Math.min(510,...regular.map(s=>s[0])),end<=1060?1050:end]);
+      else if(end>1080)windows.push([1080,end]);
+    }
+    if(!windows.length)return {status:'none',days,text:''};
+    const start=Math.min(...windows.map(s=>s[0])),stop=Math.max(...windows.map(s=>s[1]));
     const text=['申请空调加时信息如下：','开启房号：C1108','开启日期：'+occupied.map(label).join('/'),'开启时间：'+clock(start)+'-'+clock(stop),'区域：全部'].join('\n');
     return {status:'ready',days,id:days.join('/'),text};
   }
