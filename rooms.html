@@ -7,10 +7,14 @@
   const response=await fetch('./classroom.html?room-release='+Date.now(),{cache:'no-store'});
   if(!response.ok)throw Error('ROOM_UNAVAILABLE');
   let html=await response.text();
-  const reservations=await fetch('./room-reservations.json?room-release='+Date.now(),{cache:'no-store'});
-  if(!reservations.ok)throw Error('BOOKINGS_UNAVAILABLE');
-  const entries=(await reservations.json()).bookings;
-  if(!Array.isArray(entries))throw Error('BOOKINGS_INVALID');
+  let entries=[];
+  try{
+   const reservations=await fetch('./room-reservations.json?room-release='+Date.now(),{cache:'no-store'});
+   if(reservations.ok){
+    const data=await reservations.json();
+    if(Array.isArray(data?.bookings))entries=data.bookings;
+   }
+  }catch(_){}
   const marker='const ALL = (', a=html.indexOf(marker)+marker.length, z=html.indexOf(').days || {};',a);
   if(a<marker.length || z<a)throw Error('ROOM_DATA_INVALID');
   const payload=JSON.parse(html.slice(a,z)), days=payload.days;
