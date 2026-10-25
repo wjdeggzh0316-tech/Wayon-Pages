@@ -1,0 +1,1950 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wayon 任务清单 10/16</title>
+<style id="wayon-apple">
+/* Wayon · macOS-inspired workspace. Shared by the generated task and room templates. */
+:root{color-scheme:light;--bg:#f5f5f7;--card:#fff;--card-elevated:#fff;--fg:#1d1d1f;--fg-secondary:#515156;--muted:#6e6e73;--line:rgba(30,30,40,.09);--line-strong:rgba(30,30,40,.18);--accent:#0071e3;--accent-hover:#0064cb;--accent-subtle:#eaf3ff;--code-bg:#f5f5f7;--done:#248a3d;--done-dark:#207535;--done-bg:#edf7ef;--done-border:#cce6d2;--bad:#d93025;--bad-dark:#b3261e;--bad-bg:#fff1f0;--bad-border:#f1c8c5;--warning-bg:#fff8e8;--warning-fg:#805300;--sidebar:rgba(248,248,250,.94);--shadow-card:0 2px 12px rgba(20,20,35,.035);--sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","PingFang SC","Microsoft YaHei",sans-serif}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){color-scheme:dark;--bg:#151517;--card:#222225;--card-elevated:#2c2c30;--fg:#f5f5f7;--fg-secondary:#c3c3c9;--muted:#a0a0a8;--line:rgba(255,255,255,.1);--line-strong:rgba(255,255,255,.2);--accent:#64b0ff;--accent-hover:#85c1ff;--accent-subtle:#21364d;--code-bg:#1b1b1e;--done:#72d58b;--done-dark:#8bdd9e;--done-bg:#203427;--done-border:#345b40;--bad:#ff8279;--bad-dark:#ffaaa4;--bad-bg:#402725;--bad-border:#6a3c38;--warning-bg:#352d1d;--warning-fg:#f0cc81;--sidebar:rgba(29,29,32,.96);--shadow-card:0 2px 12px rgba(0,0,0,.12)}}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#151517;--card:#222225;--card-elevated:#2c2c30;--fg:#f5f5f7;--fg-secondary:#c3c3c9;--muted:#a0a0a8;--line:rgba(255,255,255,.1);--line-strong:rgba(255,255,255,.2);--accent:#64b0ff;--accent-hover:#85c1ff;--accent-subtle:#21364d;--code-bg:#1b1b1e;--done:#72d58b;--done-dark:#8bdd9e;--done-bg:#203427;--done-border:#345b40;--bad:#ff8279;--bad-dark:#ffaaa4;--bad-bg:#402725;--bad-border:#6a3c38;--warning-bg:#352d1d;--warning-fg:#f0cc81;--sidebar:rgba(29,29,32,.96);--shadow-card:0 2px 12px rgba(0,0,0,.12)}
+*{box-sizing:border-box}body{font-family:var(--sans);-webkit-font-smoothing:antialiased;background:var(--bg);color:var(--fg)}
+button,input,textarea,summary{font-family:inherit}button,summary{-webkit-tap-highlight-color:transparent}button{cursor:pointer}button:disabled{opacity:.5;cursor:default}
+button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+[hidden]{display:none!important}
+.cloud-panel{font-size:12px;color:var(--fg-secondary);padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--card);min-width:0}
+.cloud-panel summary{cursor:pointer;min-height:32px;line-height:32px;font-weight:600;list-style-position:inside}
+.cloud-panel input{display:block;width:100%;height:40px;margin:8px 0;padding:8px 10px;border-radius:9px;border:1px solid var(--line-strong);background:var(--code-bg);color:var(--fg);font-size:16px}
+.cloud-panel button{min-height:36px;padding:6px 10px;margin:3px;border:1px solid var(--line);border-radius:8px;background:var(--code-bg);color:var(--fg-secondary);font-size:12px}
+.cloud-panel button:first-of-type{background:var(--accent);color:var(--bg);border-color:transparent}
+body.wayon-workbench{margin:0;font-size:15px;line-height:1.55}
+.wayon-workbench .app-layout{display:grid;grid-template-columns:240px minmax(0,1fr);min-height:100dvh}
+.wayon-workbench .sidebar{position:sticky;top:0;height:100dvh;overflow:auto;background:var(--sidebar);border-right:1px solid var(--line);padding:30px 16px 20px;display:flex;flex-direction:column;gap:26px}
+.wayon-workbench .sidebar-top{padding:0 10px}.wayon-workbench .brand-title{font-size:25px;line-height:1.2;letter-spacing:-.035em;font-weight:600;margin:0 0 7px;display:flex;align-items:center;gap:10px}
+.wayon-workbench .brand-title:before{content:"W";display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--fg);color:var(--card);font-size:18px;letter-spacing:-.08em}
+.wayon-workbench .brand-sub{font-size:12px;color:var(--muted)}
+.wayon-workbench .section-label{padding:0 10px;margin-bottom:9px;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.03em}
+.wayon-workbench #tabs{display:flex;flex-direction:column;gap:4px}.wayon-workbench #tabs button{display:flex;align-items:center;gap:10px;min-height:42px;width:100%;padding:8px 12px;border:0;border-radius:9px;text-align:left;background:transparent;color:var(--fg-secondary);font-size:13px;font-weight:500;white-space:nowrap}
+.wayon-workbench #tabs button:hover{background:var(--line)}.wayon-workbench #tabs button.on{background:var(--accent-subtle);color:var(--accent);font-weight:600}
+.wayon-workbench #tabs button:before{content:"";width:18px;height:18px;flex:none;background:currentColor;mask:var(--nav-icon) center/contain no-repeat;-webkit-mask:var(--nav-icon) center/contain no-repeat}
+.wayon-workbench #days{display:flex;flex-wrap:wrap;gap:5px;padding:0 6px}.wayon-workbench #days button{min-height:32px;border:0;border-radius:7px;padding:5px 9px;background:transparent;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.wayon-workbench #days button:hover{background:var(--line)}.wayon-workbench #days button.on{background:var(--card);color:var(--fg);box-shadow:0 1px 4px rgba(0,0,0,.09);font-weight:600}
+.wayon-workbench .sidebar-footer{margin-top:auto;display:flex;flex-direction:column;gap:12px;padding-top:16px;border-top:1px solid var(--line)}
+.wayon-workbench .bar{padding:8px 10px;display:flex;flex-direction:column;gap:9px}.wayon-workbench .bar-top{display:flex;align-items:center;justify-content:space-between;gap:8px}.wayon-workbench .bar-lbl{font-size:11px;color:var(--muted)}
+.wayon-workbench .count{font-size:12px;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}.wayon-workbench .track{height:4px;background:var(--line);border-radius:4px;overflow:hidden}.wayon-workbench .fill{height:100%;width:0;background:var(--accent);border-radius:4px}
+.wayon-workbench #reset{align-self:flex-start;min-height:32px;border:0;background:transparent;color:var(--muted);padding:4px 0;font-size:11px}.wayon-workbench #reset:hover{color:var(--bad)}
+.wayon-workbench #sync{font-size:11px;line-height:1.5;color:var(--muted);padding:0 10px;overflow-wrap:anywhere}
+.wayon-workbench .main-content{padding:32px clamp(20px,3vw,48px) 64px;min-width:0;max-width:1680px;width:100%}
+.wayon-workbench .workspace-heading{margin:0 0 22px}.wayon-workbench .eyebrow{font-size:10px;letter-spacing:.16em;color:var(--muted);font-weight:600;margin:0 0 7px}.wayon-workbench #view-title{font-size:28px;line-height:1.25;letter-spacing:-.025em;font-weight:600;margin:0 0 7px}.wayon-workbench #view-subtitle{font-size:13px;color:var(--muted);margin:0}
+.wayon-workbench #schedule-health{font-size:11px;color:var(--muted);margin:0 0 20px;line-height:1.55}.wayon-workbench #schedule-health:empty{display:none}.wayon-workbench #schedule-health.health-error{padding:12px 14px;background:var(--warning-bg);color:var(--warning-fg);border:1px solid var(--line);border-radius:10px}
+.wayon-workbench .list{display:block;columns:2;column-gap:18px}@media(min-width:1340px){.wayon-workbench .list{columns:3;column-gap:20px}}
+.wayon-workbench .item,.wayon-workbench .quiz{border:1px solid var(--line);border-radius:16px;background:var(--card);box-shadow:var(--shadow-card);padding:20px;display:flex;flex-direction:column;gap:14px;min-width:0;-webkit-column-break-inside:avoid;page-break-inside:avoid;break-inside:avoid;margin-bottom:18px}@media(min-width:1340px){.wayon-workbench .item,.wayon-workbench .quiz{margin-bottom:20px}}
+.wayon-workbench .head{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0}.wayon-workbench .name{flex:1 1 100%;font-weight:600;font-size:17px;line-height:1.4;letter-spacing:-.015em;overflow-wrap:anywhere}.wayon-workbench .meta{flex:1;min-width:80px;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums}
+.wayon-workbench .copy,.wayon-workbench .small{min-height:36px;border-radius:9px;font-size:12px;font-weight:500;padding:7px 11px;border:1px solid var(--line);background:var(--code-bg);color:var(--fg-secondary);white-space:nowrap;transition:background .16s,color .16s}
+.wayon-workbench .copy{background:#0071e3;color:#fff;border-color:transparent}.wayon-workbench .copy:hover{background:#0064cb}.wayon-workbench .small:hover{background:var(--line)}.wayon-workbench .copy:active,.wayon-workbench .small:active{filter:brightness(.94)}
+.wayon-workbench .state{font-size:11px;padding:3px 7px;border-radius:6px;color:var(--accent);background:var(--accent-subtle)}
+.wayon-workbench .item.copied .copy{background:var(--accent-subtle);color:var(--accent);box-shadow:none;border-color:transparent}
+.wayon-workbench .item.folded{grid-column:1/-1;-webkit-column-span:all;column-span:all;margin-bottom:12px;flex-direction:row;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;box-shadow:none;background:var(--card);color:var(--fg-secondary);font-size:13px;cursor:pointer}
+.wayon-workbench .tasks{display:flex;flex-direction:column;gap:8px}.wayon-workbench .task{display:grid;grid-template-columns:minmax(0,1fr) 68px 32px;gap:6px 8px;padding:8px;border:1px solid transparent;border-bottom-color:var(--line);border-radius:9px;min-width:0;align-items:start}
+.wayon-workbench .task.ok{background:var(--done-bg);border-color:var(--done-border)}.wayon-workbench .task.no{background:var(--bad-bg);border-color:var(--bad-border)}
+.wayon-workbench .task .txt{grid-area:1/1;min-width:0;width:100%;font:inherit;font-size:14px;line-height:1.55;color:var(--fg);background:transparent;border:1px solid transparent;border-radius:6px;padding:5px 3px;resize:none;overflow:hidden;margin:0}
+.wayon-workbench .task .txt:focus{background:var(--card);border-color:var(--accent)}
+.wayon-workbench .mark{display:inline-flex;align-items:center;justify-content:center;min-height:36px;padding:5px 8px;border:1px solid var(--line-strong);border-radius:8px;background:var(--card);color:var(--muted);font-size:12px;font-weight:500;white-space:nowrap}
+.wayon-workbench .task>.mark{grid-area:1/2;width:68px;min-width:0}.wayon-workbench .task.ok .mark,.wayon-workbench .qchk.on{color:var(--done-dark);border-color:var(--done-border);background:var(--done-bg)}.wayon-workbench .task.no .mark{color:var(--bad-dark);border-color:var(--bad-border);background:var(--bad-bg)}
+.wayon-workbench .del-btn{grid-area:1/3;min-width:32px;height:36px;padding:0;border:0;border-radius:8px;background:transparent;font-size:20px;color:var(--muted)}.wayon-workbench .del-btn:hover{background:var(--bad-bg);color:var(--bad)}
+.wayon-workbench .note{grid-column:1/-1;grid-row:2;min-width:0;width:100%;height:32px;padding:5px 8px;border:1px solid var(--line);border-radius:7px;background:var(--code-bg);color:var(--fg-secondary);font-size:12px}.wayon-workbench .note:focus{border-color:var(--accent);background:var(--card)}
+.wayon-workbench .add-btn{color:var(--accent);background:transparent;border-style:dashed;min-height:36px}.wayon-workbench .task-editor{padding:14px;background:var(--code-bg);border:1px solid var(--line);border-radius:12px}.wayon-workbench .editor-area{width:100%;min-height:110px;border:1px solid var(--line-strong);border-radius:9px;padding:10px;color:var(--fg);background:var(--card);font-size:14px;line-height:1.6;resize:vertical}
+.wayon-workbench pre{margin:0;padding:14px;background:var(--code-bg);border:1px solid var(--line);border-radius:10px;color:var(--fg-secondary);font:inherit;font-size:14px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text}
+.wayon-workbench .quiz{grid-column:1/-1;-webkit-column-span:all;column-span:all}.wayon-workbench .quiz h2{font-size:17px;font-weight:600;margin:0}.wayon-workbench .qgroup{border-top:1px solid var(--line);padding:12px 0;min-width:0}.wayon-workbench .qhead{font-size:15px;font-weight:600;margin-bottom:6px}.wayon-workbench .qrow{display:flex;align-items:center;gap:8px;padding:8px 0;min-width:0}.wayon-workbench .qinfo{flex:1;min-width:0;display:flex;flex-wrap:wrap;align-items:center;gap:3px 10px}.wayon-workbench .qname{font-weight:500}.wayon-workbench .qrange,.wayon-workbench .qcourse{font-size:12px;color:var(--muted)}.wayon-workbench .qfold{border:1px solid var(--done-border);background:var(--done-bg);padding:10px 14px;border-radius:10px;color:var(--done-dark);cursor:pointer}.wayon-workbench .qfold .qhead{margin:0}
+.wayon-workbench .list>.sub{grid-column:1/-1;-webkit-column-span:all;column-span:all;padding:32px 20px;background:var(--card);border:1px solid var(--line);border-radius:16px;text-align:center;color:var(--muted);font-size:14px}
+.wayon-workbench #classroom-frame{grid-column:1/-1;border-radius:14px!important;border:1px solid var(--line)!important;background:var(--card)}body[data-mode="classroom"] .list,body[data-mode="quiz"] .list{display:block;columns:1}
+.wayon-room{padding:18px!important;gap:10px!important}.wayon-room .top{padding:0 0 10px;border-bottom:1px solid var(--line)}.wayon-room .top b{font-weight:600!important;letter-spacing:-.02em}.wayon-room .days button{min-height:36px;border-radius:8px;padding:5px 11px}.wayon-room .days button.on{background:#0071e3;color:#fff}.wayon-room .legend{line-height:1.6}.wayon-room .c{border-radius:9px;padding:5px}.wayon-room .k{border-radius:6px}.wayon-room .h,.wayon-room .r{font-weight:600}.wayon-room .c.bad{border:2px solid var(--bad)}.wayon-room .cloud-panel{flex:none}.wayon-room .grid{overflow:auto}
+@media(max-width:1023px){.wayon-workbench .app-layout{display:block}.wayon-workbench .sidebar{position:relative;height:auto;width:100%;padding:18px 20px 14px;gap:14px;border-right:0;border-bottom:1px solid var(--line)}.wayon-workbench .sidebar-top{display:flex;align-items:center;justify-content:space-between;padding:0}.wayon-workbench .brand-title{font-size:22px;margin:0}.wayon-workbench .brand-title:before{width:27px;height:27px;font-size:16px}.wayon-workbench .section-label{display:none}.wayon-workbench #tabs{flex-direction:row;overflow:auto;gap:4px;padding-bottom:3px;scrollbar-width:none}.wayon-workbench #tabs button{width:auto;flex:none;min-height:44px;padding:8px 12px;border-radius:8px}.wayon-workbench #days{flex-wrap:nowrap;overflow:auto;padding:2px;scrollbar-width:none}.wayon-workbench #days button{flex:none;min-height:36px}.wayon-workbench .sidebar-footer{margin:0;padding:0;border:0;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 12px;align-items:center}.wayon-workbench .bar{padding:0;display:grid;grid-template-columns:auto minmax(32px,1fr) auto;align-items:center;gap:12px}.wayon-workbench .bar-lbl{display:none}.wayon-workbench #sync{grid-column:1/-1;padding:0}.wayon-workbench .cloud-panel{grid-column:1/-1}.wayon-workbench .cloud-panel:not([open]){justify-self:start;padding:0 10px;border-color:transparent;background:transparent}.wayon-workbench .main-content{padding:24px 20px 48px}.wayon-workbench #view-title{font-size:24px}.wayon-workbench .workspace-heading{margin-bottom:18px}}
+@media(max-width:599px){.wayon-workbench{font-size:16px}.wayon-workbench .sidebar{padding:16px;gap:12px}.wayon-workbench .brand-sub{font-size:11px}.wayon-workbench #tabs button{font-size:13px}.wayon-workbench #tabs button:before{width:16px;height:16px}.wayon-workbench .main-content{padding:22px 16px 40px}.wayon-workbench .list{columns:1;gap:14px}.wayon-workbench .item,.wayon-workbench .quiz{margin-bottom:14px}.wayon-workbench .item,.wayon-workbench .quiz{padding:16px}.wayon-workbench .task{grid-template-columns:minmax(0,1fr) 60px 32px;column-gap:5px;padding:7px 4px}.wayon-workbench .task>.mark{width:60px}.wayon-workbench .task .txt{font-size:16px;line-height:1.6}.wayon-workbench .note,.wayon-workbench .editor-area{font-size:16px}.wayon-workbench .note{height:38px}.wayon-workbench .mark,.wayon-workbench .del-btn,.wayon-workbench .copy,.wayon-workbench .small{min-height:44px}.wayon-workbench .del-btn{min-width:32px}.wayon-workbench .head{gap:8px}.wayon-workbench .meta{font-size:11px}.wayon-workbench .copy,.wayon-workbench .small{font-size:12px;padding:8px 10px}.wayon-workbench .qrow{gap:6px}.wayon-workbench .qinfo{font-size:14px}.wayon-workbench .qchk{padding:7px 9px}.wayon-room{padding:10px!important}.wayon-room .days button{min-height:44px}.cloud-panel input{font-size:16px}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+#tab-plan{--nav-icon:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M8%204h8v3H8z%20M6%205H4v17h16V5h-2%20M8%2012h8%20M8%2016h5%22%2F%3E%3C%2Fsvg%3E")}
+
+#tab-done{--nav-icon:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M9%2012l2%202%204-4%20M20%2012a8%208%200%201%201-5-7%22%2F%3E%3C%2Fsvg%3E")}
+
+#tab-quiz{--nav-icon:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%205h6a3%203%200%200%201%202%201%203%203%200%200%201%202-1h6v15h-6a3%203%200%200%200-2%201%203%203%200%200%200-2-1H4z%20M12%206v15%22%2F%3E%3C%2Fsvg%3E")}
+
+#tab-notice{--nav-icon:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%2010v5h4l10%205V5L8%2010z%20M8%2015l2%206%22%2F%3E%3C%2Fsvg%3E")}
+
+#tab-chasing{--nav-icon:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M12%208v5l3%202%20M20%2012a8%208%200%201%201-3-6%20M20%204v5h-5%22%2F%3E%3C%2Fsvg%3E")}
+
+#tab-classroom{--nav-icon:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.7%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M4%2021V5l10-2v18%20M2%2021h20%20M14%208h6v13%20M8%207v1%20M8%2012v1%20M8%2017v1%22%2F%3E%3C%2Fsvg%3E")}
+
+.wayon-room>[role="status"]{padding:8px 10px!important;border:1px solid var(--line)!important;border-radius:9px;background:var(--code-bg)!important;color:var(--muted)!important;font-size:11px;line-height:1.5}
+.wayon-room .cloud-panel{flex:1 1 100%;width:100%;max-width:100%}.wayon-room .cloud-panel button{white-space:normal}
+.wayon-room .cloud-panel{display:none!important}
+.wayon-room .days{margin-left:auto;display:inline-flex;align-items:center;gap:6px}
+.wayon-room .days button{min-height:32px;height:32px;border-radius:8px;padding:0 12px;border:1px solid var(--line-strong);background:var(--card);color:var(--fg);font-size:12.5px;font-weight:550;letter-spacing:-.01em;box-shadow:0 1px 2px rgba(0,0,0,.03);cursor:pointer;transition:all .15s ease;white-space:nowrap}
+.wayon-room .days button:hover{background:var(--line);color:var(--fg)}
+.wayon-room .days button.on{background:#0071e3!important;border-color:#0071e3!important;color:#fff!important;font-weight:600;box-shadow:0 1px 4px rgba(0,113,227,.25)}
+.wayon-room .cloud-panel{display:none!important}
+.wayon-room .room-scroll{flex:1;min-height:0;min-width:0;width:100%;overflow:auto;border-radius:10px;overscroll-behavior:contain}
+.wayon-room .room-scroll>.grid{height:100%;min-height:420px;min-width:740px;overflow:visible}
+@media(max-width:599px){.wayon-workbench .task{grid-template-columns:minmax(0,1fr) 60px 44px}.wayon-workbench .del-btn{min-width:44px}.cloud-panel button{min-height:44px}}
+
+</style>
+<style id="wayon-study">
+.wayon-workbench .study-toolbar,.wayon-workbench .study-form{grid-column:1/-1;-webkit-column-span:all;column-span:all}
+.study-toolbar,.study-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.study-toolbar{padding:0 0 4px}.study-form{max-width:760px}.study-form h3{margin:0 0 12px}
+.study-form label{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;font-size:13px;color:var(--muted)}
+.study-form input,.study-form textarea{box-sizing:border-box;width:100%;min-width:0;border:1px solid var(--line);border-radius:8px;background:var(--input-bg);color:var(--text);padding:10px;font:inherit;font-size:16px}
+.study-form textarea{resize:vertical}.study-form .study-actions{margin-top:10px}
+.study-card .head{margin-bottom:10px}.study-card .study-actions{margin-bottom:8px}
+.study-task{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px 10px;padding:9px 0;border-top:1px solid var(--line)}
+.study-task-text{min-width:0;overflow-wrap:anywhere;line-height:1.6;align-self:center}
+.study-marks{display:flex;gap:4px;align-self:start;flex-shrink:0}
+.study-mark{min-width:44px;min-height:44px;padding:6px;border:1px solid var(--line);border-radius:8px;background:var(--input-bg);cursor:pointer;opacity:.45}
+.study-mark[aria-pressed="true"]{opacity:1;background:var(--code-bg);border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.study-task>.note{grid-column:1/-1;width:100%;box-sizing:border-box;margin:0}
+.study-error{color:var(--red,#b42318);font-size:13px;line-height:1.6}.study-error:empty{display:none}
+.study-copy-fallback{box-sizing:border-box;width:100%;min-height:150px;background:var(--input-bg);color:var(--text);font:inherit}
+.study-copy-temp{position:fixed;left:0;top:0;width:1px;height:1px;opacity:.01}
+@media(max-width:599px){.study-toolbar{gap:8px}.study-toolbar .meta{width:100%}.study-card .study-actions{gap:6px}}
+
+
+/* Daily workflow hierarchy: predictable order, three destinations, quiet maintenance. */
+.wayon-workbench .list{columns:auto;display:flex;flex-direction:column;gap:14px;max-width:1080px}
+.wayon-workbench .item,.wayon-workbench .quiz{margin:0;width:100%;padding:20px 24px;gap:12px}
+.wayon-workbench .item.folded{margin:0}.wayon-workbench .head{gap:8px 12px}
+.wayon-workbench .name{flex:1 1 220px}.wayon-workbench .head .meta{flex:0 1 auto}
+.wayon-workbench .view-switch{display:flex;gap:4px;flex-wrap:wrap;margin:0 0 22px;padding:4px;border-radius:12px;background:var(--line);width:fit-content;max-width:100%}
+.view-switch button{min-height:40px;border:0;border-radius:9px;padding:8px 16px;background:transparent;color:var(--muted);font-size:13px}
+.view-switch button.on{background:var(--card);color:var(--fg);box-shadow:0 1px 5px rgba(0,0,0,.07)}
+.wayon-workbench #tabs{display:flex;flex-direction:column;gap:5px;padding:0 4px}
+.wayon-workbench #tabs button{display:flex;align-items:center;gap:11px;min-height:40px;width:100%;padding:8px 14px;border:0;border-radius:10px;text-align:left;background:transparent;color:var(--fg-secondary);font-size:14px;font-weight:500;letter-spacing:-.015em;white-space:nowrap;transition:background .15s ease,color .15s ease}
+.wayon-workbench #tabs button:hover{background:var(--line);color:var(--fg)}
+.wayon-workbench #tabs button.on{background:var(--accent-subtle);color:var(--accent);font-weight:600}
+.wayon-workbench #tabs button:before{content:"";width:18px;height:18px;flex:none;background:currentColor;mask:var(--nav-icon) center/contain no-repeat;-webkit-mask:var(--nav-icon) center/contain no-repeat;opacity:.75}
+.wayon-workbench #tabs button.on:before{opacity:1}
+#nav-today{--nav-icon:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%224%22%20width%3D%2218%22%20height%3D%2218%22%20rx%3D%222%22%20ry%3D%222%22%2F%3E%3Cline%20x1%3D%2216%22%20y1%3D%222%22%20x2%3D%2216%22%20y2%3D%226%22%2F%3E%3Cline%20x1%3D%228%22%20y1%3D%222%22%20x2%3D%228%22%20y2%3D%226%22%2F%3E%3Cline%20x1%3D%223%22%20y1%3D%2210%22%20x2%3D%2221%22%20y2%3D%2210%22%2F%3E%3Ccircle%20cx%3D%2212%22%20cy%3D%2215%22%20r%3D%221.5%22%20fill%3D%22black%22%2F%3E%3C%2Fsvg%3E")}
+#nav-notice{--nav-icon:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M18%208A6%206%200%200%200%206%208c0%207-3%209-3%209h18s-3-2-3-9%22%2F%3E%3Cpath%20d%3D%22M13.73%2021a2%202%200%200%201-3.46%200%22%2F%3E%3C%2Fsvg%3E")}
+#nav-rooms{--nav-icon:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%2218%22%20height%3D%2218%22%20rx%3D%222%22%20ry%3D%222%22%2F%3E%3Cline%20x1%3D%223%22%20y1%3D%229%22%20x2%3D%2221%22%20y2%3D%229%22%2F%3E%3Cline%20x1%3D%229%22%20y1%3D%2221%22%20x2%3D%229%22%20y2%3D%229%22%2F%3E%3C%2Fsvg%3E")}
+.wayon-workbench .workspace-heading,.wayon-workbench .eyebrow,.wayon-workbench #view-title,.wayon-workbench #view-subtitle{display:none!important}
+.wayon-workbench .workspace-top-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 10px;flex-wrap:wrap}
+.wayon-workbench .workspace-top-bar .view-switch{margin:0}
+.wayon-workbench .workspace-top-bar .date-section{margin-left:auto;display:flex;align-items:center}
+.wayon-workbench .workspace-top-bar .date-section .section-label{display:none!important}
+.wayon-workbench .workspace-top-bar #days{display:inline-flex;flex-direction:row;align-items:center;gap:8px;padding:0}
+.wayon-workbench .workspace-sub-bar{display:flex;align-items:center;justify-content:flex-end;gap:12px;margin:0 0 16px auto;width:100%}
+.wayon-workbench #schedule-health{margin:0;font-size:11.5px;color:var(--muted);line-height:1.4}
+.wayon-workbench #schedule-health.health-ok{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:6px;background:transparent;color:var(--muted)}
+.wayon-workbench #schedule-health.health-ok::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--done);flex:none}
+.wayon-workbench .study-slot{display:inline-flex;align-items:center}
+.wayon-workbench .study-toolbar{display:inline-flex;align-items:center;gap:8px;padding:0;margin:0}
+.wayon-workbench .study-toolbar .meta{display:none!important}
+.wayon-workbench #study-add{height:32px;min-height:32px;padding:0 12px;border-radius:8px;font-size:12px;font-weight:550;border:1px solid var(--line-strong);background:var(--card);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.03);cursor:pointer;white-space:nowrap;transition:all .15s ease}
+.wayon-workbench #study-add:hover{background:var(--line);color:var(--fg)}
+#day-picker{min-height:36px;height:36px;width:auto;border:1px solid var(--line-strong);border-radius:9px;padding:0 30px 0 34px;background-color:var(--card);background-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236e6e73%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Crect%20x%3D%223%22%20y%3D%224%22%20width%3D%2218%22%20height%3D%2218%22%20rx%3D%222%22%20ry%3D%222%22%2F%3E%3Cline%20x1%3D%2216%22%20y1%3D%222%22%20x2%3D%2216%22%20y2%3D%226%22%2F%3E%3Cline%20x1%3D%228%22%20y1%3D%222%22%20x2%3D%228%22%20y2%3D%226%22%2F%3E%3Cline%20x1%3D%223%22%20y1%3D%2210%22%20x2%3D%2221%22%20y2%3D%2210%22%2F%3E%3C%2Fsvg%3E"),url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236e6e73%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%2F%3E%3C%2Fsvg%3E");background-position:left 11px center,right 11px center;background-repeat:no-repeat;background-size:15px 15px,11px 11px;appearance:none;-webkit-appearance:none;-moz-appearance:none;color:var(--fg);font:inherit;font-size:13.5px;font-weight:550;letter-spacing:-.01em;box-shadow:0 1px 3px rgba(0,0,0,.03);cursor:pointer;transition:border-color .15s ease,box-shadow .15s ease}
+#day-picker:hover{border-color:var(--accent)}
+#day-picker:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-subtle)}
+.wayon-workbench #days .home-btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;height:36px;min-height:36px;padding:0 12px;border:1px solid rgba(0,113,227,.25);border-radius:9px;background:var(--accent-subtle);color:var(--accent);font-size:12px;font-weight:550;cursor:pointer;white-space:nowrap;transition:all .16s ease}
+.wayon-workbench #days .home-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.wayon-workbench .workspace-settings{font-size:12px;color:var(--muted);padding:0 10px}
+.workspace-settings>summary{cursor:pointer;min-height:40px;line-height:40px}.workspace-settings .cloud-panel{margin-top:8px}
+.wayon-workbench .note-disclosure{grid-column:1/-1;font-size:12px;color:var(--muted);min-width:0}
+.note-disclosure>summary{cursor:pointer;min-height:28px;line-height:28px}.note-disclosure .note{margin-top:4px}
+.wayon-workbench .note-disclosure .note{grid-area:auto;height:36px}
+@media(max-width:859px){.wayon-workbench #tabs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));width:100%}.wayon-workbench #tabs button{justify-content:center;min-height:44px;gap:6px;font-size:13px}.wayon-workbench .sidebar{gap:12px}.wayon-workbench .workspace-top-bar{gap:10px;margin-bottom:8px}.wayon-workbench .workspace-top-bar .date-section{width:100%;margin-left:0}.wayon-workbench .workspace-top-bar #days{width:100%}.wayon-workbench .workspace-sub-bar{justify-content:space-between;margin-bottom:12px}#day-picker{width:auto;flex:1;min-width:0}.wayon-workbench #days .home-btn{width:auto;flex:none;min-height:36px;height:36px;padding:0 12px}.wayon-workbench .sidebar-footer{padding-top:8px;gap:4px}.wayon-workbench .bar{padding:0 10px}.wayon-workbench .workspace-heading{margin-bottom:16px}.wayon-workbench .view-switch{margin-bottom:16px}.wayon-workbench .workspace-settings{width:100%}}
+@media(max-width:599px){.wayon-workbench .item,.wayon-workbench .quiz{padding:16px}.wayon-workbench .main-content{padding:20px 14px 48px}.view-switch button{padding:8px 10px;min-height:44px}.wayon-workbench .name{flex-basis:100%}.wayon-workbench .task{padding:6px 0}.wayon-workbench .sidebar{padding:18px 14px 12px}}
+</style>
+<style id="inline-note-layout">
+/* inline-note-layout: task, optional note and marks share one compact row. */
+.wayon-workbench .task{grid-template-columns:minmax(0,1fr) minmax(110px,260px) 68px 32px;align-items:center;padding:6px 0;gap:6px 10px}
+.wayon-workbench .task>.mark{grid-area:1/3}.wayon-workbench .task>.del-btn{grid-area:1/4}
+.wayon-workbench .task>.note-disclosure,.wayon-workbench .study-task>.note-disclosure{grid-column:2;grid-row:1;align-self:center}
+.wayon-workbench .study-task{grid-template-columns:minmax(0,1fr) minmax(110px,260px) auto 32px;align-items:center;padding:6px 0;gap:6px 10px}
+.study-task>.study-task-main{grid-area:1/1;display:flex;align-items:center;gap:4px;min-width:0}
+.study-task>.study-task-main>.txt{flex:1 1 auto;width:100%}
+.study-task>.note-disclosure{grid-column:2;grid-row:1;align-self:center}
+.study-task>.study-marks{grid-area:1/3;display:flex;align-items:center;gap:4px;align-self:center}
+.study-task>.del-btn{grid-area:1/4}
+body[data-mode="plan"] .study-task{grid-template-columns:minmax(0,1fr) 32px}
+body[data-mode="plan"] .study-task>.study-task-main{grid-area:1/1}
+body[data-mode="plan"] .study-task>.del-btn{grid-area:1/2}
+.wayon-workbench .item.folded.study-folded{border-left:3px solid var(--accent)}
+.wayon-workbench .note-disclosure>summary{min-height:36px;line-height:36px;white-space:nowrap}
+.wayon-workbench .note-disclosure .note{margin:0;height:36px;width:100%}
+@media(max-width:599px){.wayon-workbench .task{grid-template-columns:minmax(0,1fr) 76px 60px 28px;gap:4px}.wayon-workbench .task>.del-btn{min-width:28px;width:28px}.wayon-workbench .study-task{grid-template-columns:minmax(0,1fr) 76px auto 28px;gap:4px 6px}.study-task>.del-btn{min-width:28px;width:28px}body[data-mode="plan"] .study-task{grid-template-columns:minmax(0,1fr) 28px}.wayon-workbench .note-disclosure{font-size:11px}.wayon-workbench .note-disclosure>summary{white-space:normal;line-height:1.4;padding:8px 0}.wayon-workbench .study-marks{gap:3px}.wayon-workbench .study-mark{min-width:32px;min-height:36px;padding:2px 4px}.wayon-workbench .tasks{gap:4px}}
+</style>
+<style id="card-header-layout">
+/* Card hierarchy: larger student name, bulk actions at top right, copy last. */
+.wayon-workbench .head{justify-content:flex-end;align-items:center;gap:8px}
+.wayon-workbench .head>.name{font-size:24px;line-height:1.35;font-weight:650;flex:1 1 180px;order:0}
+.wayon-workbench .head>.meta{order:1}.wayon-workbench .head>.state{order:2}
+.wayon-workbench .head>.small{order:3}.wayon-workbench .head>.study-actions{order:4;display:flex;align-items:center;flex-wrap:nowrap;gap:6px;margin:0}
+.wayon-workbench .head>.copy{order:10;margin-left:2px}
+.wayon-workbench .study-card .head{margin-bottom:0}
+@media(max-width:599px){.wayon-workbench .head>.name{flex-basis:100%;font-size:22px;text-align:left}.wayon-workbench .head{gap:6px}.wayon-workbench .head>.meta{flex:1 1 100%;text-align:right}.wayon-workbench .head .small,.wayon-workbench .head .copy{padding:7px 9px;font-size:12px;min-height:40px}.wayon-workbench .head>.study-actions{gap:5px}}
+</style>
+<style id="english-controls">.wayon-workbench button,.wayon-workbench summary{letter-spacing:-.01em}.wayon-workbench .head .small,.wayon-workbench .head .copy{border-radius:10px;font-weight:500}.wayon-workbench .head>.study-actions{gap:6px}@media(max-width:599px){.wayon-workbench .head .small,.wayon-workbench .head .copy{font-size:11px;padding:7px 8px}.wayon-workbench .head>.study-actions{gap:4px}.wayon-workbench .view-switch button{font-size:12px;padding:8px 9px}.wayon-workbench .note-disclosure>summary{font-size:11px}}</style>
+<style id="wordmark-typography">
+/* Antigravity hero typography and card header. */
+:root{--sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue","PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif}
+body.wayon-workbench{font-family:var(--sans);font-size:14px;font-weight:400;letter-spacing:-.012em;text-rendering:optimizeLegibility;-webkit-font-smoothing:antialiased}
+.wayon-workbench button,.wayon-workbench input,.wayon-workbench textarea,.wayon-workbench select,.wayon-workbench summary{font-family:var(--sans);font-weight:400}
+.wayon-workbench .app-layout{grid-template-rows:auto minmax(0,1fr)}
+.wayon-workbench .app-brand{grid-column:1/-1;padding:clamp(10px,1.4vw,18px) clamp(24px,5vw,64px) clamp(6px,1vw,12px);border-bottom:1px solid var(--line);border-radius:0 0 20px 20px;overflow:hidden;background:var(--card);box-shadow:0 4px 20px rgba(0,0,0,.03);display:flex;align-items:flex-end;justify-content:space-between;gap:20px;position:relative}
+.wayon-workbench .brand-title{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Inter","Helvetica Neue",sans-serif;font-size:clamp(76px,15vw,175px);line-height:.82;letter-spacing:-.065em;font-weight:550;color:var(--fg);margin:0;white-space:nowrap;user-select:none;-webkit-font-smoothing:antialiased}
+.wayon-workbench .brand-title:before{display:none!important;content:none!important}
+.wayon-workbench .brand-meta{font-size:13px;font-weight:500;letter-spacing:-.01em;color:var(--muted);align-self:flex-start;padding-top:6px;white-space:nowrap}
+.wayon-workbench .sidebar{grid-column:1;grid-row:2;padding-top:24px}.wayon-workbench .main-content{grid-column:2;grid-row:2}
+.wayon-workbench .head>.name{font-size:24px;font-weight:600;letter-spacing:-.025em;line-height:1.4}
+.wayon-workbench .task .txt,.wayon-workbench .study-task-text{font-size:15px;line-height:1.55;font-weight:400}
+.wayon-workbench .head button{font-weight:500}.wayon-workbench #view-title{font-weight:600;letter-spacing:-.035em}
+@media(max-width:859px){.wayon-workbench .app-brand{padding:10px 20px 8px;border-radius:0 0 16px 16px}.wayon-workbench .brand-title{font-size:clamp(52px,13vw,80px);line-height:.82}.wayon-workbench .brand-meta{font-size:12px}.wayon-workbench .sidebar-top{display:none}.wayon-workbench #tabs button{font-size:12px;padding:8px 5px}.wayon-workbench .head>.name{font-size:22px}}
+@media(max-width:599px){.wayon-workbench .app-brand{padding:8px 16px 6px;border-radius:0 0 14px 14px}.wayon-workbench .brand-title{font-size:clamp(42px,14vw,54px);line-height:.82}.wayon-workbench .brand-meta{display:none}}
+</style>
+<style id="quiet-sidebar">.wayon-workbench .sidebar-top,.wayon-workbench .nav-section:not(.date-section)>.section-label{display:none}</style>
+<style id="assigned-today-style">
+.wayon-workbench .assigned-tasks{margin:14px 0 0;padding-left:22px;display:flex;flex-direction:column;gap:14px}
+.wayon-workbench .assigned-task{padding-left:2px;overflow-wrap:anywhere}
+.wayon-workbench .assigned-text{font-size:15px;line-height:1.6;white-space:pre-wrap}
+.wayon-workbench .assigned-details{margin:5px 0 0;padding-left:18px;color:var(--muted);font-size:12px;line-height:1.65}
+.wayon-workbench .assigned-status{column-span:all;margin:0 0 14px;color:var(--muted);font-size:12px;line-height:1.6}
+.wayon-workbench .assigned-copy{display:inline-flex;align-items:center;justify-content:center;width:40px;min-width:40px;height:40px;padding:0}
+.wayon-workbench .assigned-copy svg{width:19px;height:19px;pointer-events:none}
+.wayon-workbench .assigned-copy-status{margin-top:10px;font-size:12px;color:var(--muted)}
+.wayon-workbench .assigned-copy-status:empty{display:none}
+.wayon-workbench .assigned-copy-fallback{margin-top:10px}
+.wayon-workbench[data-mode="assigned"] .bar-lbl,.wayon-workbench[data-mode="assigned"] .track{display:none}
+@media(max-width:599px){.wayon-workbench .assigned-copy{width:44px;min-width:44px;height:44px}.wayon-workbench .assigned-text{font-size:16px}}
+</style>
+</head>
+<body class="wayon-workbench">
+
+<div class="app-layout">
+  <header class="app-brand"><h1 class="brand-title">Wayon</h1><span class="brand-meta">Teaching Workspace</span></header>
+  <aside class="sidebar">
+    <div class="sidebar-top">
+      <div class="brand-sub"><span id="ttl"></span> · <span id="d"></span></div>
+    </div>
+    
+    <div class="nav-section">
+      <div class="section-label">操作台</div>
+      <div class="nav-tabs" id="tabs"></div>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="bar">
+        <div class="bar-top">
+          <span class="bar-lbl">完成进度</span>
+          <div class="count" id="count"></div>
+        </div>
+        <div class="track"><div class="fill" id="fill"></div></div>
+
+      </div>
+      <div class="sync-pill" id="sync" role="status"></div>
+      <details id="account-settings" class="workspace-settings"><summary>设置与账户</summary>
+        <button id="reset" type="button">重置当前板块记录</button>
+      </details>
+    </div>
+  </aside>
+
+  <main class="main-content">
+    <header class="workspace-heading" style="display:none!important">
+      <div class="heading-title-group">
+        <p class="eyebrow">WAYON WORKSPACE</p>
+        <h2 id="view-title">教学操作台</h2>
+        <p id="view-subtitle"></p>
+      </div>
+    </header>
+
+    <div class="workspace-top-bar">
+      <nav id="subtabs" class="view-switch" aria-label="当前工作内容"></nav>
+      <div class="date-section">
+        <div class="days" id="days"></div>
+      </div>
+    </div>
+
+    <div class="workspace-sub-bar">
+      <div class="health-box" id="schedule-health" role="status"></div>
+      <div class="study-slot" id="study-slot"></div>
+    </div>
+
+    <div class="sub" id="sub" style="display:none"></div>
+    <div class="list" id="list"></div>
+  </main>
+</div>
+<script>
+const DATA = {"2026-10-24": [["Charlotte", "08:00-10:00", "Charlotte", [["SAT阅读课", "", ""], ["SAT阅读课后任务", "", ""], ["新任务", "", ""]], "Charlotte SAT 语法阅读"], ["赖晨曦", "08:30-10:30", "赖晨曦", [["课堂生词抽背", "", ""], ["校内单词背诵", "", ""], ["词汇与语言应用课", "", ""], ["词汇与语言应用课后任务", "", ""]], "赖晨曦雅思一对一"], ["黄子珊", "10:40-12:40", "黄子珊", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["口语课", "", ""], ["口语课后任务", "", ""], ["新任务", "", ""]], "黄子珊-雅思1v1"], ["Leo", "10:40-12:40", "Leo", [["课堂生词抽背", "", ""], ["系统内托福单词100个（50*2）", "", ""], ["5篇完形填空", "", ""], ["托福口语一套", "", ""], ["托福听力一套", "", ""], ["写作课", "", ""], ["写作课后任务", "", ""]], "【Leo&Iven】托福强化课程 2026暑假"], ["Iven", "10:40-12:40", "Iven", [["课堂生词抽背", "", ""], ["系统内托福单词100个（50*2）", "", ""], ["5篇完形填空", "", ""], ["托福口语一套", "", ""], ["托福听力一套", "", ""], ["写作课", "", ""], ["写作课后任务", "", ""]], "【Leo&Iven】托福强化课程 2026暑假"], ["Frank", "10:40-12:40", "Frank", [["课堂生词抽背", "", ""], ["托福词汇50个新词＋重做上批单词", "", ""], ["每天5篇完形", "", ""], ["每天一套口语任务", "", ""], ["一套听力+错题分析", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "Frank-托福1v1"], ["丁嘉宝", "13:30-15:30", "丁嘉宝", [["课堂生词抽背", "", ""], ["写作课", "", ""], ["写作课后任务", "", ""]], "丁嘉宝-英语能力提升"], ["聂彦如", "13:30-15:30/15:40-17:40", "聂彦如", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["口语课", "", ""], ["口语课后任务", "", ""], ["写作课", "", ""], ["写作课后任务", "", ""]], "【聂彦如&陈书进】雅思强化课程"], ["陈书进", "13:30-15:30/15:40-17:40", "陈书进", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["口语课", "", ""], ["口语课后任务", "", ""], ["写作课", "", ""], ["写作课后任务", "", ""]], "【聂彦如&陈书进】雅思强化课程"], ["周家琪", "15:40-17:40", "周家琪", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"], ["苏顺平", "15:40-17:40", "苏顺平", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"], ["潘韬薄", "15:40-17:40", "潘韬薄", [["课堂生词抽背", "", ""], ["系统内单词任务（听力*50+阅读*50）", "", ""], ["听力课", "", ""], ["听力课后任务", "", ""]], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"]], "2026-10-25": [["Amy徐畅", "09:00-10:30", "Amy徐畅", [["课堂生词抽背", "", ""], ["系统内单词任务（四级词汇*两组，每组30词）", "", ""], ["写作课", "", ""], ["写作课后任务", "", ""]], "Amy徐畅_雅思基础课程_2026秋季"], ["赵梓轩", "10:40-12:40", "赵梓轩", [["课堂生词抽背", "", ""], ["打印当天课堂单词回去背", "", ""], ["词汇与语言应用课", "", ""], ["词汇与语言应用课后任务", "", ""]], "赵梓轩-英语能力提升"], ["代佳鸣高中同步课程", "14:00-15:30", "代佳鸣高中同步课程", [["课堂生词抽背", "", ""], ["阅读写作课", "", ""], ["阅读写作课后任务", "", ""], ["打印课后单词带回去背", "", ""]], "代佳鸣高中同步课程"], ["李洪睿John", "15:00-17:00", "李洪睿John", [["课堂生词抽背", "", ""], ["语法课", "", ""], ["语法课后任务", "", ""]], "李洪睿John_语法能力提升"], ["王明泽", "15:40-17:40", "王明泽", [["课堂生词抽背", "", ""], ["SAT阅读课", "", ""], ["SAT阅读课后任务", "", ""]], "【王明泽&李子熙】SAT阅读预备班"], ["李子熙", "15:40-17:40", "李子熙", [["课堂生词抽背", "", ""], ["SAT阅读课", "", ""], ["SAT阅读课后任务", "", ""]], "【王明泽&李子熙】SAT阅读预备班"], ["Leo", "自习", "Leo", [["系统内50个单词", "", ""], ["托福口语一套（L&R录到5+为止）", "", ""], ["一套听力（错题分析+跟读）", "", ""], ["一套阅读（错题分析+完形填空错题背诵）", "", ""], ["一套写作", "", ""]], "Leo-托福1v1（暂停）"], ["Frank", "自习", "Frank", [["阅读一套（错题分析+背诵句子）", "", ""], ["一套口语任务", "", ""], ["托福词汇50个新词＋重做上批单词", "", ""], ["一套听力（错题分析+跟读）", "", ""], ["一套写作", "", ""]], "Frank-托福1v1（暂停）"]], "2026-10-26": [["丁嘉宝", "17:00-19:00", "丁嘉宝", [["课堂生词抽背", "", ""], ["读写课", "", ""], ["读写课后任务", "", ""]], "丁嘉宝"]], "_chasing": [{"name": "Tiger", "task_title": "Tiger-托福1v1", "prev_date": "2026-10-14", "deadline": "2026-10-17", "is_urgent": false, "countdown_tag": "（考期：2026-10-17）", "uncompleted": ["【重录5+】2026年2月第4套/口语/Listen and Repeat"], "uncompleted_ids": ["14575231"], "uncompleted_details": [{"id": "14575231", "title": "【重录5+】2026年2月第4套/口语/Listen and Repeat", "date": "2026-10-14", "elapsed_days": 11, "completion_state": "not_completed"}], "copy_text": "【Tiger】剩余未完成任务_10/14❗️\n\n1. 【重录5+】2026年2月第4套/口语/Listen and Repeat"}, {"name": "Dana", "task_title": "Dana-托福1v1", "prev_date": "2026-10-10", "deadline": "", "is_urgent": false, "countdown_tag": "（考期：2026-10-17）", "uncompleted": ["2026年7月第1套/听力", "完形填空练习7", "【新托福】阅读填空题常考500词(社会学 经济学)-英译英中"], "uncompleted_ids": ["14507568", "14507567", "14507565"], "uncompleted_details": [{"id": "14507568", "title": "2026年7月第1套/听力", "date": "2026-10-10", "elapsed_days": 15, "completion_state": "not_completed"}, {"id": "14507567", "title": "完形填空练习7", "date": "2026-10-10", "elapsed_days": 15, "completion_state": "not_completed"}, {"id": "14507565", "title": "【新托福】阅读填空题常考500词(社会学 经济学)-英译英中", "date": "2026-10-10", "elapsed_days": 15, "completion_state": "not_completed"}], "copy_text": "【Dana】剩余未完成任务_10/10❗️\n\n1. 2026年7月第1套/听力\n2. 完形填空练习7\n3. 【新托福】阅读填空题常考500词(社会学 经济学)-英译英中"}, {"name": "Leo", "task_title": "Leo-托福1v1", "prev_date": "2026-10-11", "deadline": "2026-10-31", "is_urgent": true, "countdown_tag": "（10/31 考试在即 · 仅剩 6 天）", "uncompleted": ["2026年3月第3套(0315)/写作/Build a Sentence+Write an Email+Write for an Academic Discussion", "【新托福】听力高频800词(生物+天文)-英译英中"], "uncompleted_ids": ["14521237", "14628553"], "uncompleted_details": [{"id": "14521237", "title": "2026年3月第3套(0315)/写作/Build a Sentence+Write an Email+Write for an Academic Discussion", "date": "2026-10-11", "elapsed_days": 14, "completion_state": "not_completed"}, {"id": "14628553", "title": "【新托福】听力高频800词(生物+天文)-英译英中", "date": "2026-10-18", "elapsed_days": 7, "completion_state": "not_completed"}], "copy_text": "【Leo】剩余未完成任务_10/11-10/18❗️\n\n1. 2026年3月第3套(0315)/写作/Build a Sentence+Write an Email+Write for an Academic Discussion\n2. 【新托福】听力高频800词(生物+天文)-英译英中"}, {"name": "何昊隆", "task_title": "何昊隆-托福1v1", "prev_date": "2026-10-18", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["【新托福】听力高频800词(工作场合)-英译英中"], "uncompleted_ids": ["14628555"], "uncompleted_details": [{"id": "14628555", "title": "【新托福】听力高频800词(工作场合)-英译英中", "date": "2026-10-18", "elapsed_days": 7, "completion_state": "not_completed"}], "copy_text": "【何昊隆】剩余未完成任务_10/18❗️\n\n1. 【新托福】听力高频800词(工作场合)-英译英中"}, {"name": "岳璐宇", "task_title": "岳璐宇-雅思考前自动补齐", "prev_date": "2026-10-19", "deadline": "2026-11-27", "is_urgent": false, "countdown_tag": "（11/27 考试在即 · 仅剩 33 天）", "uncompleted": ["CIT-C14-T1/写作", "CIT-C14-T1/口语", "王陆807(课程)-英译英中", "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)"], "uncompleted_ids": ["14655284", "14655285", "14655286", "14655287"], "uncompleted_details": [{"id": "14655284", "title": "CIT-C14-T1/写作", "date": "2026-10-19", "elapsed_days": 6, "completion_state": "not_completed"}, {"id": "14655285", "title": "CIT-C14-T1/口语", "date": "2026-10-19", "elapsed_days": 6, "completion_state": "not_completed"}, {"id": "14655286", "title": "王陆807(课程)-英译英中", "date": "2026-10-19", "elapsed_days": 6, "completion_state": "not_completed"}, {"id": "14655287", "title": "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)", "date": "2026-10-19", "elapsed_days": 6, "completion_state": "not_completed"}], "copy_text": "【岳璐宇】剩余未完成任务_10/19❗️\n\n1. CIT-C14-T1/写作\n2. CIT-C14-T1/口语\n3. 王陆807(课程)-英译英中\n4. 雅思阅读词汇真经(List 1 自然地理)-英译中(选择)"}, {"name": "Charlotte", "task_title": "Charlotte-SAT", "prev_date": "2026-10-24", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["SAT核心词汇6200(list 1)-英译中(选择)"], "uncompleted_ids": ["14714097"], "uncompleted_details": [{"id": "14714097", "title": "SAT核心词汇6200(list 1)-英译中(选择)", "date": "2026-10-24", "elapsed_days": 1, "completion_state": "not_completed"}], "copy_text": "【Charlotte】剩余未完成任务_10/24❗️\n\n1. SAT核心词汇6200(list 1)-英译中(选择)"}, {"name": "赖晨曦", "task_title": "", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["王陆807(课程)-英译英中", "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)"], "uncompleted_ids": ["14609559", "14609565"], "uncompleted_details": [{"id": "14609559", "title": "王陆807(课程)-英译英中", "date": "2026-10-17", "elapsed_days": 8, "completion_state": "not_completed"}, {"id": "14609565", "title": "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)", "date": "2026-10-17", "elapsed_days": 8, "completion_state": "not_completed"}], "copy_text": "【赖晨曦】剩余未完成任务_10/17❗️\n\n1. 王陆807(课程)-英译英中\n2. 雅思阅读词汇真经(List 1 自然地理)-英译中(选择)"}, {"name": "Frank", "task_title": "Frank-托福1v1", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["【重录5+】2026年3月第8套/口语/Listen and Repeat"], "uncompleted_ids": ["14609865"], "uncompleted_details": [{"id": "14609865", "title": "【重录5+】2026年3月第8套/口语/Listen and Repeat", "date": "2026-10-17", "elapsed_days": 8, "completion_state": "not_completed"}], "copy_text": "【Frank】剩余未完成任务_10/17❗️\n\n1. 【重录5+】2026年3月第8套/口语/Listen and Repeat"}, {"name": "陈书进", "task_title": "", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["王陆807(课程)-英译英中", "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)"], "uncompleted_ids": ["14714857", "14715344"], "uncompleted_details": [{"id": "14714857", "title": "王陆807(课程)-英译英中", "date": "2026-10-24", "elapsed_days": 1, "completion_state": "not_completed"}, {"id": "14715344", "title": "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)", "date": "2026-10-24", "elapsed_days": 1, "completion_state": "not_completed"}], "copy_text": "【陈书进】剩余未完成任务_10/24❗️\n\n1. 王陆807(课程)-英译英中\n2. 雅思阅读词汇真经(List 1 自然地理)-英译中(选择)"}, {"name": "周家琪", "task_title": "", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["王陆807(普通用词（二）)-英译英中（已提交，待系统确认）"], "uncompleted_ids": ["14610336"], "uncompleted_details": [{"id": "14610336", "title": "王陆807(普通用词（二）)-英译英中（已提交，待系统确认）", "date": "2026-10-17", "elapsed_days": 8, "completion_state": "submitted_waiting_confirmation"}], "copy_text": "【周家琪】剩余未完成任务_10/17❗️\n\n1. 王陆807(普通用词（二）)-英译英中（已提交，待系统确认）"}, {"name": "潘韬薄", "task_title": "", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["王陆807(普通用词（二）)-英译英中"], "uncompleted_ids": ["14714841"], "uncompleted_details": [{"id": "14714841", "title": "王陆807(普通用词（二）)-英译英中", "date": "2026-10-24", "elapsed_days": 1, "completion_state": "not_completed"}], "copy_text": "【潘韬薄】剩余未完成任务_10/24❗️\n\n1. 王陆807(普通用词（二）)-英译英中"}, {"name": "苏顺平", "task_title": "", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["王陆807(普通用词（二）)-英译英中"], "uncompleted_ids": ["14714934"], "uncompleted_details": [{"id": "14714934", "title": "王陆807(普通用词（二）)-英译英中", "date": "2026-10-24", "elapsed_days": 1, "completion_state": "not_completed"}], "copy_text": "【苏顺平】剩余未完成任务_10/24❗️\n\n1. 王陆807(普通用词（二）)-英译英中"}, {"name": "郭璟Jack-SAT", "task_title": "郭璟Jack-SAT", "prev_date": "2026-10-18", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["SAT核心词汇6200(list 4)-英译中(选择)"], "uncompleted_ids": ["14642807"], "uncompleted_details": [{"id": "14642807", "title": "SAT核心词汇6200(list 4)-英译中(选择)", "date": "2026-10-18", "elapsed_days": 7, "completion_state": "not_completed"}], "copy_text": "【郭璟Jack-SAT】剩余未完成任务_10/18❗️\n\n1. SAT核心词汇6200(list 4)-英译中(选择)"}, {"name": "Iven", "task_title": "", "prev_date": "2026-10-17", "deadline": "", "is_urgent": false, "countdown_tag": "", "uncompleted": ["【新托福】听力高频800词(天文+历史)-英译英中", "【重录5+】2026年4月第5套/口语/Listen and Repeat"], "uncompleted_ids": ["14715357", "14721178"], "uncompleted_details": [{"id": "14715357", "title": "【新托福】听力高频800词(天文+历史)-英译英中", "date": "2026-10-24", "elapsed_days": 1, "completion_state": "not_completed"}, {"id": "14721178", "title": "【重录5+】2026年4月第5套/口语/Listen and Repeat", "date": "2026-10-24", "elapsed_days": 1, "completion_state": "not_completed"}], "copy_text": "【Iven】剩余未完成任务_10/24❗️\n\n1. 【新托福】听力高频800词(天文+历史)-英译英中\n2. 【重录5+】2026年4月第5套/口语/Listen and Repeat"}], "_chasing_checked_at": "2026-10-25T09:21:05.901829+08:00", "_chasing_status": "verified", "_chasing_unknown": false, "_reminder_admission": {"schema": 1, "active_from": "2026-10-25", "tokens": [], "reviewed_at": null}, "_plan": {"2026-10-24": [["Charlotte", "08:00-10:00", "【Charlotte】 10月24日任务安排🖊️", ["SAT阅读课", "SAT阅读课后任务", "新任务"], "Charlotte SAT 语法阅读"], ["赖晨曦", "08:30-10:30", "【赖晨曦】 10月24日任务安排🖊️", ["课堂生词抽背", "校内单词背诵", "词汇与语言应用课", "词汇与语言应用课后任务"], "赖晨曦雅思一对一"], ["黄子珊", "10:40-12:40", "【黄子珊】 10月24日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "口语课", "口语课后任务", "新任务"], "黄子珊-雅思1v1"], ["Leo", "10:40-12:40", "【Leo】 10月24日任务安排🖊️", ["课堂生词抽背", "系统内托福单词100个（50*2）", "5篇完形填空", "托福口语一套", "托福听力一套", "写作课", "写作课后任务"], "【Leo&Iven】托福强化课程 2026暑假"], ["Iven", "10:40-12:40", "【Iven】 10月24日任务安排🖊️", ["课堂生词抽背", "系统内托福单词100个（50*2）", "5篇完形填空", "托福口语一套", "托福听力一套", "写作课", "写作课后任务"], "【Leo&Iven】托福强化课程 2026暑假"], ["Frank", "10:40-12:40", "【Frank】 10月24日任务安排🖊️", ["课堂生词抽背", "托福词汇50个新词＋重做上批单词", "每天5篇完形", "每天一套口语任务", "一套听力+错题分析", "听力课", "听力课后任务"], "Frank-托福1v1"], ["丁嘉宝", "13:30-15:30", "【丁嘉宝】 10月24日任务安排🖊️", ["课堂生词抽背", "写作课", "写作课后任务"], "丁嘉宝-英语能力提升"], ["聂彦如", "13:30-15:30/15:40-17:40", "【聂彦如】 10月24日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "口语课", "口语课后任务", "写作课", "写作课后任务"], "【聂彦如&陈书进】雅思强化课程"], ["陈书进", "13:30-15:30/15:40-17:40", "【陈书进】 10月24日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "口语课", "口语课后任务", "写作课", "写作课后任务"], "【聂彦如&陈书进】雅思强化课程"], ["周家琪", "15:40-17:40", "【周家琪】 10月24日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "听力课", "听力课后任务"], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"], ["苏顺平", "15:40-17:40", "【苏顺平】 10月24日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "听力课", "听力课后任务"], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"], ["潘韬薄", "15:40-17:40", "【潘韬薄】 10月24日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（听力*50+阅读*50）", "听力课", "听力课后任务"], "【潘韬薄&苏顺平&周家琪】-雅思基础班2026/7"]], "2026-10-25": [["Amy徐畅", "09:00-10:30", "【Amy徐畅】 10月25日任务安排🖊️", ["课堂生词抽背", "系统内单词任务（四级词汇*两组，每组30词）", "写作课", "写作课后任务"], "Amy徐畅_雅思基础课程_2026秋季"], ["赵梓轩", "10:40-12:40", "【赵梓轩】 10月25日任务安排🖊️", ["课堂生词抽背", "打印当天课堂单词回去背", "词汇与语言应用课", "词汇与语言应用课后任务"], "赵梓轩-英语能力提升"], ["代佳鸣高中同步课程", "14:00-15:30", "【代佳鸣高中同步课程】 10月25日任务安排🖊️", ["课堂生词抽背", "阅读写作课", "阅读写作课后任务", "打印课后单词带回去背"], "代佳鸣高中同步课程"], ["李洪睿John", "15:00-17:00", "【李洪睿John】 10月25日任务安排🖊️", ["课堂生词抽背", "语法课", "语法课后任务"], "李洪睿John_语法能力提升"], ["王明泽", "15:40-17:40", "【王明泽】 10月25日任务安排🖊️", ["课堂生词抽背", "SAT阅读课", "SAT阅读课后任务"], "【王明泽&李子熙】SAT阅读预备班"], ["李子熙", "15:40-17:40", "【李子熙】 10月25日任务安排🖊️", ["课堂生词抽背", "SAT阅读课", "SAT阅读课后任务"], "【王明泽&李子熙】SAT阅读预备班"], ["Leo", "自习", "【Leo】 10月25日任务安排🖊️", ["系统内50个单词", "托福口语一套（L&R录到5+为止）", "一套听力（错题分析+跟读）", "一套阅读（错题分析+完形填空错题背诵）", "一套写作"], "Leo-托福1v1（暂停）"], ["Frank", "自习", "【Frank】 10月25日任务安排🖊️", ["阅读一套（错题分析+背诵句子）", "一套口语任务", "托福词汇50个新词＋重做上批单词", "一套听力（错题分析+跟读）", "一套写作"], "Frank-托福1v1（暂停）"]], "2026-10-26": [["丁嘉宝", "17:00-19:00", "【丁嘉宝-雅思基础】 10月26日任务安排🖊️", ["课堂生词抽背", "读写课", "读写课后任务"], "丁嘉宝"]]}, "_cids": {"2026-10-24": {"Charlotte": [302361], "赖晨曦-雅思 1v1": [290722], "黄子珊-雅思1v1": [244187], "Frank": [289544], "Leo&Ivan": [290341], "丁嘉宝": [258115], "聂彦如&陈书进": [303091], "周家琪/潘韬薄/苏顺平-雅思基础班": [274331]}, "2026-10-25": {"Amy": [310785], "赵梓轩": [244773], "代佳鸣": [270115], "李洪睿John": [308836], "王明泽&李子熙": [299838]}, "2026-10-26": {"丁嘉宝": [258115]}}, "_notice": {"2026-10-17": [["赖晨曦", "08:30-10:30", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 08:30-10:30\n课程： 听力\n老师： 王银屏\n学生： 赖晨曦\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["黄子珊", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 写作\n老师： 任玥蓉\n学生： 黄子珊\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["丁嘉宝", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 口语\n老师： 梁润泽\n学生： 丁嘉宝\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 5号教室"], ["Frank", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 阅读\n老师： 徐梓淞\n学生： Frank\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["Leo&Iven", "10:40-12:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 10:40-12:40\n课程： 听力\n老师： 王银屏\n学生： Leo/Iven\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["聂彦如&陈书进", "13:30-15:30", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 13:30-15:30\n课程： 听力\n老师： 王银屏\n学生： 聂彦如/陈书进\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["周家琪/潘韬薄/苏顺平", "15:40-17:40", "【明日课程提醒】2026/10/17⏰\n\n时间： 10月17日 15:40-17:40\n课程： 口语\n老师： 梁润泽\n学生： 周家琪/潘韬薄/苏顺平\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"]], "2026-10-18": [["Amy", "09:00-10:30", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 09:00-10:30\n课程： 听力\n老师： 王银屏\n学生： Amy\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["赵梓轩", "10:40-12:40", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 10:40-12:40\n课程： 阅读写作\n老师： 徐梓淞\n学生： 赵梓轩\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["朱宸萱", "13:30-15:30", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 13:30-15:30\n课程： 阅读\n老师： 徐梓淞\n学生： 朱宸萱\n形式： 线上"], ["代佳鸣", "14:00-15:30", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 14:00-15:30\n课程： 词汇与语言应用\n老师： 王银屏\n学生： 代佳鸣\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["李洪睿John", "15:00-17:00", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 15:00-17:00\n课程： 语法\n老师： 任玥蓉\n学生： 李洪睿John\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 1号教室"], ["王明泽&李子熙", "15:40-17:40", "【明日课程提醒】2026/10/18⏰\n\n时间： 10月18日 15:40-17:40\n课程： SAT阅读\n老师： 元园\n学生： 王明泽/李子熙\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 5号教室"]], "2026-10-19": [["丁嘉宝", "17:00-19:00", "【明日课程提醒】2026/10/19⏰\n\n时间： 10月19日 17:00-19:00\n课程： 听说\n老师： 王银屏\n学生： 丁嘉宝\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"]], "2026-10-20": [["郭璟Jack-SAT", "08:30-10:30", "【明日课程提醒】2026/10/20⏰\n\n时间：\n10月20日 08:30-10:30（北京时间）\n10月19日 20:30-22:30（美东时间）\n课程： SAT语法\n老师： 元园\n学生： 郭璟Jack-SAT\n形式： 线上"]], "2026-10-21": [["王子居&Andy", "19:00-21:00", "【明日课程提醒】2026/10/21⏰\n\n时间： 10月21日 19:00-21:00\n课程： SAT阅读\n老师： 元园\n学生： 王子居/Andy\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"]], "2026-10-22": [["George吴洋亿", "08:30-10:30", "【明日课程提醒】2026/10/22⏰\n\n时间：\n10月22日 08:30-10:30（北京时间）\n10月21日 20:30-22:30（美东时间）\n课程： SAT语法\n老师： 胡亮宇\n学生： George吴洋亿\n形式： 线上"], ["丁嘉宝", "17:00-19:00", "【明日课程提醒】2026/10/22⏰\n\n时间： 10月22日 17:00-19:00\n课程： 听说\n老师： 王银屏\n学生： 丁嘉宝\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"]], "2026-10-23": [["George吴洋亿", "08:30-10:30", "【明日课程提醒】2026/10/23⏰\n\n时间：\n10月23日 08:30-10:30（北京时间）\n10月22日 20:30-22:30（美东时间）\n课程： SAT语法\n老师： 胡亮宇\n学生： George吴洋亿\n形式： 线上"], ["郭璟Jack-SAT", "08:30-10:30", "【明日课程提醒】2026/10/23⏰\n\n时间：\n10月23日 08:30-10:30（北京时间）\n10月22日 20:30-22:30（美东时间）\n课程： SAT阅读\n老师： 元园\n学生： 郭璟Jack-SAT\n形式： 线上"], ["李培生雅思体验课", "16:00-17:00", "【明日课程提醒】2026/10/23⏰\n\n时间： 10月23日 16:00-17:00\n课程： 雅思听力体验课\n老师： 王银屏\n学生： 李培生\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"]], "2026-10-24": [["Charlotte", "08:00-10:00", "【明日课程提醒】2026/10/24⏰\n\n时间： 10月24日 08:00-10:00\n课程： SAT阅读\n老师： 元园\n学生： Charlotte\n形式： 线上"], ["赖晨曦", "08:30-10:30", "【明日课程提醒】2026/10/24⏰\n\n时间： 10月24日 08:30-10:30\n课程： 词汇与语言应用\n老师： 王银屏\n学生： 赖晨曦\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 5号教室"], ["黄子珊", "10:40-12:40", "【明日课程提醒】2026/10/24⏰\n\n时间： 10月24日 10:40-12:40\n课程： 口语\n老师： 梁润泽\n学生： 黄子珊\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["Frank", "10:40-12:40", "【明日课程提醒】2026/10/24⏰\n\n时间： 10月24日 10:40-12:40\n课程： 听力\n老师： 王银屏\n学生： Frank\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 1号教室"], ["Leo&Iven", "10:40-12:40", "【明日课程提醒】2026/10/24⏰\n\n时间： 10月24日 10:40-12:40\n课程： 写作\n老师： 任玥蓉\n学生： Leo/Iven\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["丁嘉宝", "13:30-15:30", "【明日课程提醒】2026/10/24⏰\n\n时间： 10月24日 13:30-15:30\n课程： 写作\n老师： 任玥蓉\n学生： 丁嘉宝\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 1号教室"], ["聂彦如&陈书进", "13:30-17:40", "【明日课程提醒】2026/10/24⏰\n\n1️⃣\n时间： 10月24日 13:30-15:30\n课程： 口语\n老师： 王银屏\n学生： 聂彦如/陈书进\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室\n2️⃣\n时间： 10月24日 15:40-17:40\n课程： 写作\n老师： 任玥蓉\n学生： 聂彦如/陈书进\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["周家琪/潘韬薄/苏顺平", "15:40-17:40", "【明日课程提醒】2026/10/24⏰\n\n时间： 10月24日 15:40-17:40\n课程： 听力\n老师： 王银屏\n学生： 周家琪/潘韬薄/苏顺平\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"]], "2026-10-25": [["Amy", "09:00-10:30", "【明日课程提醒】2026/10/25⏰\n\n时间： 10月25日 09:00-10:30\n课程： 写作\n老师： 徐梓淞\n学生： Amy\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["赵梓轩", "10:40-12:40", "【明日课程提醒】2026/10/25⏰\n\n时间： 10月25日 10:40-12:40\n课程： 词汇与语言应用\n老师： 王银屏\n学生： 赵梓轩\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["代佳鸣", "14:00-15:30", "【明日课程提醒】2026/10/25⏰\n\n时间： 10月25日 14:00-15:30\n课程： 阅读写作\n老师： 徐梓淞\n学生： 代佳鸣\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["李洪睿John", "15:00-17:00", "【明日课程提醒】2026/10/25⏰\n\n时间： 10月25日 15:00-17:00\n课程： 语法\n老师： 任玥蓉\n学生： 李洪睿John\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 1号教室"], ["王明泽&李子熙", "15:40-17:40", "【明日课程提醒】2026/10/25⏰\n\n时间： 10月25日 15:40-17:40\n课程： SAT阅读\n老师： 元园\n学生： 王明泽/李子熙\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 5号教室"]], "2026-10-26": [["丁嘉宝", "17:00-19:00", "【明日课程提醒】2026/10/26⏰\n\n时间： 10月26日 17:00-19:00\n课程： 读写\n老师： 徐梓淞\n学生： 丁嘉宝\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"]]}, "_sess": {"2026-10-17": [["赖晨曦", "08:30-10:30", "听力", "王银屏", "线下"], ["黄子珊", "10:40-12:40", "写作", "任玥蓉", "线下"], ["丁嘉宝", "10:40-12:40", "口语", "梁润泽", "线下"], ["Frank", "10:40-12:40", "阅读", "徐梓淞", "线下"], ["Leo&Iven", "10:40-12:40", "听力", "王银屏", "线下"], ["聂彦如&陈书进", "13:30-15:30", "听力", "王银屏", "线下"], ["潘韬薄&苏顺平&周家琪", "15:40-17:40", "口语", "梁润泽", "线下"]], "2026-10-18": [["Amy徐畅", "09:00-10:30", "听力", "王银屏", "线下"], ["赵梓轩", "10:40-12:40", "阅读写作", "徐梓淞", "线下"], ["朱宸萱", "13:30-15:30", "阅读", "徐梓淞", "线上"], ["代佳鸣", "14:00-15:30", "词汇与语言应用", "王银屏", "线下"], ["李洪睿John", "15:00-17:00", "语法", "任玥蓉", "线下"], ["王明泽&李子熙", "15:40-17:40", "SAT阅读", "元园", "线下"]], "2026-10-19": [["丁嘉宝", "17:00-19:00", "听说", "王银屏", "线下"]], "2026-10-20": [["「郭璟Jack 」", "08:30-10:30", "SAT语法", "元园", "线上"]], "2026-10-21": [["王子居&Andy", "19:00-21:00", "SAT阅读", "元园", "线下"]], "2026-10-22": [["George吴洋亿", "08:30-10:30", "SAT语法", "胡亮宇", "线上"], ["丁嘉宝", "17:00-19:00", "听说", "王银屏", "线下"]], "2026-10-23": [["George吴洋亿", "08:30-10:30", "SAT语法", "胡亮宇", "线上"], ["「郭璟Jack 」", "08:30-10:30", "SAT阅读", "元园", "线上"], ["李培生", "16:00-17:00", "听力", "王银屏", "线下"]], "2026-10-24": [["Charlotte", "08:00-10:00", "SAT阅读", "元园", "线上"], ["赖晨曦", "08:30-10:30", "词汇与语言应用", "王银屏", "线下"], ["黄子珊", "10:40-12:40", "口语", "梁润泽", "线下"], ["Frank", "10:40-12:40", "听力", "王银屏", "线下"], ["Leo&Iven", "10:40-12:40", "写作", "任玥蓉", "线下"], ["丁嘉宝", "13:30-15:30", "写作", "任玥蓉", "线下"], ["聂彦如&陈书进", "13:30-15:30", "口语", "王银屏", "线下"], ["潘韬薄&苏顺平&周家琪", "15:40-17:40", "听力", "王银屏", "线下"], ["聂彦如&陈书进", "15:40-17:40", "写作", "任玥蓉", "线下"]], "2026-10-25": [["Amy徐畅", "09:00-10:30", "写作", "徐梓淞", "线下"], ["赵梓轩", "10:40-12:40", "词汇与语言应用", "王银屏", "线下"], ["代佳鸣", "14:00-15:30", "阅读写作", "徐梓淞", "线下"], ["李洪睿John", "15:00-17:00", "语法", "任玥蓉", "线下"], ["王明泽&李子熙", "15:40-17:40", "SAT阅读", "元园", "线下"]], "2026-10-26": [["丁嘉宝", "17:00-19:00", "读写", "徐梓淞", "线下"]]}, "_schedule_status": {"2026-10-17": {"status": "error", "checked_at": "2026-10-24T12:03:36.244021+08:00", "message": "2026-10-17 课表读取失败（登录或连接未成功）；未确认是否有课；明日课程通知保留旧内容，未确认更新。", "last_success_at": "2026-10-17T21:40:20.997533+08:00"}, "2026-10-18": {"status": "verified", "checked_at": "2026-10-18T21:57:11.449667+08:00", "last_success_at": "2026-10-18T21:57:11.449667+08:00"}, "2026-10-19": {"status": "verified", "checked_at": "2026-10-19T18:12:18.736867+08:00", "last_success_at": "2026-10-19T18:12:18.736867+08:00"}, "2026-10-20": {"status": "verified", "checked_at": "2026-10-20T18:12:20.795130+08:00", "last_success_at": "2026-10-20T18:12:20.795130+08:00"}, "2026-10-21": {"status": "verified", "checked_at": "2026-10-21T07:05:15.544120+08:00", "last_success_at": "2026-10-21T07:05:15.544120+08:00"}, "2026-10-22": {"status": "verified", "checked_at": "2026-10-22T18:12:24.455238+08:00", "last_success_at": "2026-10-22T18:12:24.455238+08:00"}, "2026-10-23": {"status": "verified", "checked_at": "2026-10-23T18:12:20.700487+08:00", "last_success_at": "2026-10-23T18:12:20.700487+08:00"}, "2026-10-24": {"status": "verified", "checked_at": "2026-10-24T18:12:19.065462+08:00", "last_success_at": "2026-10-24T18:12:19.065462+08:00"}, "2026-10-25": {"status": "verified", "checked_at": "2026-10-25T08:33:46.049013+08:00", "last_success_at": "2026-10-25T08:33:46.049013+08:00"}, "2026-10-26": {"status": "verified", "checked_at": "2026-10-25T08:33:46.049013+08:00", "last_success_at": "2026-10-25T08:33:46.049013+08:00"}}, "_assigned": {"2026-10-24": {"status": "verified", "students": [{"name": "Charlotte Yang", "tasks": [{"text": "30个SAT单词（选择题模式）", "details": ["SAT核心词汇6200(list 1)-英译中(选择)-genesis-barrel"]}]}, {"name": "Frank", "tasks": [{"text": "每天5篇完形", "details": ["完形填空练习2"]}, {"text": "一套听力+错题分析", "details": ["2026年4月第5套/听力"]}]}, {"name": "Iven", "tasks": [{"text": "系统内托福单词100个（50*2）", "details": ["新托福听力高频800词(工作场合)-英译英中-resume-meeting", "新托福听力高频800词(历史+环境科学)-英译英中-era-environmental protection", "新托福听力高频800词(天文+历史)-英译英中-pulsar-document"]}, {"text": "5篇完形填空", "details": ["完形填空练习3"]}, {"text": "托福口语一套", "details": ["2026年4月第5套/口语/Listen and Repeat", "重录5+2026年4月第5套/口语/Listen and Repeat", "2026年4月第5套/口语/Take an Interview"]}]}, {"name": "Leo", "tasks": [{"text": "5篇完形填空", "details": ["完形填空练习2"]}, {"text": "托福口语一套", "details": ["补做2026年2月第5套/口语/Listen and Repeat", "补做重录5+2026年2月第5套/口语/Listen and Repeat", "补做2026年2月第5套/口语/Take an Interview"]}, {"text": "托福听力一套", "details": ["2026年3月第8套/听力"]}]}, {"name": "何昊隆", "tasks": [{"text": "一套口语", "details": ["2026年2月第5套/口语/Listen and Repeat", "重录5+2026年2月第5套/口语/Listen and Repeat", "2026年2月第5套/口语/Take an Interview"]}, {"text": "一套听力", "details": ["2026年5月第3套/听力"]}, {"text": "一套阅读", "details": ["2026年1月第9套(0127-3)/阅读"]}, {"text": "一套写作", "details": ["2026年6月第1套/写作"]}]}, {"name": "彦如", "tasks": [{"text": "系统内单词任务（听力*50+阅读*50）", "details": ["王陆807(课程)-英译英中-assignment-email attachment", "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)-seismic-steep"]}]}, {"name": "潘韬薄", "tasks": [{"text": "系统内单词任务（听力*50+阅读*50）", "details": ["王陆807(普通用词（二）)-英译英中-lid of container-participation of social activities", "雅思阅读词汇真经(List 9 娱乐运动)-英译中(选择)-anticipate-describe"]}]}, {"name": "苏顺平", "tasks": [{"text": "系统内单词任务（听力*50+阅读*50）", "details": ["王陆807(普通用词（二）)-英译英中-attitude of competition-information desk", "雅思阅读词汇真经(List 8 语言演化+List 9 娱乐运动)-英译中(选择)-prefix-foresee"]}]}, {"name": "陈书进", "tasks": [{"text": "系统内单词任务（听力*50+阅读*50）", "details": ["王陆807(课程)-英译英中-level-lecturer", "雅思阅读词汇真经(List 1 自然地理)-英译中(选择)-parallel-southwest"]}]}, {"name": "黄子珊", "tasks": [{"text": "系统内单词任务（听力*50+阅读*50）", "details": ["王陆807(电影（一） )-英译英中-trailer-glass", "雅思阅读词汇真经(List 20 行为动作)-英译中(选择)-integrate-impede"]}]}], "task_count": 18, "homework_count": 31}, "2026-10-25": {"status": "verified", "students": [{"name": "Leo", "tasks": [{"text": "托福口语一套（L&R录到5+为止）", "details": ["补做2026年2月第3套/口语/Listen and Repeat", "补做重录5+2026年2月第3套/口语/Listen and Repeat", "补做2026机经第46套/口语/Take an Interview"]}, {"text": "一套听力（错题分析+跟读）", "details": ["2026年2月第1套/听力"]}, {"text": "一套阅读（错题分析+完形填空错题背诵）", "details": ["2026年3月第1套(0308组卷)/阅读"]}]}, {"name": "何昊隆", "tasks": [{"text": "一套口语", "details": ["2026年5月第5套/口语/Listen and Repeat", "重录5+2026年5月第5套/口语/Listen and Repeat", "2026年5月第5套/口语/Take an Interview"]}, {"text": "一套听力", "details": ["2026年2月第3套/听力"]}, {"text": "一套阅读", "details": ["2026年3月第4套(0318)/阅读"]}, {"text": "一套写作", "details": ["2026年6月第3套/写作/Build a Sentence"]}]}, {"name": "岳璐宇", "tasks": [{"text": "一套听力、", "details": ["CIT-C15-T4/听力"]}, {"text": "一套阅读、", "details": ["CIT-C18-T2/阅读"]}]}, {"name": "徐畅Amy", "tasks": [{"text": "系统内单词任务（四级词汇*两组，每组30词）", "details": ["四级词汇(List 7)-英译英中-perception-crash", "四级词汇(List 7)-英译英中-representative-monitor"]}]}], "task_count": 10, "homework_count": 15}, "2026-10-26": {"status": "unavailable", "students": [], "task_count": 0, "homework_count": 0}}}; // {"YYYY-MM-DD": [[卡片名, 时间, 标题里的名字, [[任务, 备忘录里已有的标记, 备忘录里已有的备注]…], 备忘录名], …]}
+const DAYS = Object.keys(DATA).filter(k => k[0] !== "_").sort();
+const PLAN = DATA._plan || {}; // {"YYYY-MM-DD": [[卡片名, 时间, 标题行, [任务…], 备忘录名], …]}
+const pad = n => String(n).padStart(2, "0");
+// 2026-10-05 Leo：打开页面时默认日期一律按北京时间——任务安排 / 完成情况 / 单词抽背 = 今天，明日课程通知 = 明天；不记上次看的日期
+const now = new Date();
+const today = now.toLocaleDateString("en-CA", {timeZone: "Asia/Shanghai"});
+const bjHour = Number(now.toLocaleString("en-US", {timeZone: "Asia/Shanghai", hour: "numeric", hourCycle: "h23"}));
+const shift = (d, n) => { const t = new Date(d + "T12:00:00Z"); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
+const tomorrow = shift(today, 1), yesterday = shift(today, -1);
+const rel = d => (d === today ? "今天 " : d === tomorrow ? "明天 " : d === yesterday ? "昨天 " : "");
+const mdOf = d => { const p = d.split("-"); return Number(p[1]) + "/" + Number(p[2]); };
+const NOTICE = DATA._notice || {};   // {"YYYY-MM-DD": [[卡片名, 上课时间, 通知全文], …]}
+let cur = today, curN = tomorrow;
+let st = {};
+const key = () => "wayon-done-" + cur;
+const load = () => { st = {}; try { st = JSON.parse(localStorage.getItem(key()) || "{}") || {}; } catch(e) {} };
+const save = () => { try { localStorage.setItem(key(), JSON.stringify(st)); } catch(e) {} push(); };
+const get = n => (st[n] = st[n] || {m:{}, n:{}, c:""});
+const md = () => { const p = cur.split("-"); return Number(p[1]) + "月" + Number(p[2]) + "日"; };
+const ICON = {ok:"✅", no:"❌"};
+const openEditors = new Set();
+// Visibility only: do not rename cloud keys or shift stored task indices.
+const taskVisible = (name, task) => {
+  const label = typeof task === "string" ? task : task[0];
+  if (label !== "课堂生词抽背") return true;
+  const clean = value => String(value || "").replace(/[【】「」\s]/g, "").toLowerCase();
+  const sessions = (DATA._sess?.[cur] || []).filter(s =>
+    String(s[0] || "").split(/[&、/]/).some(n => clean(n) === clean(name)));
+  return !sessions.length || sessions.some(s => s[4] !== "线上");
+};
+const getTasks = (name, defTasks) => {
+  const s = get(name);
+  if (Array.isArray(s.tk)) {
+    return s.tk.map((txt, idx) => [txt, s.m[idx] || "", s.n[idx] || ""]);
+  }
+  return defTasks || [];
+};
+const parseTasks = rawText => {
+  const lines = (rawText || "").split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const out = [];
+  for (const l of lines) {
+    if (l.startsWith("【") || ((l.includes("任务安排") || l.includes("任务完成情况") || l.includes("课程提醒")) && l.length < 35) || l.includes("任务更新")) {
+      continue;
+    }
+    const cleaned = l.replace(/^\s*(?:\d+[\.、\s\-\)\）]|[\(（]\d+[\)）]|[-*•—\u2022]\s*|\([a-zA-Z]\)\s*|[①-⑩]\s*)/, "").trim();
+    if (!cleaned) continue;
+    let mark = "", note = "", t = cleaned;
+    if (t.includes("✅")) {
+      const parts = t.split("✅"); t = parts[0].trim(); mark = "ok"; note = parts.slice(1).join("✅").trim();
+    } else if (t.includes("❌")) {
+      const parts = t.split("❌"); t = parts[0].trim(); mark = "no"; note = parts.slice(1).join("❌").trim();
+    }
+    if (t) out.push({text: t, mark, note});
+  }
+  return out;
+};
+const mk = (s, t, i) => s.m[i] === undefined ? (t[1] || "") : s.m[i];   // 没动过就用备忘录里已有的标记
+const nt = (s, t, i) => s.n[i] === undefined ? (t[2] || "") : s.n[i];
+const text = r => { const s = get(r[0]);
+  const tasks = getTasks(r[0], r[3]);
+  return "【" + r[2].replace(/[「」]/g, "").trim() + "】 " + md() + "任务完成情况 👇\n\n" + tasks.map((t,i) => ({t,i})).filter(x => taskVisible(r[0],x.t)).map(({t,i},n) => (n+1) + "、" + t[0] + (ICON[mk(s,t,i)] || "") + (nt(s,t,i) ? (" " + nt(s,t,i)) : "")).join("\n"); };
+const list = document.getElementById("list");
+let mode = bjHour < 13 ? "plan" : "done";   // 上午默认「任务安排」，下午默认「完成情况」
+let ps = {};
+const pkey = () => "wayon-plan-" + cur;
+const pload = () => { ps = {}; try { ps = JSON.parse(localStorage.getItem(pkey()) || "{}") || {}; } catch(e) {} };
+const psave = () => { try { localStorage.setItem(pkey(), JSON.stringify(ps)); } catch(e) {} push(); };
+const ptext = p => {
+  const s = get(p[0]);
+  let tk = s.tk;
+  if (!Array.isArray(tk) && p[5] && p[5].isGroup && Array.isArray(p[5].members)) {
+    tk = p[5].members.map(m => get(m).tk).find(Array.isArray);
+  }
+  const tasks = (Array.isArray(tk)) ? tk : (p[3] || []);
+  const checkName = (p[5] && p[5].isGroup && Array.isArray(p[5].members)) ? p[5].members[0] : p[0];
+  return p[2].replace(/[「」]/g, "") + "\n\n" + tasks.filter(t => taskVisible(checkName, t)).map((t,i) => (i+1) + "、" + (typeof t === "string" ? t : t[0])).join("\n");
+};
+const hhmm = () => new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"});
+// 2026-10-05 Leo：任务安排 / 完成情况 / 课程通知——点了「复制」的卡片收成一行挪到最下面；点一下展开，展开后可「收起」
+const openCards = new Set();   // 手动展开的已复制卡片（不存云端）
+function foldRow(id, label, when){
+  const r = document.createElement("div"); r.className = "item folded"; r.tabIndex = 0; r.setAttribute("role", "button"); r.setAttribute("aria-expanded", "false");
+  r.textContent = label + " ✅ 已复制 " + when + " ▸";
+  const go = () => { openCards.add(id); render(); };
+  r.onclick = go; r.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+  return r;
+}
+function addCollapse(el, id){
+  const b = document.createElement("button"); b.type = "button"; b.className = "small"; b.textContent = "收起 ▴";
+  b.onclick = () => { openCards.delete(id); render(); };
+  el.querySelector(".head").append(b); return el;
+}
+const placeCard = (el, copied, id, label, when, bottom) => {   // 没复制的照常；复制了的收起放 bottom
+  if (!copied) { list.append(el); return; }
+  bottom.push(openCards.has(id) ? addCollapse(el, id) : foldRow(id, label, when));
+};
+function planCard(title, meta, txt, k, grpMeta){
+  const el = document.createElement("div"); el.className = "item" + (ps[k] ? " copied" : "");
+  const head = document.createElement("div"); head.className = "head";
+  const name = document.createElement("div"); name.className = "name"; name.textContent = title;
+  const mt = document.createElement("div"); mt.className = "meta"; mt.textContent = meta;
+  head.append(name, mt);
+  if (ps[k]){ const x = document.createElement("div"); x.className = "state"; x.textContent = "✓ 已复制 " + ps[k]; head.append(x); }
+  const pre = document.createElement("pre"); pre.textContent = txt;
+  const b = document.createElement("button"); b.type = "button"; b.className = "copy"; b.id = "pcopy-" + k;
+  b.textContent = ps[k] ? "再复制一次" : "复制";
+  b.onclick = () => {
+    const ok = () => {
+      ps[k] = hhmm();
+      if (grpMeta && grpMeta.members) grpMeta.members.forEach(m => { ps[m] = ps[k]; });
+      psave(); render();
+    };
+    const fail = () => { b.textContent = "复制失败，请重试"; };
+    try { navigator.clipboard.writeText(txt).then(ok, fail); } catch(e) { fail(); }
+  };
+  head.append(b);
+  const editBtn = document.createElement("button"); editBtn.type = "button"; editBtn.className = "small edit-btn";
+  editBtn.textContent = openEditors.has("plan:" + k) ? "收起编辑" : "✎ 编辑/粘贴任务";
+  editBtn.onclick = () => {
+    if (openEditors.has("plan:" + k)) openEditors.delete("plan:" + k);
+    else openEditors.add("plan:" + k);
+    render();
+  };
+  head.append(editBtn);
+  if (ps[k]){
+    const u = document.createElement("button"); u.type = "button"; u.className = "small"; u.textContent = "撤销";
+    u.onclick = () => {
+      delete ps[k];
+      if (grpMeta && grpMeta.members) grpMeta.members.forEach(m => { delete ps[m]; });
+      psave(); render();
+    };
+    head.append(u);
+  }
+  el.append(head);
+  if (openEditors.has("plan:" + k)) {
+    const editor = document.createElement("div"); editor.className = "task-editor";
+    const tip = document.createElement("div"); tip.className = "sub"; tip.style.marginBottom = "6px"; tip.style.fontWeight = "600";
+    tip.textContent = "📋 粘贴任务文本自动识别替换（支持整段微信/群聊通知）：";
+    const ta = document.createElement("textarea"); ta.className = "editor-area"; ta.rows = 4;
+    ta.placeholder = "可直接粘贴群内任务安排，例如：\n【" + k + "】10月17日任务安排\n1、单词抽背\n2、听力精练\n3、课后作业";
+    const btnRow = document.createElement("div"); btnRow.style.display = "flex"; btnRow.style.gap = "8px"; btnRow.style.marginTop = "6px"; btnRow.style.flexWrap = "wrap";
+    const applyBtn = document.createElement("button"); applyBtn.type = "button"; applyBtn.className = "small";
+    applyBtn.style.background = "var(--accent)"; applyBtn.style.color = "#ffffff"; applyBtn.style.borderColor = "var(--accent)"; applyBtn.style.fontWeight = "600";
+    applyBtn.textContent = "⚡ 识别并应用任务";
+    applyBtn.onclick = () => {
+      const parsed = parseTasks(ta.value);
+      if (!parsed.length) { alert("未能识别出有效任务行，请直接粘贴每行一项任务或带编号的文本。"); return; }
+      const s = get(k);
+      s.tk = parsed.map(x => x.text);
+      s.m = {}; s.n = {};
+      parsed.forEach((x, idx) => {
+        if (x.mark) s.m[idx] = x.mark;
+        if (x.note) s.n[idx] = x.note;
+      });
+      s.c = "";
+      if (grpMeta && grpMeta.members) {
+        grpMeta.members.forEach(m => {
+          const sm = get(m);
+          sm.tk = s.tk.slice(); sm.m = {}; sm.n = {}; sm.c = "";
+        });
+      }
+      openEditors.delete("plan:" + k); save(); render();
+    };
+    const resetBtn = document.createElement("button"); resetBtn.type = "button"; resetBtn.className = "small";
+    resetBtn.textContent = "恢复默认任务";
+    resetBtn.onclick = () => {
+      const s = get(k);
+      delete s.tk; s.m = {}; s.n = {}; s.c = "";
+      if (grpMeta && grpMeta.members) {
+        grpMeta.members.forEach(m => {
+          const sm = get(m);
+          delete sm.tk; sm.m = {}; sm.n = {}; sm.c = "";
+        });
+      }
+      openEditors.delete("plan:" + k); save(); render();
+    };
+    const closeBtn = document.createElement("button"); closeBtn.type = "button"; closeBtn.className = "small";
+    closeBtn.textContent = "关闭";
+    closeBtn.onclick = () => { openEditors.delete("plan:" + k); render(); };
+    btnRow.append(applyBtn, resetBtn, closeBtn);
+    editor.append(tip, ta, btnRow);
+    el.append(editor);
+  }
+  el.append(pre); return el;
+}
+function renderPlan(){
+  const GROUP_SETS = [
+    { members: ["Leo", "Iven", "Ivan"], label: "Leo & Iven", key: "Leo&Iven" },
+    { members: ["聂彦如", "陈书进"], label: "聂彦如 & 陈书进", key: "聂彦如&陈书进" },
+    { members: ["周家琪", "潘韬薄", "苏顺平"], label: "周家琪 / 潘韬薄 / 苏顺平", key: "周家琪/潘韬薄/苏顺平" },
+    { members: ["戴荧", "汤馨然"], label: "戴荧 & 汤馨然", key: "戴荧&汤馨然" },
+    { members: ["王明泽", "李子熙"], label: "王明泽 & 李子熙", key: "王明泽&李子熙" },
+    { members: ["王子居", "Andy"], label: "王子居 & Andy", key: "王子居&Andy" }
+  ];
+  const _raw = PLAN[cur] || [];
+  const consumed = new Set();
+  const rows = [];
+  _raw.forEach((p, i) => {
+    if (consumed.has(i)) return;
+    const name = (p[0] || "").replace(/[【】]/g, "").trim();
+    const time = p[1];
+    const note = p[4] || "";
+    let matchedGroup = null;
+    let matchedIndices = [];
+    for (const g of GROUP_SETS) {
+      if (!g.members.includes(name)) continue;
+      const found = [];
+      _raw.forEach((q, j) => {
+        if (consumed.has(j)) return;
+        const qName = (q[0] || "").replace(/[【】]/g, "").trim();
+        if (q[1] === time && g.members.includes(qName)) found.push(j);
+      });
+      if (found.length >= 2) { matchedGroup = g; matchedIndices = found; break; }
+    }
+    if (!matchedGroup && note && /[&＆/／、]/.test(note)) {
+      const found = [];
+      _raw.forEach((q, j) => {
+        if (consumed.has(j)) return;
+        if (q[1] === time && q[4] === note) found.push(j);
+      });
+      if (found.length >= 2) matchedIndices = found;
+    }
+    if (matchedIndices.length >= 2) {
+      matchedIndices.forEach(idx => consumed.add(idx));
+      const presentNames = matchedIndices.map(idx => (_raw[idx][0] || "").replace(/[【】]/g, "").trim());
+      let groupLabel = "";
+      if (matchedGroup) {
+        const allPresent = matchedGroup.members.every(m => presentNames.includes(m));
+        groupLabel = allPresent ? matchedGroup.label : presentNames.join(" & ");
+      } else {
+        groupLabel = presentNames.join(" & ");
+      }
+      const groupKey = matchedGroup ? matchedGroup.key : presentNames.join("&");
+      const baseTitle = p[2] || "";
+      const mergedTitle = baseTitle.includes("【") ? baseTitle.replace(/【.*?】/, "【" + groupLabel + "】") : ("【" + groupLabel + "】 " + baseTitle);
+      rows.push([groupLabel, time, mergedTitle, p[3], p[4], { isGroup: true, key: groupKey, members: presentNames }]);
+    } else {
+      consumed.add(i);
+      rows.push(p);
+    }
+  });
+  const bottomP = [];
+  if (typeof study !== "undefined") study.renderCards(list, cur, "plan", bottomP);
+  if (!rows.length && !(typeof study !== "undefined" && study.cards(cur).length)) {
+    const e = document.createElement("div"); e.className = "sub";
+    e.textContent = (cur in PLAN) ? ("🎉 " + rel(cur) + mdOf(cur) + " 暂无排课与自习任务安排。") : ("这天还没生成（" + rel(cur) + mdOf(cur) + " 的任务安排要先跑 tasks / sync-notes）。");
+    list.append(e);
+  }
+  rows.forEach((p, i) => {
+    const meta = p[5];
+    const cardKey = (meta && meta.isGroup) ? meta.key : p[0];
+    if (meta && meta.isGroup && !ps[cardKey]) {
+      const existingCopied = meta.members.map(m => ps[m]).find(Boolean);
+      if (existingCopied) ps[cardKey] = existingCopied;
+    }
+    const cardTitle = (i + 1) + ". " + p[0].replace(/[【】「」]/g, "");
+    const card = planCard(cardTitle, p[1], ptext(p), cardKey, meta);
+    placeCard(card, !!ps[cardKey], "plan:" + cur + ":" + cardKey, cardTitle, ps[cardKey], bottomP);
+  });
+  bottomP.forEach(e => list.append(e));
+  const extra = typeof study !== "undefined" ? study.stats(cur, "plan") : { total: 0, copied: 0 };
+  const n = rows.filter(p => {
+    const meta = p[5];
+    const cardKey = (meta && meta.isGroup) ? meta.key : p[0];
+    return !!ps[cardKey];
+  }).length + extra.copied, total = rows.length + extra.total;
+  document.getElementById("count").textContent = n + " / " + total + " 已复制";
+  document.getElementById("fill").style.width = (total ? n / total * 100 : 0) + "%";
+}
+function summary(rows){
+  const extra=typeof study!=='undefined'?study.stats(cur,'done'):{total:0,copied:0};
+  const n=rows.filter(r=>get(r[0]).c).length+extra.copied,total=rows.length+extra.total;
+  document.getElementById('count').textContent=n+' / '+total+' 已复制';
+  document.getElementById('fill').style.width=(total?n/total*100:0)+'%';
+}
+// 单词抽背情况（Leo 2026-10-05）：完成情况页签最下面的独立板块，每天一份，和打勾一起存云端（字段 quiz）
+let qz = {}, qzDay = "";
+const quizOpen = new Set();   // 已完成但手动展开的学生（不存云端）
+const qkey = d => "wayon-quiz-" + d;
+const qload = () => { qz = {}; qzDay = cur; try { qz = JSON.parse(localStorage.getItem(qkey(cur)) || "{}") || {}; } catch(e) {} };
+const qsave = () => { try { localStorage.setItem(qkey(cur), JSON.stringify(qz)); } catch(e) {} push(); };
+const qget = n => (qz[n] = qz[n] || {pre: false, post: false});
+const qk = r => r[0] + " " + r[1]; // Individual evidence only; never spread legacy group marks.
+const isQuiz = t => /抽背|默写/.test(t);
+const SESS = DATA._sess || {};   // {"YYYY-MM-DD": [[学生 / 班级, "08:30-10:30", 课程, 老师], …]}（tasks 时按课表记下）
+function quizRows(rows){   // 仅限今日线下课，班课拆成每人一行（Leo 2026-10-05）
+  const src=(SESS[cur]||[]).filter(s=>s.length>=5 && s[4]==="线下");
+  const out = [];
+  src.slice().sort((a, b) => a[1].localeCompare(b[1])).forEach(s => {
+    String(s[0]).split(/[&＆/／、]/).map(x => x.trim()).filter(Boolean).forEach(n => out.push([n, s[1], s[2] || "", s[3] || "", s[0]]));
+  });
+  return out;
+}
+// 2026-10-05 Leo：这个页签只记录今天有没有给学生抽背——每人一行：名字 + 上课时间 + 课前 check + 课后 check（不复制、不发群）
+function renderQuiz(rows){
+  if (qzDay !== cur) qload();
+  const qr = quizRows(rows);
+  if (!qr.length) return;
+  const box = document.createElement("div"); box.className = "quiz";
+  const pre = qr.filter(r => qget(qk(r)).pre).length, post = qr.filter(r => qget(qk(r)).post).length;
+  const head = document.createElement("div"); head.className = "head";
+  const h = document.createElement("h2"); h.textContent = "📝 单词抽背记录";
+  const meta = document.createElement("div"); meta.className = "meta"; meta.textContent = "课前 " + pre + " / " + qr.length + " · 课后 " + post + " / " + qr.length + "（这节课前课后都抽了 = 变绿）";
+  head.append(h, meta); box.append(head);
+  // 一个学生一组（Leo 2026-10-05）：名字一行（组标题），下面每节课一个缩进子行；全部子行都课前课后抽了，标题旁 ✅
+  const groups = [], gi = {};
+  qr.forEach((r, i) => { if (!(r[0] in gi)) { gi[r[0]] = groups.length; groups.push([r[0], []]); } groups[gi[r[0]]][1].push([r, i]); });
+  const sessLine = (r, i, withName) => {
+    const q = qget(qk(r));
+    const row = document.createElement("div"); row.className = "qrow" + (withName ? "" : " qsub") + (q.pre && q.post ? " ok" : "");
+    const nm = document.createElement("div"); nm.className = "qname";
+    if (withName) nm.textContent = r[0];
+    if (r[2]) { const cs = document.createElement("span"); cs.className = "qcourse"; cs.textContent = (withName ? " · " : "") + r[2] + (r[3] ? "（" + r[3] + "）" : ""); nm.append(cs); }
+    const tm = document.createElement("div"); tm.className = "qrange"; tm.textContent = r[1];
+    const mkBtn = (k, label) => { const bt = document.createElement("button"); bt.type = "button"; bt.className = "mark qchk" + (q[k] ? " on" : ""); bt.id = "q" + k + "-" + i;
+      bt.setAttribute("aria-pressed", q[k] ? "true" : "false"); bt.textContent = (q[k] ? "✅ " : "☐ ") + label;
+      bt.onclick = () => { q[k] = !q[k]; qsave(); render(); }; return bt; };
+    const info = document.createElement("div"); info.className = "qinfo"; info.append(nm, tm);
+    row.append(info, mkBtn("pre", "课前"), mkBtn("post", "课后"));
+    return row;
+  };
+  // 2026-10-05 Leo：一个学生所有课的课前课后都勾了，就收成一行（名字 ✅ · N 节已完成 ▸）并挪到最下面；点一下展开 / 收起
+  const doneGroups = [];
+  groups.forEach(([name, list2]) => {
+    const g = document.createElement("div"); g.className = "qgroup";
+    const hd = document.createElement("div"); hd.className = "qhead";
+    const allDone = list2.every(([r]) => { const q = qget(qk(r)); return q.pre && q.post; });
+    hd.textContent = name; const sm = document.createElement("span"); sm.className = "qcourse"; sm.textContent = (list2.length > 1 ? " · " + list2.length + " 节课" : "") + (allDone ? " ✅" : ""); hd.append(sm);
+    g.append(hd);
+    if (allDone) {
+      const open = quizOpen.has(name);
+      g.classList.add("qfold"); hd.setAttribute("role", "button"); hd.tabIndex = 0; hd.setAttribute("aria-expanded", open ? "true" : "false");
+      sm.textContent = " ✅ · " + list2.length + " 节已完成 " + (open ? "▾" : "▸");
+      const tog = () => { if (open) quizOpen.delete(name); else quizOpen.add(name); render(); };
+      hd.onclick = tog; hd.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); tog(); } };
+      if (open) list2.forEach(([r, i]) => g.append(sessLine(r, i, false)));
+    } else list2.forEach(([r, i]) => g.append(sessLine(r, i, false)));
+    if (allDone) doneGroups.push(g); else box.append(g);
+  });
+  doneGroups.forEach(g => box.append(g));   // 完成的统一排在最下面（保持原先的先后）
+  list.append(box);
+}
+// 明日课程通知（2026-10-05 并入）：已复制状态按课程日期存，本地键与原课程通知页相同；云端用原来的集合 wayon_notice（文档 id = YYYY-M-D）
+let nc = {}, ncDay = "", unsubN = null, nwt = 0, nq = Promise.resolve();
+const nId = d => { const p = d.split("-"); return Number(p[0]) + "-" + Number(p[1]) + "-" + Number(p[2]); };
+const nkey = d => "wayon-notice-v2-" + d;
+const noticeKey = r => JSON.stringify([r[0],r[1]]);
+const noticeSignature = r => JSON.stringify(r.slice(0,3));
+const noticeCopied = r => { const v=nc[noticeKey(r)]; return v && v.signature===noticeSignature(r) ? v.copied_at : ""; };
+const nload = () => { ncDay = curN; nc = readLocal(nkey(curN)); };
+const nsave = () => { try { localStorage.setItem(nkey(curN), JSON.stringify(nc)); } catch(e) {} npush(); };
+let CHASING = DATA._chasing || [];
+let privateChasingItems = [];
+let ch = {}, chDay = "", cstops = {};
+const chkey = d => "wayon-chasing-" + d;
+const cskey = "wayon-chasing-stops";
+const chload = () => { ch = {}; chDay = today; try { ch = JSON.parse(localStorage.getItem(chkey(today)) || "{}") || {}; } catch(e) {} try { cstops = JSON.parse(localStorage.getItem(cskey) || "{}") || {}; } catch(e) { cstops = {}; } };
+chload();
+const chsave = () => { try { localStorage.setItem(chkey(today), JSON.stringify(ch)); } catch(e) {} checkCloud?.observe(today); };
+const cssave = () => { try { localStorage.setItem(cskey, JSON.stringify(cstops)); } catch(e) {} checkCloud?.observe(today); };
+function chasingText(r,stoppedIds){
+  const items=chasingDisplayItems((r.uncompleted_details||[]).filter(d=>!stoppedIds.includes(String(d.id)) && !chasingDoneIds(r).includes(String(d.id))));
+  return items.length ? ["【"+r.name+" 任务催交提醒】",...items.map((d,i)=>(i+1)+". "+d.title+"（"+d.date+"）"),"请完成后回复，谢谢！"].join("\n") : "当前没有需要催交的项目。";
+}
+function chasingName(name){
+  // Exact alias confirmed by the owner; never infer identity from a shared prefix.
+  return name === "朱宸萱MAP阅读" ? "朱宸萱" : name;
+}
+function chasingDisplayItems(items){
+  const seen=new Set();
+  return items.filter(d=>{
+    // Presentation grouping only: all underlying IDs remain in the row and stop state.
+    const key=String(d.id).startsWith('manual:') && d.date && d.title
+      ? JSON.stringify(['manual',d.date,d.title]) : JSON.stringify(['id',String(d.id)]);
+    if(seen.has(key))return false;seen.add(key);return true;
+  });
+}
+function chasingRows(rows){
+  const merged=new Map();
+  for(const raw of rows){
+    const name=chasingName(raw.name);
+    let row=merged.get(name);
+    if(!row){row={...raw,name,chasing_aliases:[],uncompleted_details:[],uncompleted_ids:[],uncompleted:[]};merged.set(name,row);}
+    row.chasing_aliases=[...new Set([...row.chasing_aliases,raw.name,...(name==='朱宸萱'?['朱宸萱','朱宸萱MAP阅读']:[]),...(raw.chasing_aliases||[])])];
+    const seen=new Set(row.uncompleted_details.map(d=>String(d.id)));
+    for(const d of raw.uncompleted_details||[])if(!seen.has(String(d.id))){row.uncompleted_details.push({...d});seen.add(String(d.id));}
+    row.uncompleted_ids=[...new Set([...row.uncompleted_ids,...(raw.uncompleted_ids||[]).map(String),...row.uncompleted_details.map(d=>String(d.id))])];
+    row.uncompleted=[...row.uncompleted,...(raw.uncompleted||[])];
+  }
+  return [...merged.values()];
+}
+function chasingStopIds(row){
+  return [...new Set([row.name,...(row.chasing_aliases||[])].flatMap(name=>{
+    const value=cstops[name];return (Array.isArray(value)?value:value?.stopped_ids||[]).map(String);
+  }))];
+}
+function setChasingStops(row,ids){
+  const value={stopped_ids:ids,changed_at:new Date().toISOString()};
+  for(const name of new Set([row.name,...(row.chasing_aliases||[])]))cstops[name]={...value,stopped_ids:[...ids]};
+}
+function chasingDoneIds(row){
+  const state=globalThis.wayonChasingDone||{};
+  return [...new Set([row.name,...(row.chasing_aliases||[])].flatMap(name=>(state[name]?.completed_ids||[]).map(String)))];
+}
+function chasingDoneReady(){return typeof checkCloud!=='undefined' && checkCloud?.ready?.(today)===true;}
+function setChasingDone(row,ids){
+  if(!chasingDoneReady()){if(typeof setSync==='function')setSync('请先登录并连接云端；此项尚未确认完成');return;}
+  const state=globalThis.wayonChasingDone ||= {};
+  for(const name of new Set([row.name,...(row.chasing_aliases||[])]))state[name]={completed_ids:[...ids],changed_at:new Date().toISOString()};
+  try{localStorage.setItem('wayon-chasing-completed',JSON.stringify(state));}catch(e){}
+  checkCloud?.observe(today);render();
+}
+function chasingSameTask(a,b){
+  return String(a.id)===String(b.id) || (String(a.id).startsWith('manual:') && String(b.id).startsWith('manual:') && a.date===b.date && a.title===b.title);
+}
+async function hydrateChasing(m,client,owner){
+  const backup="wayon-stops-before-cloud";if(!localStorage.getItem(backup))localStorage.setItem(backup,localStorage.getItem(cskey)||"{}");
+  try {
+    const h=await m.readChasingHistory(client,owner,today);cstops=h.stops;localStorage.setItem(cskey,JSON.stringify(cstops));chload();
+    CHASING=JSON.parse(JSON.stringify(DATA._chasing||[]));
+    privateChasingItems=h.manual;
+    for(const item of h.manual){
+      let row=CHASING.find(x=>x.name===item.name);if(!row){row={name:item.name,uncompleted_details:[],uncompleted_ids:[],uncompleted:[]};CHASING.push(row);}
+      item.elapsed_days=Math.max(0,Math.floor((Date.parse(today+"T00:00:00+08:00")-Date.parse(item.date+"T00:00:00+08:00"))/86400000));
+      row.uncompleted_details.push(item);row.uncompleted_ids.push(item.id);row.uncompleted.push(item.title);
+    }
+  } catch(e) {
+    console.warn("hydrateChasing failed, retaining local and published chasing data:", e);
+  }
+}
+function renderChasing(){
+  const freshness = document.createElement('div'); freshness.className='sub';
+  const checked=DATA._chasing_checked_at;
+  freshness.textContent='完成状态上次核对：'+(checked?new Date(checked).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false}):'未记录')+'；此后提交的作业可能尚未更新。';
+  list.append(freshness);
+
+  if (chDay !== today || !Object.keys(ch || {}).length) chload();
+  const isErr = (DATA._chasing_status === "error" || DATA._chasing_unknown);
+  if (isErr) {
+    const errBox = document.createElement("div"); errBox.className = "sub"; errBox.style.color = "var(--bad)"; errBox.style.fontWeight = "600";
+    errBox.textContent = "⚠️ 作业状态未知：部分或全部作业状态未能与系统完整确认，未盲目标记全员完成。";
+    list.append(errBox);
+    document.getElementById("count").textContent = "状态未知";
+    document.getElementById("fill").style.width = "0%";
+  }
+  const rows = chasingRows(CHASING || []);
+  if (!rows.length) {
+    if (!isErr) {
+      const e = document.createElement("div"); e.className = "sub"; e.textContent = "当前暂无欠交作业的线上学员，全员进度良好！"; list.append(e);
+      document.getElementById("count").textContent = "0 人待催"; document.getElementById("fill").style.width = "100%";
+    }
+    return;
+  }
+  const bottomC = [];
+  const stoppedShelf = document.createElement("details"); stoppedShelf.className = "chasing-stopped";
+  const stoppedHeading = document.createElement("summary"); stoppedShelf.append(stoppedHeading);
+  let stoppedStudents = 0, completedStudents = 0;
+  rows.forEach((r, i) => {
+    const sname = r.name || ("学员" + (i+1));
+    const done = ch[sname];
+    const uids = r.uncompleted_details?.length ? r.uncompleted_details.map(x=>String(x.id)) : (r.uncompleted_ids || []).map(String);
+    const stoppedIds = chasingStopIds(r);
+    const completedIds = chasingDoneIds(r);
+    const completedDetails = (r.uncompleted_details || []).filter(d => completedIds.includes(String(d.id)));
+    const remainingIds = uids.filter(id => !completedIds.includes(id));
+    const isCompleted = uids.length > 0 && !remainingIds.length;
+    const isStopped = !isCompleted && remainingIds.length > 0 && remainingIds.every(id => stoppedIds.includes(id));
+    const activeDetails = (r.uncompleted_details || []).filter(d => !stoppedIds.includes(String(d.id)) && !completedIds.includes(String(d.id)));
+    const stoppedDetails = (r.uncompleted_details || []).filter(d => stoppedIds.includes(String(d.id)) && !completedIds.includes(String(d.id)));
+    const activeCount = r.uncompleted_details?.length ? chasingDisplayItems(activeDetails).length : uids.filter(id => !stoppedIds.includes(id)).length;
+    const el = document.createElement("div"); el.className = "item" + (done ? " copied" : "") + (isStopped || isCompleted ? " folded" : "");
+    const head = document.createElement("div"); head.className = "head";
+    const name = document.createElement("div"); name.className = "name";
+    name.textContent = (i+1) + ". " + sname.replace(/[【】「」]/g, "") + (r.countdown_tag ? (" " + r.countdown_tag) : "") + (isCompleted ? " [本人已确认完成]" : isStopped ? " [已停止催缴]" : "");
+    if (r.is_urgent && !isStopped) name.style.color = "var(--bad)";
+    const meta = document.createElement("div"); meta.className = "meta";
+    meta.textContent = (r.prev_date ? r.prev_date + "布置 · " : "") + (isCompleted ? "本人已确认完成 " + chasingDisplayItems(completedDetails).length : isStopped ? "已停止 " + chasingDisplayItems(stoppedDetails).length : "欠交 " + activeCount) + " 项" + (isStopped ? " (已停止提醒；布置门禁保持)" : "");
+    head.append(name, meta);
+    if (done && !isStopped) { const x = document.createElement("div"); x.className = "state"; x.textContent = "✓ 已复制 " + done; head.append(x); }
+    const pre = document.createElement("pre"); pre.textContent = chasingText(r,stoppedIds);
+    const b = document.createElement("button"); b.type = "button"; b.className = "copy"; b.id = "chcopy-" + i;
+    b.textContent = done ? "再复制一次" : "复制催交信息";
+    b.onclick = () => {
+      const text = chasingText(r,stoppedIds);
+      const ok = () => { ch[sname] = hhmm(); chsave(); render(); };
+      const fail = () => { b.textContent = "复制失败，请重试"; };
+      let copied = false;
+      try {
+        const tmp = document.createElement("textarea");
+        tmp.value = text;
+        tmp.setAttribute("readonly", "");
+        tmp.style.position = "absolute";
+        tmp.style.left = "-9999px";
+        document.body.append(tmp);
+        tmp.select();
+        copied = document.execCommand("copy") === true;
+        tmp.remove();
+      } catch(e) { copied = false; }
+      if (copied) { ok(); }
+      else if (navigator.clipboard?.writeText) { navigator.clipboard.writeText(text).then(ok, fail); }
+      else { fail(); }
+    };
+    b.disabled = isStopped || isCompleted;
+    if (!isStopped && !isCompleted) head.append(b);
+    const stopBtn = document.createElement("button"); stopBtn.type = "button"; stopBtn.className = "small";
+    stopBtn.textContent = isStopped ? "恢复催缴" : "停止催缴";
+    stopBtn.onclick = () => {
+      if (isStopped) { setChasingStops(r,stoppedIds.filter(id => !uids.includes(id))); }
+      else { setChasingStops(r,[...new Set([...stoppedIds,...uids])]); }
+      cssave(); render();
+    };
+    if (!isCompleted) head.append(stopBtn);
+    if (done) {
+      const u = document.createElement("button"); u.type = "button"; u.className = "small"; u.textContent = "撤销";
+      u.onclick = () => { delete ch[sname]; chsave(); render(); };
+      head.append(u);
+    }
+    const listDetails = document.createElement("div"); listDetails.className = "tasks";
+    if (r.uncompleted_details && r.uncompleted_details.length) {
+      chasingDisplayItems(isStopped ? stoppedDetails : activeDetails).forEach(item => {
+        const dRow = document.createElement("div"); dRow.className = "task no";
+        const dTag = document.createElement("div"); dTag.className = "mark"; dTag.textContent = stoppedIds.includes(String(item.id)) ? "已停止" : item.completion_state === "submitted_waiting_confirmation" ? "已提交待确认" : "欠交" + item.elapsed_days + "天";
+        const dTxt = document.createElement("div"); dTxt.className = "txt"; dTxt.textContent = item.title;
+        const doneButton = document.createElement("button"); doneButton.type="button";doneButton.className="small";
+        doneButton.disabled=!chasingDoneReady();doneButton.textContent="✅";doneButton.title="确认这项作业已完成";doneButton.setAttribute("aria-label","确认已完成："+item.title);
+        doneButton.onclick=()=>setChasingDone(r,[...new Set([...completedIds,...r.uncompleted_details.filter(d=>chasingSameTask(d,item)).map(d=>String(d.id))])]);
+        dRow.append(dTag, dTxt, doneButton); listDetails.append(dRow);
+      });
+    }
+    el.append(head, listDetails);
+    if (!isStopped && stoppedDetails.length) {
+      const stopped = document.createElement("details"); stopped.className = "chasing-stopped-items";
+      const summary = document.createElement("summary"); summary.textContent = "Stopped · " + stoppedDetails.length;
+      const restore = document.createElement("button"); restore.type = "button"; restore.className = "small";
+      restore.textContent = "恢复催缴";
+      restore.onclick = () => {
+        const ids = stoppedDetails.map(d => String(d.id));
+        setChasingStops(r,stoppedIds.filter(id => !ids.includes(id)));
+        cssave(); render();
+      };
+      stopped.append(summary, restore); el.append(stopped);
+    }
+    if(completedDetails.length){
+      const completed=document.createElement("details");completed.className="chasing-completed-items";
+      const summary=document.createElement("summary");summary.textContent="Completed · "+chasingDisplayItems(completedDetails).length;completed.append(summary);
+      chasingDisplayItems(completedDetails).forEach(item=>{
+        const row=document.createElement("div");row.className="task ok";
+        const text=document.createElement("div");text.className="txt";text.textContent=item.title;
+        const undo=document.createElement("button");undo.type="button";undo.className="small";undo.disabled=!chasingDoneReady();undo.textContent="↶";undo.title="撤销人工完成确认";undo.setAttribute("aria-label","撤销已完成："+item.title);
+        undo.onclick=()=>{const ids=completedDetails.filter(d=>chasingSameTask(d,item)).map(d=>String(d.id));setChasingDone(r,completedIds.filter(id=>!ids.includes(id)));};
+        row.append(text,undo);completed.append(row);
+      });el.append(completed);
+    }
+    if (isStopped || isCompleted) { stoppedShelf.append(el); stoppedStudents++; if(isCompleted)completedStudents++; return; }
+    placeCard(el, !!done || isStopped, "chasing:" + today + ":" + sname, (i+1) + ". " + sname.replace(/[【】「」]/g, ""), isStopped ? "[已停止]" : done, bottomC);
+  });
+  bottomC.forEach(e => list.append(e));
+  if (stoppedStudents) { stoppedHeading.textContent = (completedStudents ? "Closed reminders · " : "Stopped reminders · ") + stoppedStudents; list.append(stoppedShelf); }
+  if (!isErr) {
+    const active = rows.filter(r => {
+      const uids = r.uncompleted_details?.length ? r.uncompleted_details.map(x=>String(x.id)) : (r.uncompleted_ids || []).map(String);
+      const sids = chasingStopIds(r);
+      return !(uids.length > 0 && uids.every(id => sids.includes(id) || chasingDoneIds(r).includes(id)));
+    });
+    const n = active.filter(r => ch[r.name]).length;
+    document.getElementById("count").textContent = n + " / " + active.length + " 已催" + (rows.length > active.length ? " (" + (rows.length - active.length) + (completedStudents ? "人已完成/停止)" : "人停止)") : "");
+    document.getElementById("fill").style.width = (active.length ? n / active.length * 100 : 100) + "%";
+  }
+}
+function renderClassroom(){
+  document.querySelector(".bar").style.display = "none";
+  document.getElementById("days").style.display = "none";
+  if (document.getElementById("classroom-frame")) return;
+  const topBar = document.createElement("div");
+  topBar.style.display = "flex";
+  topBar.style.justifyContent = "flex-end";
+  topBar.style.alignItems = "center";
+  topBar.style.marginBottom = "8px";
+  const fullLink = document.createElement("a");
+  fullLink.href = "./rooms.html?v=20261018-07";
+  fullLink.target = "_blank";
+  fullLink.style.fontSize = "13px";
+  fullLink.style.color = "var(--accent)";
+  fullLink.style.textDecoration = "none";
+  fullLink.style.fontWeight = "600";
+  fullLink.textContent = "全屏新窗口打开 ↗";
+  topBar.append(fullLink);
+  const frame = document.createElement("iframe");
+  frame.id = "classroom-frame";
+  frame.src = "./rooms.html?v=20261018-07";
+  frame.style.width = "100%";
+  frame.style.height = "85vh";
+  frame.style.minHeight = "720px";
+  frame.style.border = "1px solid var(--line)";
+  frame.style.borderRadius = "8px";
+  frame.style.background = "var(--card)";
+  list.append(topBar, frame);
+}
+function renderNotice(){
+  if (ncDay !== curN) nload();
+  nwatch();
+  const rows = NOTICE[curN] || [];
+  if (!rows.length) { const e = document.createElement("div"); e.className = "sub"; e.textContent = "这天还没生成（" + rel(curN) + mdOf(curN) + " 的课程通知要先跑 sync-notes，或这天没有课）。"; list.append(e); }
+  const bottomN = [];
+  rows.forEach((r, i) => {
+    const done = noticeCopied(r);
+    const el = document.createElement("div"); el.className = "item" + (done ? " copied" : "");
+    const head = document.createElement("div"); head.className = "head";
+    const name = document.createElement("div"); name.className = "name"; name.textContent = (i+1) + ". " + r[0].replace(/[【】「」]/g, "");
+    const meta = document.createElement("div"); meta.className = "meta"; meta.textContent = r[1];
+    head.append(name, meta);
+    if (done) { const x = document.createElement("div"); x.className = "state"; x.textContent = "✓ 已复制 " + done; head.append(x); }
+    const pre = document.createElement("pre"); pre.textContent = r[2];
+    const b = document.createElement("button"); b.type = "button"; b.className = "copy"; b.id = "ncopy-" + i;
+    b.textContent = done ? "再复制一次" : "复制";
+    b.onclick = () => { const ok = () => { nc[noticeKey(r)] = {copied_at:hhmm(),signature:noticeSignature(r)}; nsave(); render(); }; const fail = () => { b.textContent = "复制失败，请重试"; };
+      try { navigator.clipboard.writeText(r[2]).then(ok, fail); } catch(e) { fail(); } };
+    head.append(b);
+    if (done) { const u = document.createElement("button"); u.type = "button"; u.className = "small"; u.textContent = "撤销"; u.onclick = () => { delete nc[noticeKey(r)]; nsave(); render(); }; head.append(u); }
+    el.append(head, pre);
+    placeCard(el, !!done, "notice:" + curN + ":" + r[0], (i+1) + ". " + r[0].replace(/[【】「」]/g, ""), done, bottomN);
+  });
+  bottomN.forEach(e => list.append(e));
+  const n = rows.filter(r => noticeCopied(r)).length;
+  document.getElementById("count").textContent = n + " / " + rows.length + " 已复制";
+  document.getElementById("fill").style.width = (rows.length ? n / rows.length * 100 : 0) + "%";
+}
+function noteDisclosure(input){
+  const box=document.createElement('details');box.className='note-disclosure';box.open=!!input.value;
+  const title=document.createElement('summary');title.textContent=input.value?'查看 / 编辑备注':'添加备注';
+  input.addEventListener('input',()=>{title.textContent=input.value?'查看 / 编辑备注':'添加备注';});
+  box.append(title,input);return box;
+}
+// Display only: assignment evidence never changes manual marks or cloud fields.
+function renderAssigned(){
+  const record=(DATA._assigned||{})[cur];
+  const status=['verified','partial','unavailable'].includes(record?.status)?record.status:'unavailable';
+  const count=document.getElementById('count');document.getElementById('fill').style.width='0%';
+  const message=value=>{const p=document.createElement('div');p.className='sub';p.textContent=value;list.append(p);};
+  if(status==='unavailable'){count.textContent='布置记录未读取';message('该日布置记录尚未读取');return;}
+  const students=(Array.isArray(record.students)?record.students:[]).map(student=>({
+    name:typeof student.name==='string'?student.name.replace(/[【】「」]/g,'').trim():'',
+    tasks:(Array.isArray(student.tasks)?student.tasks:[]).filter(task=>typeof task.text==='string'&&task.text.trim()).map(task=>({
+      text:task.text.trim(),details:[...new Set((Array.isArray(task.details)?task.details:[]).filter(value=>typeof value==='string'&&value.trim()).map(value=>value.trim()))]
+    }))
+  })).filter(student=>student.name&&student.tasks.length);
+  const taskCount=students.reduce((total,student)=>total+student.tasks.length,0);
+  count.textContent=students.length+' 人 · '+taskCount+' 项已布置';
+  if(status==='partial'){const p=document.createElement('p');p.className='assigned-status';p.setAttribute('role','status');p.textContent='以下为已核验的布置记录，其他记录尚未完整读取。';list.append(p);}
+  if(!students.length){message(status==='verified'?'该日没有已核验的布置记录':'暂无可显示的已核验布置记录');return;}
+  for(const student of students){
+    const card=document.createElement('section');card.className='item assigned-card';
+    const head=document.createElement('div');head.className='head';
+    const name=document.createElement('div');name.className='name';name.textContent=student.name;
+    const meta=document.createElement('div');meta.className='meta';meta.textContent=cur+' · '+student.tasks.length+' 项已布置';
+    const copy=document.createElement('button');copy.type='button';copy.className='copy assigned-copy';copy.title='复制已布置任务';copy.setAttribute('aria-label','复制已布置任务');
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('fill','none');svg.setAttribute('stroke','currentColor');svg.setAttribute('stroke-width','1.7');svg.setAttribute('aria-hidden','true');
+    const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d','M8 8h12v12H8z M16 8V4H4v12h4');svg.append(path);copy.append(svg);
+    const feedback=document.createElement('div');feedback.className='assigned-copy-status';feedback.setAttribute('role','status');
+    const fallback=document.createElement('pre');fallback.className='assigned-copy-fallback';fallback.hidden=true;fallback.tabIndex=0;fallback.setAttribute('aria-label','可手动复制的已布置任务');
+    copy.onclick=()=>{
+      const value=['【'+student.name+'】'+cur+' 已布置任务','',...student.tasks.flatMap((task,i)=>[(i+1)+'、'+task.text,...task.details.map(detail=>'  '+detail)])].join('\n');
+      const success=()=>{feedback.textContent='已复制';fallback.hidden=true;};
+      const fail=()=>{feedback.textContent='复制失败，请手动选中下方文字复制。';fallback.textContent=value;fallback.hidden=false;};
+      try{if(navigator.clipboard?.writeText){navigator.clipboard.writeText(value).then(success,fail);return;}}catch{}
+      const temporary=document.createElement('textarea');temporary.value=value;temporary.style.position='fixed';temporary.style.opacity='0';document.body.append(temporary);temporary.focus();temporary.select();
+      let copied=false;try{copied=document.execCommand('copy')===true;}catch{}temporary.remove();if(copied)success();else fail();
+    };
+    head.append(name,meta,copy);card.append(head);
+    const tasks=document.createElement('ol');tasks.className='assigned-tasks';
+    for(const task of student.tasks){
+      const row=document.createElement('li');row.className='assigned-task';
+      const text=document.createElement('div');text.className='assigned-text';text.textContent=task.text;row.append(text);
+      if(task.details.length){const details=document.createElement('ul');details.className='assigned-details';for(const detail of task.details){const item=document.createElement('li');item.textContent=detail;details.append(item);}row.append(details);}
+      tasks.append(row);
+    }
+    card.append(tasks,feedback,fallback);list.append(card);
+  }
+}
+
+function render(){
+  if (mode === 'classroom' && document.getElementById('classroom-frame')) return;
+  const rows = DATA[cur] || [];
+  const shown = mode === "notice" ? curN : cur;
+  document.getElementById("d").textContent = rel(shown) + mdOf(shown);
+  const group = mode === 'notice' ? 'notice' : mode === 'classroom' ? 'rooms' : 'today';
+  const days = document.getElementById('days'); days.textContent = '';
+  const dlist = mode === 'notice' ? [...new Set([...Object.keys(NOTICE),tomorrow,curN])].sort() : [...new Set([...DAYS,...(mode==='assigned'?Object.keys(DATA._assigned||{}):[]),today,cur])].sort();
+  const picker=document.createElement('select');picker.id='day-picker';picker.setAttribute('aria-label','查看日期');
+  for(const day of dlist){const o=document.createElement('option');o.value=day;o.textContent=rel(day)+mdOf(day);o.selected=day===shown;picker.append(o);}
+  picker.onchange=()=>{if(mode==='notice'){curN=picker.value;nload();render();nwatch();}else{cur=picker.value;load();pload();render();watch();}};
+  const isDefaultDay=shown===(mode==='notice'?tomorrow:today);
+  const home=document.createElement('button');home.type='button';home.className='home-btn';home.textContent=mode==='notice'?'⟲ 回到明天':'⟲ 回到今天';
+  home.hidden=isDefaultDay;
+  home.onclick=()=>{if(mode==='notice'){curN=tomorrow;nload();render();nwatch();}else{cur=today;load();pload();render();watch();}};
+  let topBar=document.querySelector('.workspace-top-bar');if(!topBar){topBar=document.createElement('div');topBar.className='workspace-top-bar';const subtabs=document.getElementById('subtabs');subtabs?.parentNode?.insertBefore(topBar,subtabs);if(subtabs)topBar.append(subtabs);const dateSec=document.querySelector('.date-section');if(dateSec)topBar.append(dateSec);}
+  let subBar=document.querySelector('.workspace-sub-bar');if(!subBar){subBar=document.createElement('div');subBar.className='workspace-sub-bar';const health=document.getElementById('schedule-health');health?.parentNode?.insertBefore(subBar,health);if(health)subBar.append(health);const slot=document.createElement('div');slot.id='study-slot';slot.className='study-slot';subBar.append(slot);}
+  days.append(picker,home);document.querySelector('.date-section').hidden=['chasing','classroom'].includes(mode);
+  const studySlot=document.getElementById('study-slot');if(studySlot){studySlot.textContent='';studySlot.style.display=['plan','done'].includes(mode)?'':'none';}
+  const tabs=document.getElementById('tabs');tabs.textContent='';
+  for(const [id,label,initial] of [['today','今天',bjHour<13?'plan':'done'],['notice','课程通知','notice'],['rooms','教室','classroom']]){
+    const b=document.createElement('button');b.type='button';b.id='nav-'+id;b.textContent=label;b.className=group===id?'on':'';b.setAttribute('aria-pressed',String(group===id));
+    b.onclick=()=>{mode=initial;render();};tabs.append(b);
+  }
+  const subtabs=document.getElementById('subtabs');subtabs.textContent='';
+  const sections=group==='today'?[['plan','任务安排'],['done','完成记录'],['quiz','课前 / 课后抽背'],['assigned','今日已布置'],['chasing','待催']]:[];
+  for(const [id,label] of sections){const b=document.createElement('button');b.type='button';b.id='tab-'+id;b.textContent=label;b.title=label;b.setAttribute('aria-label',label);b.className=mode===id?'on':'';b.setAttribute('aria-pressed',String(mode===id));b.onclick=()=>{mode=id;render();if(mode==="chasing")watch();};subtabs.append(b);}
+  subtabs.hidden=!sections.length;
+  document.getElementById("ttl").textContent = mode === "plan" ? "任务安排" : mode === "quiz" ? "单词抽背情况" : mode === "notice" ? "课程通知" : mode === "assigned" ? "今日已布置" : mode === "chasing" ? "待催作业" : mode === "classroom" ? "教室使用" : "任务完成情况";
+  document.getElementById('view-title').textContent={today:'今天',notice:'课程通知',rooms:'教室使用'}[group];
+  document.getElementById("view-subtitle").textContent=rel(shown)+mdOf(shown)+" · "+document.getElementById("ttl").textContent;
+  document.getElementById("sub").textContent = mode === "notice"
+    ? "每个有课的学生一张卡片（默认显示明天的课）。点「复制」发给学生 / 家长，卡片记下已复制时间。"
+    : mode === "quiz"
+    ? "只用来记录今天有没有给学生抽背：一个学生 + 一节课一行（班课拆开每人一行），课前抽了点「课前」，课后抽了点「课后」，再点一下取消。"
+    : mode === "plan"
+    ? "每人一份当天计划，点「复制」贴到群里。系统是否已布置见卡片提示，完成情况另行记录。"
+    : mode === "chasing"
+    ? "本系统发布台账与老师明确未完成的任务催缴清单，点「复制催交信息」贴到群里催缴，复制后卡片自动收纳到底部。"
+    : mode === "classroom"
+    ? "各教室排课与自习占用情况（支持点击格子修改、拖拽排课与时间重叠两两冲突检测）。"
+    : "点每条任务右边的按钮切换 未标 → ✅ → ❌；需要说明就写在备注里。标完点「复制」，贴到群里。任务以备忘录里的最新内容为准。";
+  list.textContent = "";
+  document.getElementById('reset').hidden=mode==='assigned';
+  const healthDay = mode === "notice" ? curN : cur;
+  const health = (DATA._schedule_status || {})[healthDay];
+  const healthBox = document.getElementById("schedule-health");
+  const showHealth = !['assigned', 'chasing', 'classroom'].includes(mode) && health;
+  healthBox.className="health-box "+(health?.status==='error'?'health-error':'health-ok');
+  const shTime = value => value ? new Date(value).toLocaleString("zh-CN", {timeZone:"Asia/Shanghai", hour12:false}) : "未记录";
+  healthBox.textContent = !showHealth ? "" : health.status === "error"
+    ? "⚠️ " + healthDay + " 课表／页面未确认更新；旧内容仅供参考。上次成功核对：" + shTime(health.last_success_at) + "；本次检查：" + shTime(health.checked_at)
+    : "课表核对时间（北京时间）：" + shTime(health.checked_at);
+  if(typeof study!=='undefined' && ['plan','done'].includes(mode)){study.toolbar(list,cur,[...(DATA[cur]||[]).map(r=>r[0]),...(PLAN[cur]||[]).map(r=>r[0])]);const bar=list.querySelector('.study-toolbar');if(bar&&studySlot)studySlot.append(bar);}
+  if(mode==='assigned'){
+    document.body.setAttribute('data-mode',mode);
+    document.querySelector('.bar').style.display='';document.getElementById('days').style.display='';
+    renderAssigned();return;
+  }
+  if (showHealth && health.status === "error" && !(mode === "notice" ? (NOTICE[healthDay] || []).length : rows.length)) {
+    const warning = document.createElement("div"); warning.className = "sub";
+    warning.textContent = "读取或刷新失败，无法确认是否有课／有任务；没有可显示的旧记录。";
+    list.append(warning); document.getElementById("count").textContent = "状态未知";
+    document.getElementById("fill").style.width = "0%";
+    if(typeof study!=='undefined' && ['plan','done'].includes(mode))study.renderCards(list,cur,mode);
+    return;
+  }
+  document.body.setAttribute("data-mode", mode);
+  if (mode === "classroom") {
+    document.querySelector(".bar").style.display = "none";
+    document.getElementById("days").style.display = "none";
+    if (!document.getElementById("classroom-frame")) {
+      list.textContent = "";
+      renderClassroom();
+    }
+    return;
+  } else {
+    document.querySelector(".bar").style.display = "";
+    document.getElementById("days").style.display = "";
+  }
+  if (mode === "notice") { renderNotice(); return; }
+  if (mode === "plan") { renderPlan(); return; }
+  if (mode === "chasing") { renderChasing(); return; }
+  if (mode === "quiz") { renderQuiz(rows); const qr = quizRows(rows), n = qr.filter(r => qget(qk(r)).pre && qget(qk(r)).post).length;
+    document.getElementById("count").textContent = n + " / " + qr.length + " 课前课后都抽了";
+    document.getElementById("fill").style.width = (qr.length ? n / qr.length * 100 : 0) + "%"; return; }
+  const bottomD = [];
+  if(typeof study!=='undefined')study.renderCards(list,cur,'done',bottomD);
+  if (!rows.length) { if(typeof study!=='undefined' && study.cards(cur).length){bottomD.forEach(e=>list.append(e));summary(rows);return;} const e = document.createElement("div"); e.className = "sub"; e.textContent = (cur in DATA) ? ("🎉 " + rel(cur) + mdOf(cur) + " 暂无排课与自习任务，全天无任务安排。") : ("这天还没生成（" + rel(cur) + mdOf(cur) + " 的任务清单要先跑 tasks / sync-notes）。"); list.append(e); summary(rows); return; }
+  rows.forEach((r, ri) => {
+    const s = get(r[0]);
+    const currentTasks = getTasks(r[0], r[3]);
+    const el = document.createElement("div"); el.className = "item" + (s.c ? " copied" : "");
+    const head = document.createElement("div"); head.className = "head";
+    const name = document.createElement("div"); name.className = "name"; name.textContent = (ri+1) + ". " + r[0].replace(/[【】「」]/g, "");
+    const okn = currentTasks.filter((t,i) => taskVisible(r[0],t) && mk(s,t,i) === "ok").length;
+    const meta = document.createElement("div"); meta.className = "meta"; meta.textContent = r[1] + " · 完成 " + okn + "/" + currentTasks.filter(t => taskVisible(r[0],t)).length;
+    head.append(name, meta);
+    if (s.c){ const x = document.createElement("div"); x.className = "state"; x.textContent = "✓ 已复制 " + s.c; head.append(x); }
+    const pre = document.createElement("pre"); pre.hidden = true; pre.textContent = text(r);
+    const b = document.createElement("button"); b.type = "button"; b.className = "copy"; b.id = "copy-" + ri;
+    b.textContent = s.c ? "再复制一次" : "复制";
+    b.onclick = () => {
+      const mark = () => { s.c = new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"}); save(); render(); };
+      const fail = () => { b.textContent = "请手动选中下方文字复制"; pre.textContent = text(r); pre.hidden = false; };
+      try { navigator.clipboard.writeText(text(r)).then(mark, fail); } catch(e) { fail(); }
+    };
+    head.append(b);
+    const all = document.createElement("button"); all.type = "button"; all.className = "small"; all.textContent = "全部✅";
+    all.onclick = () => { currentTasks.forEach((t,i) => { if(taskVisible(r[0],t)) s.m[i] = "ok"; }); s.c = ""; save(); render(); };
+    head.append(all);
+    const none=document.createElement('button');none.type='button';none.className='small';none.textContent='全部未完成';
+    none.onclick=()=>{currentTasks.forEach((t,i)=>{if(taskVisible(r[0],t))s.m[i]='no';});s.c='';save();render();};head.append(none);
+    const editBtn = document.createElement("button"); editBtn.type = "button"; editBtn.className = "small edit-btn";
+    editBtn.textContent = openEditors.has(r[0]) ? "收起编辑" : "✎ 编辑/粘贴任务";
+    editBtn.onclick = () => {
+      if (openEditors.has(r[0])) openEditors.delete(r[0]);
+      else openEditors.add(r[0]);
+      render();
+    };
+    head.append(editBtn);
+    el.append(head);
+    if (openEditors.has(r[0])) {
+      const editor = document.createElement("div"); editor.className = "task-editor";
+      const tip = document.createElement("div"); tip.className = "sub"; tip.style.marginBottom = "6px"; tip.style.fontWeight = "600";
+      tip.textContent = "📋 粘贴任务文本自动识别替换（支持整段微信/群聊通知）：";
+      const ta = document.createElement("textarea"); ta.className = "editor-area"; ta.rows = 4;
+      ta.placeholder = "可直接粘贴群内任务安排，例如：\n【" + r[0] + "】10月17日任务安排\n1、单词抽背\n2、听力精练\n3、课后作业";
+      const btnRow = document.createElement("div"); btnRow.style.display = "flex"; btnRow.style.gap = "8px"; btnRow.style.marginTop = "6px"; btnRow.style.flexWrap = "wrap";
+      const applyBtn = document.createElement("button"); applyBtn.type = "button"; applyBtn.className = "small";
+      applyBtn.style.background = "var(--accent)"; applyBtn.style.color = "#ffffff"; applyBtn.style.borderColor = "var(--accent)"; applyBtn.style.fontWeight = "600";
+      applyBtn.textContent = "⚡ 识别并替换完成情况";
+      applyBtn.onclick = () => {
+        const parsed = parseTasks(ta.value);
+        if (!parsed.length) { alert("未能识别出有效任务行，请直接粘贴每行一项任务或带编号的文本。"); return; }
+        s.tk = parsed.map(x => x.text);
+        s.m = {}; s.n = {};
+        parsed.forEach((x, idx) => {
+          if (x.mark) s.m[idx] = x.mark;
+          if (x.note) s.n[idx] = x.note;
+        });
+        s.c = ""; openEditors.delete(r[0]); save(); render();
+      };
+      const resetBtn = document.createElement("button"); resetBtn.type = "button"; resetBtn.className = "small";
+      resetBtn.textContent = "恢复默认任务";
+      resetBtn.onclick = () => {
+        delete s.tk; s.m = {}; s.n = {}; s.c = ""; openEditors.delete(r[0]); save(); render();
+      };
+      const closeBtn = document.createElement("button"); closeBtn.type = "button"; closeBtn.className = "small";
+      closeBtn.textContent = "关闭";
+      closeBtn.onclick = () => { openEditors.delete(r[0]); render(); };
+      btnRow.append(applyBtn, resetBtn, closeBtn);
+      editor.append(tip, ta, btnRow);
+      el.append(editor);
+    }
+    const tasks = document.createElement("div"); tasks.className = "tasks";
+    currentTasks.forEach((t, i) => {
+      if (!taskVisible(r[0], t)) return;
+      const v = mk(s, t, i);
+      const row = document.createElement("div"); row.className = "task " + v;
+      const m = document.createElement("button"); m.type = "button"; m.className = "mark"; m.id = "m-" + ri + "-" + i;
+      m.textContent = v === "ok" ? "✅ 完成" : v === "no" ? "❌ 未完成" : "未标";
+      m.onclick = () => { s.m[i] = !v ? "ok" : v === "ok" ? "no" : ""; s.c = ""; save(); render(); };
+      const tx = document.createElement("textarea"); tx.rows=1; tx.className = "txt"; tx.id = "tx-" + ri + "-" + i;
+      tx.value = t[0];
+      tx.title = "点击可直接编辑修改任务";
+      tx.setAttribute("aria-label",r[0]+"的第"+(i+1)+"项任务");
+      const sizeText=()=>{tx.style.height="auto";tx.style.height=tx.scrollHeight+"px";};
+      const commitTask = (nextVal) => {
+        const next = (nextVal !== undefined ? nextVal : tx.value).trim() || t[0];
+        if (!Array.isArray(s.tk)) s.tk = currentTasks.map(x => x[0]);
+        if (s.tk[i] === next) return;
+        s.tk[i] = next; t[0] = next;
+        if (s.m) delete s.m[i];
+        if (s.n) delete s.n[i];
+        s.c = ""; save(); pre.textContent = text(r); summary(rows);
+      };
+      tx.oninput = () => {
+        sizeText();
+        // Keep input as a draft until commit clears marks and notifies cloud sync.
+      };
+      requestAnimationFrame(sizeText);
+      tx.onkeydown = (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); commitTask(tx.value); tx.blur(); }
+      };
+      tx.onchange = () => commitTask(tx.value);
+      tx.onblur = () => commitTask(tx.value);
+      const note = document.createElement("input"); note.className = "note"; note.id = "n-" + ri + "-" + i; note.placeholder = "备注（可不填）"; note.value = nt(s, t, i); note.setAttribute("aria-label",r[0]+"的第"+(i+1)+"项备注");
+      note.oninput = () => { s.n[i] = note.value; if (s.c) { s.c = ""; } save(); pre.textContent = text(r); summary(rows); };
+      const del = document.createElement("button"); del.type = "button"; del.className = "del-btn"; del.id = "del-" + ri + "-" + i;
+      del.textContent = "×"; del.title = "删除此任务";del.setAttribute("aria-label","删除第"+(i+1)+"项任务");
+      del.onclick = () => {
+        if (!Array.isArray(s.tk)) s.tk = currentTasks.map(x => x[0]);
+        s.tk.splice(i, 1);
+        const newM = {}, newN = {};
+        Object.keys(s.m || {}).forEach(k => {
+          const idx = Number(k);
+          if (idx < i) newM[idx] = s.m[idx];
+          else if (idx > i) newM[idx - 1] = s.m[idx];
+        });
+        Object.keys(s.n || {}).forEach(k => {
+          const idx = Number(k);
+          if (idx < i) newN[idx] = s.n[idx];
+          else if (idx > i) newN[idx - 1] = s.n[idx];
+        });
+        s.m = newM; s.n = newN; s.c = ""; save(); render();
+      };
+      row.append(m, tx, noteDisclosure(note), del); tasks.append(row);
+    });
+    const opRow = document.createElement("div"); opRow.style.display = "flex"; opRow.style.gap = "8px"; opRow.style.marginTop = "4px"; opRow.style.alignItems = "center"; opRow.style.flexWrap = "wrap";
+    const addBtn = document.createElement("button"); addBtn.type = "button"; addBtn.className = "small add-btn";
+    addBtn.textContent = "+ 添加一项任务";
+    addBtn.onclick = () => {
+      if (document.activeElement && document.activeElement.classList.contains("txt")) document.activeElement.blur();
+      if (!Array.isArray(s.tk)) s.tk = currentTasks.map(x => x[0]);
+      s.tk.push("新任务");
+      s.c = ""; save(); render();
+      requestAnimationFrame(() => {
+        const tasksEl = el.querySelectorAll(".tasks .task .txt");
+        const newTx = tasksEl[tasksEl.length - 1];
+        if (newTx) { newTx.focus(); newTx.select(); }
+      });
+    };
+    opRow.append(addBtn);
+    if (Array.isArray(s.tk)) {
+      const customTag = document.createElement("span"); customTag.className = "sub"; customTag.style.color = "var(--accent)"; customTag.textContent = "(已自定义 " + s.tk.length + " 项任务)";
+      opRow.append(customTag);
+    }
+    tasks.append(opRow);
+    el.append(tasks, pre);
+    placeCard(el, !!s.c, "done:" + cur + ":" + r[0], (ri+1) + ". " + r[0].replace(/[【】「」]/g, ""), s.c, bottomD);
+  });
+  bottomD.forEach(e => list.append(e));
+  summary(rows);
+}
+document.getElementById("reset").onclick = () => { if(mode==='assigned')return; if(typeof study!=='undefined' && ['plan','done'].includes(mode) && study.cards(cur).length){try{study.commit(cur,f=>{for(const raw of Object.keys(f)){const k=JSON.parse(raw);if((k[0]==='study-copy' && k[2]===mode) || (mode==='done' && ['study-mark','study-note'].includes(k[0])))delete f[raw];}});}catch(e){alert(e.message);return;}} if (mode === "notice") { nc = {}; nsave(); } else if (mode === "quiz") { qz = {}; qsave(); } else if (mode === "plan") { ps = {}; psave(); } else if (mode === "chasing") { ch = {}; chsave(); } else { st = {}; save(); } render(); };
+let checkCloud=null;const noticeOpened=new Set();
+// Embedded in the generated task page. Content is private owner-scoped day fields,
+// never public DATA. Card/task UUIDs survive ordering, names and page regeneration.
+class StudyTasks {
+  constructor({storage, sync, redraw, uuid = () => crypto.randomUUID()}) {
+    Object.assign(this, {storage, sync, redraw, uuid});
+    this.days = new Map(); this.drafts = new Map(); this.open = new Set();
+  }
+  static key(...parts) { return JSON.stringify(parts); }
+  static isKey(raw) {
+    try { const k = JSON.parse(raw); return Array.isArray(k) &&
+      ['study-card','study-task','study-mark','study-note','study-copy'].includes(k[0]); }
+    catch { return false; }
+  }
+  fields(day) {
+    if (!this.days.has(day)) {
+      let f = {}; try { f = JSON.parse(this.storage.getItem('wayon-study-v1:'+day) || '{}'); } catch {}
+      this.days.set(day, Object.fromEntries(Object.entries(f || {}).filter(([k]) => StudyTasks.isKey(k))));
+    }
+    return this.days.get(day);
+  }
+  capture(day) { return structuredClone(this.fields(day)); }
+  apply(day, fields) {
+    this.days.set(day, structuredClone(Object.fromEntries(Object.entries(fields).filter(([k]) => StudyTasks.isKey(k)))));
+    this.persist(day); // Unsubmitted form drafts are deliberately separate.
+  }
+  persist(day) { this.storage.setItem('wayon-study-v1:'+day, JSON.stringify(this.fields(day))); }
+  commit(day, mutate) {
+    if (!this.sync()?.ready(day)) throw Error('请先在「账户与连接」登录并读取这一天，再保存自习任务。');
+    const next = this.capture(day); mutate(next);
+    if (new TextEncoder().encode(JSON.stringify(next)).length > 150000)
+      throw Error('当天自习记录过多，请精简后保存；原记录保留。');
+    // Persist before notifying the CAS queue. A failed local write must not report success.
+    this.storage.setItem('wayon-study-v1:'+day, JSON.stringify(next)); this.days.set(day, next);
+    this.sync().observe(day);
+  }
+  cards(day) {
+    const fields=this.fields(day), cards=[];
+    for (const [raw, meta] of Object.entries(fields)) {
+      let k; try { k=JSON.parse(raw); } catch { continue; }
+      if(k[0]!=='study-card'||k.length!==2||!meta||typeof meta.studentName!=='string'||meta.archivedAt) continue;
+      const tasks=[];
+      for(const [tr, task] of Object.entries(fields)) {
+        let tk;try{tk=JSON.parse(tr);}catch{continue;}
+        if(tk[0]!=='study-task'||tk.length!==3||tk[1]!==k[1]||!task||typeof task.text!=='string')continue;
+        const mark=fields[StudyTasks.key('study-mark',k[1],tk[2])];
+        tasks.push({id:tk[2],text:task.text,order:task.order||0,
+          mark:['ok','no'].includes(mark)?mark:'',note:fields[StudyTasks.key('study-note',k[1],tk[2])]||''});
+      }
+      tasks.sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id));
+      cards.push({id:k[1],...meta,tasks});
+    }
+    return cards.sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt))||a.id.localeCompare(b.id));
+  }
+  create(day, draft) {
+    const name=draft.studentName.trim(), time=draft.time.trim();
+    const tasks=draft.text.split(/\r?\n/).map(x=>x.trim().replace(/^\d+[.、)）]\s*/, '')).filter(Boolean);
+    if(!name||name.length>80||time.length>80) throw Error('请填写学员姓名（80字以内），时间可不填。');
+    if(!tasks.length||tasks.length>40||tasks.some(t=>t.length>500))throw Error('请每行填写一项任务，最多40项，每项500字以内。');
+    const id=draft.id;
+    if(this.fields(day)[StudyTasks.key('study-card',id)])return id; // Same submit cannot create two cards.
+    this.commit(day, f=>{
+      f[StudyTasks.key('study-card',id)]={studentName:name,time,createdAt:new Date().toISOString()};
+      tasks.forEach((text,order)=>f[StudyTasks.key('study-task',id,this.uuid())]={text,order});
+    });
+    this.drafts.delete(day); return id;
+  }
+  change(day,card,task,part,value) {
+    this.commit(day,f=>{
+      if(part==='text') {
+        if(!value.trim()||value.length>500)throw Error('任务需为1至500字。');
+        const key=StudyTasks.key('study-task',card,task), old=f[key];
+        if(!old||old.text===value.trim())return;
+        f[key]={...old,text:value.trim()};
+        delete f[StudyTasks.key('study-mark',card,task)];delete f[StudyTasks.key('study-note',card,task)];
+      } else if(part==='mark') {
+        const key=StudyTasks.key('study-mark',card,task);
+        if(!value)delete f[key];else if(['ok','no'].includes(value))f[key]=value;
+      } else if(part==='note') {
+        if(value.length>2000)throw Error('备注请控制在2000字以内。');
+        const key=StudyTasks.key('study-note',card,task);if(value)f[key]=value;else delete f[key];
+      }
+      // Copied content is now stale. This never implies anything was sent to a student.
+      delete f[StudyTasks.key('study-copy',card,'done')];
+      if(part==='text')delete f[StudyTasks.key('study-copy',card,'plan')];
+    });
+  }
+  bulk(day,card,mark) {
+    const c=this.cards(day).find(c=>c.id===card);if(!c)return;
+    this.commit(day,f=>{for(const t of c.tasks)f[StudyTasks.key('study-mark',card,t.id)]=mark;
+      delete f[StudyTasks.key('study-copy',card,'done')];});
+  }
+  addTask(day,cardId,text='新任务') {
+    const card=this.cards(day).find(c=>c.id===cardId);if(!card)return;
+    const nextOrder=card.tasks.length?Math.max(...card.tasks.map(t=>t.order||0))+1:0;
+    const taskId=this.uuid();
+    this.commit(day,f=>{
+      f[StudyTasks.key('study-task',cardId,taskId)]={text:(text||'新任务').slice(0,500),order:nextOrder};
+      delete f[StudyTasks.key('study-copy',cardId,'done')];delete f[StudyTasks.key('study-copy',cardId,'plan')];
+    });
+    return taskId;
+  }
+  deleteTask(day,cardId,taskId) {
+    this.commit(day,f=>{
+      delete f[StudyTasks.key('study-task',cardId,taskId)];delete f[StudyTasks.key('study-mark',cardId,taskId)];
+      delete f[StudyTasks.key('study-note',cardId,taskId)];
+      delete f[StudyTasks.key('study-copy',cardId,'done')];delete f[StudyTasks.key('study-copy',cardId,'plan')];
+    });
+  }
+  copied(day,card,mode) {return this.fields(day)[StudyTasks.key('study-copy',card,mode)]||'';}
+  stats(day,mode) {const cards=this.cards(day);return {total:cards.length,copied:cards.filter(c=>this.copied(day,c.id,mode)).length};}
+  copyText(day,card,mode) {
+    const d=day.split('-'),date=Number(d[1])+'月'+Number(d[2])+'日';
+    return '【'+card.studentName+'】'+date+(mode==='plan'?'自习任务安排':'自习任务完成情况')+'\n\n'+
+      card.tasks.map((t,i)=>(i+1)+'、'+t.text+(mode==='done'?' '+({ok:'✅',no:'❌'}[t.mark]||'未标记')+(t.note?'（'+t.note+'）':''):'')).join('\n');
+  }
+  toolbar(host,day,names) {
+    const bar=document.createElement('section');bar.className='study-toolbar';
+    const add=document.createElement('button');add.type='button';add.id='study-add';add.className='small';add.textContent='＋ 新增自习任务';
+    add.onclick=()=>{if(!this.drafts.has(day))this.drafts.set(day,{id:this.uuid(),studentName:'',time:'',text:''});this.redraw();};bar.append(add);
+    const hint=document.createElement('span');hint.className='meta';hint.textContent='并入'+day+'的今日任务和完成情况';bar.append(hint);host.append(bar);
+    const draft=this.drafts.get(day);if(!draft)return;
+    const form=document.createElement('form');form.id='study-form';form.className='item study-form';
+    const heading=document.createElement('h3');heading.textContent='新增自习任务 · '+day;form.append(heading);
+    const error=document.createElement('p');error.className='study-error';error.setAttribute('role','alert');
+    const field=(label,tag,prop,placeholder)=>{
+      const l=document.createElement('label');l.textContent=label;
+      const input=document.createElement(tag);input.id='study-'+prop;input.value=draft[prop];input.placeholder=placeholder;
+      input.required=prop!=='time';input.maxLength=prop==='text'?20040:80;
+      if(tag==='textarea')input.rows=5;
+      input.oninput=()=>{draft[prop]=input.value;error.textContent='';};l.append(input);form.append(l);return input;
+    };
+    const name=field('学员','input','studentName','选择或输入学员姓名');name.setAttribute('list','study-students');
+    const dl=document.createElement('datalist');dl.id='study-students';for(const n of new Set(names)){const o=document.createElement('option');o.value=n;dl.append(o);}form.append(dl);
+    field('自习时间（选填）','input','time','例如 14:00–16:00');
+    field('任务（一行一项）','textarea','text','每行填写一项自习任务');
+    const actions=document.createElement('div');actions.className='study-actions';
+    const save=document.createElement('button');save.className='copy';save.type='submit';save.textContent='保存到今日任务';
+    const cancel=document.createElement('button');cancel.type='button';cancel.className='small';cancel.textContent='取消';cancel.onclick=()=>{this.drafts.delete(day);this.redraw();};actions.append(save,cancel);form.append(error,actions);
+    form.onsubmit=e=>{e.preventDefault();try{this.create(day,draft);this.redraw();}catch(e){error.textContent=e.message;}};host.append(form);
+  }
+  renderCards(host,day,mode,bottom) {
+    const folded=[];
+    for(const card of this.cards(day)) {
+      const identity=day+':'+card.id+':'+mode,copied=this.copied(day,card.id,mode);
+      const cleanName=card.studentName.replace(/[【】「」]/g, '');
+      if(copied&&!this.open.has(identity)) {
+        const r=document.createElement('div');r.className='item folded study-folded';r.tabIndex=0;r.setAttribute('role','button');r.setAttribute('aria-expanded','false');
+        const when=(typeof copied==='string'&&copied.includes('T'))?new Date(copied).toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'}):(copied||'');
+        r.textContent=cleanName+' · 自习 ✅ 已复制 '+when+' ▸';
+        const go=()=>{this.open.add(identity);this.redraw();};r.onclick=go;r.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go();}};
+        if(bottom)bottom.push(r);else folded.push(r);
+        continue;
+      }
+      const el=document.createElement('section');el.className='item study-card'+(copied?' copied':'');el.dataset.studyId=card.id;
+      const head=document.createElement('div');head.className='head';
+      const name=document.createElement('div');name.className='name';name.textContent=cleanName;
+      const meta=document.createElement('div');meta.className='meta';meta.textContent='自习'+(card.time?' · '+card.time:'')+(mode==='done'?' · 完成 '+card.tasks.filter(t=>t.mark==='ok').length+'/'+card.tasks.length:'');
+      head.append(name,meta);
+      const error=document.createElement('p');error.className='study-error';error.setAttribute('role','alert');
+      const run=fn=>{try{fn();this.redraw();}catch(e){error.textContent=e.message;}};
+      const copy=document.createElement('button');copy.type='button';copy.className='copy';copy.textContent=copied?'再次复制':'复制';
+      const fallback=document.createElement('textarea');fallback.className='study-copy-fallback';fallback.hidden=true;fallback.readOnly=true;fallback.setAttribute('aria-label','可手动复制的任务文本');
+      copy.onclick=()=>{
+        const value=this.copyText(day,card,mode);
+        const success=()=>run(()=>{this.commit(day,f=>f[StudyTasks.key('study-copy',card.id,mode)]=new Date().toISOString());this.open.delete(identity);});
+        const fail=()=>{error.textContent='复制失败，请选中下方文字手动复制。';fallback.hidden=false;fallback.value=value;};
+        const tmp=document.createElement('textarea');tmp.value=value;tmp.className='study-copy-temp';document.body.append(tmp);tmp.focus();tmp.select();
+        let ok=false;try{ok=document.execCommand('copy')===true;}catch{}tmp.remove();
+        if(ok)success();else if(navigator.clipboard?.writeText)navigator.clipboard.writeText(value).then(success,fail);else fail();
+      };head.append(copy);
+      if(copied){const undo=document.createElement('button');undo.type='button';undo.className='small';undo.textContent='重置复制标记';undo.onclick=()=>run(()=>this.commit(day,f=>delete f[StudyTasks.key('study-copy',card.id,mode)]));head.append(undo);}
+      const remove=document.createElement('button');remove.className='small';remove.type='button';remove.textContent='移除';
+      remove.onclick=()=>{if(confirm('移除这张自习任务卡？已保存的历史记录仍会保留。'))run(()=>this.commit(day,f=>{
+        const key=StudyTasks.key('study-card',card.id);f[key]={...f[key],archivedAt:new Date().toISOString()};}));};head.append(remove);
+      if(copied){const fold=document.createElement('button');fold.type='button';fold.className='small';fold.textContent='收起 ▴';fold.onclick=()=>{this.open.delete(identity);this.redraw();};head.append(fold);}
+      if(mode==='done') {
+        const batch=document.createElement('div');batch.className='study-actions';
+        for(const [label,mark] of [['全部完成','ok'],['全部未完成','no']]){const b=document.createElement('button');b.type='button';b.className='small';b.textContent=label;b.onclick=()=>run(()=>this.bulk(day,card.id,mark));batch.append(b);}head.append(batch);
+      }
+      el.append(head);
+      const tasksDiv=document.createElement('div');tasksDiv.className='tasks';
+      card.tasks.forEach((task,i)=>{
+        const row=document.createElement('div');row.className='task study-task'+(mode==='done'&&task.mark?' '+task.mark:'');
+        const taskMain=document.createElement('div');taskMain.className='study-task-main';
+        const num=document.createElement('span');num.className='task-num';num.textContent=(i+1)+'、';
+        const tx=document.createElement('textarea');tx.rows=1;tx.className='txt';tx.value=task.text;tx.title='点击可直接编辑修改任务';
+        tx.setAttribute('aria-label',cleanName+'的第'+(i+1)+'项任务');
+        const sizeText=()=>{tx.style.height='auto';tx.style.height=tx.scrollHeight+'px';};
+        const commitTask = (nextVal) => {
+          const next = (nextVal !== undefined ? nextVal : tx.value).trim() || task.text;
+          if (next === task.text) return;
+          task.text = next;
+          run(()=>this.change(day,card.id,task.id,'text',next));
+        };
+        tx.oninput = () => { sizeText(); };
+        requestAnimationFrame(sizeText);
+        tx.onkeydown = (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            commitTask(tx.value);
+            tx.blur();
+          }
+        };
+        tx.onchange = () => commitTask(tx.value);
+        tx.onblur = () => commitTask(tx.value);
+        taskMain.append(num,tx);row.append(taskMain);
+        if(mode==='done'){
+          const note=document.createElement('input');note.className='note';note.placeholder='备注（可不填）';note.setAttribute('aria-label',task.text+' 备注');note.maxLength=2000;note.value=task.note;
+          note.oninput=()=>{try{this.change(day,card.id,task.id,'note',note.value);error.textContent='';}catch(e){error.textContent=e.message;}};
+          row.append(noteDisclosure(note));
+          const buttons=document.createElement('div');buttons.className='study-marks';
+          for(const [label,mark] of [['✅','ok'],['❌','no']]){
+            const b=document.createElement('button');b.type='button';b.className='study-mark'+(task.mark===mark?' on':'');b.textContent=label;
+            b.setAttribute('aria-label',task.text+' '+(mark==='ok'?'完成':'未完成'));b.setAttribute('aria-pressed',String(task.mark===mark));
+            b.onclick=()=>run(()=>this.change(day,card.id,task.id,'mark',task.mark===mark?'':mark));buttons.append(b);
+          }
+          row.append(buttons);
+        }
+        const del=document.createElement('button');del.type='button';del.className='del-btn';del.textContent='×';del.title='删除此任务';
+        del.setAttribute('aria-label','删除第'+(i+1)+'项任务');del.onclick=()=>run(()=>this.deleteTask(day,card.id,task.id));
+        row.append(del);tasksDiv.append(row);
+      });
+      const opRow=document.createElement('div');opRow.className='study-op-row';
+      const addBtn=document.createElement('button');addBtn.type='button';addBtn.className='small add-btn';addBtn.textContent='+ 添加一项任务';
+      addBtn.onclick=()=>run(()=>this.addTask(day,card.id,'新任务'));
+      opRow.append(addBtn);tasksDiv.append(opRow);
+      el.append(tasksDiv,error,fallback);
+      if(copied){if(bottom)bottom.push(el);else folded.push(el);}else host.append(el);
+    }
+    if(!bottom)folded.forEach(el=>host.append(el));
+  }
+}
+
+const study = new StudyTasks({storage:localStorage,sync:()=>checkCloud,redraw:()=>render()});
+load(); pload(); render();
+// Manual checks use semantic task keys; array order never identifies a mark.
+
+const readLocal = (k) => {try{return JSON.parse(localStorage.getItem(k)||'{}')||{};}catch(e){return {};}};
+function taskKeys(day, doneOverride) {
+  const done = doneOverride || (day === cur ? st : readLocal('wayon-done-' + day));
+  const result = [];
+  for(const r of DATA[day] || []) {
+    const seen = {};
+    const d = done[r[0]];
+    const tasks = (d && Array.isArray(d.tk)) ? d.tk.map(x => [x, '', '']) : (r[3] || []);
+    tasks.forEach((t, i) => {
+      const occurrence = seen[t[0]] || 0; seen[t[0]] = occurrence + 1;
+      const classIds = ((DATA._cids || {})[day] || {})[r[0]] || [];
+      result.push({name: r[0], i, key: ['task', r[0], r[1], JSON.stringify(classIds.slice().sort()), t[0], occurrence]});
+    });
+  }
+  return result;
+}
+function captureChecks(day) {
+  const done=day===cur ? st : readLocal('wayon-done-'+day);
+  const quiz=day===cur && qzDay===cur ? qz : readLocal(qkey(day));
+  const plan=day===cur ? ps : readLocal('wayon-plan-'+day);
+  const out={};
+  const chasingCopies=day===chDay ? ch : readLocal(chkey(day));
+  for(const [name,time] of Object.entries(chasingCopies))if(typeof time==='string' && time)out[JSON.stringify(['chasing-copy',name])]=time;
+  for(const {name,i,key:k} of taskKeys(day, done)) {
+    const d=done[name];if(!d) continue;
+    if(Object.hasOwn(d.m||{},i)) out[JSON.stringify([...k,'mark'])]=d.m[i];
+    if(Object.hasOwn(d.n||{},i)) out[JSON.stringify([...k,'note'])]=d.n[i];
+  }
+  for(const [name,d] of Object.entries(done)) {
+    if(d.c) out[JSON.stringify(['done-copy',name])]=d.c;
+    if(Array.isArray(d.tk)) out[JSON.stringify(['student-tasks',name])]=d.tk;
+  }
+  for(const [name,t] of Object.entries(plan)) if(t) out[JSON.stringify(['plan-copy',name])]=t;
+  for(const [name,q] of Object.entries(quiz)) for(const part of ['pre','post'])
+    if(q[part]===true) out[JSON.stringify(['quiz',name,part])]=true;
+  for(const [name,val] of Object.entries(day===today ? cstops : {})) {
+    if(val && (Array.isArray(val) || Array.isArray(val.stopped_ids)))
+      out[JSON.stringify(['chasing-stop',name])]=val;
+  }
+  const notices = day===ncDay ? nc : readLocal(nkey(day));
+  for(const [id, value] of Object.entries(notices)) {
+    let k; try{k=JSON.parse(id);}catch(e){continue;}
+    if(Array.isArray(k) && k.length===2 && value?.copied_at && typeof value.signature==='string') out[JSON.stringify(['notice-copy-v2',day,...k])]=value;
+  }
+  if(typeof study!=='undefined')Object.assign(out,study.capture(day));
+  return out;
+}
+function applyChecks(day, fields) {
+  if(typeof study!=='undefined')study.apply(day,fields);
+  const done={},quiz={},plan={},notices={},chasingCopies={};
+  for(const [raw,value] of Object.entries(fields)) {
+    let k;try{k=JSON.parse(raw);}catch(e){continue;}
+    if(k[0]==='student-tasks' && Array.isArray(value)) {
+      (done[k[1]] ||= {m:{},n:{},c:''}).tk = value;
+    }
+  }
+  const tasks=new Map(taskKeys(day, done).map(x=>[JSON.stringify(x.key),x]));
+  for(const [raw,value] of Object.entries(fields)) {
+    let k;try{k=JSON.parse(raw);}catch(e){continue;}
+    if(k[0]==='task') {
+      const part=k.pop(), match=tasks.get(JSON.stringify(k));if(!match)continue;
+      const d=done[match.name] ||= {m:{},n:{},c:''};
+      if(part==='mark' && ['', 'ok','no'].includes(value))d.m[match.i]=value;
+      if(part==='note' && typeof value==='string')d.n[match.i]=value;
+    } else if(k[0]==='quiz' && ['pre','post'].includes(k[2]) && value===true) {
+      (quiz[k[1]] ||= {pre:false,post:false})[k[2]]=true;
+    } else if(k[0]==='plan-copy' && typeof value==='string')plan[k[1]]=value;
+    else if(k[0]==='chasing-copy' && k.length===2 && typeof value==='string')chasingCopies[k[1]]=value;
+    else if(k[0]==='done-copy' && typeof value==='string')(done[k[1]] ||= {m:{},n:{},c:''}).c=value;
+    else if(k[0]==='chasing-stop') {
+      if(value && (typeof value==='object' || Array.isArray(value))) cstops[k[1]]=value;
+      else if(value===null) delete cstops[k[1]];
+    } else if(k[0]==='notice-copy-v2' && k[1]===day && k.length===4 && value && typeof value.signature==='string' && value.copied_at) {
+      notices[JSON.stringify(k.slice(2))]=value;
+    }
+  }
+  localStorage.setItem(chkey(day),JSON.stringify(chasingCopies));
+  if(day===chDay || day===today)ch=chasingCopies;
+  localStorage.setItem(nkey(day),JSON.stringify(notices));
+  if(day===ncDay) nc=notices;
+  localStorage.setItem(cskey, JSON.stringify(cstops));
+  // Retain the legacy device snapshot once; never silently upload old index-based marks.
+  const backup='wayon-before-cloud-'+day;
+  if(!localStorage.getItem(backup))localStorage.setItem(backup,JSON.stringify({done:readLocal('wayon-done-'+day),quiz:readLocal(qkey(day)),plan:readLocal('wayon-plan-'+day)}));
+  localStorage.setItem('wayon-done-'+day,JSON.stringify(done));
+  localStorage.setItem(qkey(day),JSON.stringify(quiz));
+  localStorage.setItem('wayon-plan-'+day,JSON.stringify(plan));
+  if(day===cur) {st=done;ps=plan;qz=quiz;qzDay=day;}
+  if(day===cur || (mode==='chasing' && day===today) || (mode==='notice' && day===curN)) {
+    if (document.activeElement && document.activeElement.closest && document.activeElement.closest('#list')) {
+      const activeEl = document.activeElement;
+      const onDone = () => { activeEl.removeEventListener('blur', onDone); render(); };
+      activeEl.addEventListener('blur', onDone, { once: true });
+    } else { render(); }
+  }
+}
+async function refreshPublishedChasing(module) {
+  const response=await fetch('./workspace-source.html?chasing='+Date.now(),{cache:'no-store',credentials:'omit'});
+  if(!response.ok)throw Error('CHASING_SNAPSHOT_UNAVAILABLE');
+  const snapshot=module.publishedChasing(await response.text());
+  const incoming=Date.parse(snapshot._chasing_checked_at),current=Date.parse(DATA._chasing_checked_at);
+  if(Number.isFinite(current) && incoming<current)return DATA._chasing_checked_at;
+  if(JSON.stringify(snapshot._chasing)===JSON.stringify(DATA._chasing) && snapshot._chasing_checked_at===DATA._chasing_checked_at)return DATA._chasing_checked_at;
+  for(const key of ['_chasing','_chasing_checked_at','_chasing_status','_chasing_unknown','_reminder_admission']){
+    if(Object.hasOwn(snapshot,key))DATA[key]=snapshot[key];else delete DATA[key];
+  }
+  CHASING=JSON.parse(JSON.stringify(snapshot._chasing));
+  for(const item of privateChasingItems){
+    let row=CHASING.find(x=>x.name===item.name);
+    if(!row){row={name:item.name,uncompleted_details:[],uncompleted_ids:[],uncompleted:[]};CHASING.push(row);}
+    if(!row.uncompleted_details.some(x=>String(x.id)===String(item.id))){
+      row.uncompleted_details.push(item);(row.uncompleted_ids ||= []).push(item.id);(row.uncompleted ||= []).push(item.title);
+    }
+  }
+  if(mode==='chasing')render();
+  return DATA._chasing_checked_at;
+}
+const syncEl=document.getElementById('sync');
+const setSync=t=>{syncEl.textContent=t;};
+function push(){checkCloud?.observe(cur);}
+function watch(){void checkCloud?.open(currentCloudDay());}
+function npush(){checkCloud?.observe(curN);}
+
+function nwatch(){if(checkCloud && !noticeOpened.has(curN)){noticeOpened.add(curN);void checkCloud.open(curN);}}
+function currentCloudDay(){return mode==='notice' ? curN : mode==='chasing' ? today : cur;}
+setSync('本机已保存；正在检查云端配置…');
+import('./checks-sync.mjs?v=20261020-01').then(m=>m.boot({config: {"enabled": true, "url": "https://qcjyllyatiawkftwqfjf.supabase.co", "key": "sb_publishable_ljy3uwM1zNach70iWxqWdA_QYVGLvEo"},capture:captureChecks,apply:applyChecks,status:setSync,currentDay:currentCloudDay,hydrate:(client,owner)=>hydrateChasing(m,client,owner),refreshPublished:()=>refreshPublishedChasing(m)}))
+.then(x=>{checkCloud=x;if(mode==='notice')nwatch();else watch();}).catch(err=>{
+  console.error("Cloud boot error:", err);
+  const msg=(err&&(err.message||String(err)))||"";
+  setSync(msg?("云端组件不可用（" + msg + "），本机记录保留；请重试"):"云端组件不可用，本机记录保留；请重试");
+});
+</script>
+
+<script>
+// Translate interface controls only. Student data, copy text, state and aria identities stay intact.
+(() => {
+  const labels = new Map(Object.entries({
+    '今天':'Today','待催':'Follow-ups','安排':'Planning',
+    '任务安排':'Tasks','完成记录':'Progress','课前 / 课后抽背':'Vocabulary Check',
+    '明日课程':'Tomorrow’s Classes','课程通知':'Class Notices','教室':'Rooms','教室使用':'Rooms',
+    '回到今天':'Today','回到明天':'Tomorrow','⟲ 回到今天':'⟲ Back to Today','⟲ 回到明天':'⟲ Back to Tomorrow',
+    '全部完成':'All Done','全部✅':'All Done','全部未完成':'All Not Done',
+    '复制':'Copy','再次复制':'Copy Again','再复制一次':'Copy Again',
+    '复制催交信息':'Copy Reminder','复制失败，请重试':'Retry Copy',
+    '请手动选中下方文字复制':'Copy Manually','已复制并收纳 · 展开':'Copied · Expand',
+    '停止催缴':'Stop Reminders','恢复催缴':'Resume Reminders',
+    '重置复制标记':'Reset Copy','移除':'Remove','撤销':'Undo','收起':'Collapse','收起 ▴':'Collapse',
+    '添加备注':'Add Note','查看 / 编辑备注':'Edit Note',
+    '＋ 新增自习任务':'+ Self-study Task','+ 添加一项任务':'+ Add Task',
+    '保存到今日任务':'Save Tasks','取消':'Cancel','关闭':'Close',
+    '收起编辑':'Close Editor','✎ 编辑/粘贴任务':'Edit Tasks',
+    '⚡ 识别并应用任务':'Apply Tasks','⚡ 识别并替换完成情况':'Apply Progress',
+    '恢复默认任务':'Restore Default','重置当前板块记录':'Reset View',
+    '设置与账户':'Settings & Account','账户与连接':'Account & Connection',
+    '登录':'Sign In','重新连接':'Reconnect','处理冲突':'Resolve Conflict',
+    '下载旧本机记录':'Download Backup','退出':'Sign Out',
+    '未标':'Unmarked','✅ 完成':'✅ Done','❌ 未完成':'❌ Not Done',
+    '清空':'Clear','从大厅删除':'Remove from Hall'
+  }));
+  const translate = () => {
+    for (const e of document.querySelectorAll('button, summary')) {
+      // Do not replace controls containing child widgets or user-supplied task text.
+      if (e.children.length) continue;
+      const text=e.textContent.trim();
+      const value=labels.get(text) || (/^(?:✅ |☐ )?课前$/.test(text)?'Before Class'+(text.includes('✅')?' ✓':''):
+        /^(?:✅ |☐ )?课后$/.test(text)?'After Class'+(text.includes('✅')?' ✓':''):null);
+      if (value && value!==text) e.textContent=value;
+    }
+  };
+  new MutationObserver(translate).observe(document.body,{subtree:true,childList:true,characterData:true});
+  translate();
+})();
+
+</script>
+<script>/* Read-only homework refresh through the authenticated backend. No teaching mutations. */
+(() => {
+  if (window.wayonWorkflowTools || !document.body.classList.contains('wayon-workbench')) return;
+  window.wayonWorkflowTools = true;
+  const workflowUrl = 'https://github.com/wjdeggzh0316-tech/Wayon/actions/workflows/wayon_completion_refresh.yml';
+  const svg = path => '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+path+'</svg>';
+  const refreshIcon = svg('<path d="M20 7v5h-5M4 17v-5h5"/><path d="M6.1 6a8 8 0 0 1 13.2 3M4.7 15A8 8 0 0 0 18 18"/>');
+  const listIcon = svg('<path d="m3 6 1 1 2-2M9 6h12M3 12l1 1 2-2M9 12h12M3 18l1 1 2-2M9 18h12"/>');
+  const style = document.createElement('style');
+  style.textContent = '.wayon-workbench #workflow-tools{display:flex;align-items:center;gap:6px;flex:none}.wayon-workbench .workflow-icon{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;padding:0;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--muted);cursor:pointer;text-decoration:none}.wayon-workbench .workflow-icon:hover{color:var(--accent);border-color:var(--accent)}.wayon-workbench .workflow-icon svg{width:19px;height:19px;pointer-events:none}.wayon-workbench #workflow-guide{box-sizing:border-box;width:min(460px,calc(100vw - 32px));max-height:85vh;padding:24px;border:1px solid var(--line);border-radius:20px;background:var(--card);color:var(--fg);box-shadow:0 20px 80px #0003;font:inherit}.wayon-workbench #workflow-guide::backdrop{background:#0005}.wayon-workbench #workflow-guide h2{font-size:21px;margin:0 0 18px;letter-spacing:-.025em}.wayon-workbench #workflow-guide h3{font-size:13px;color:var(--muted);margin:18px 0 8px}.wayon-workbench #workflow-guide ul{list-style:none;padding:0;margin:0;display:grid;gap:6px}.wayon-workbench #workflow-guide li button{display:block;width:100%;min-height:44px;text-align:left;border:0;border-radius:9px;padding:10px 12px;background:var(--bg);color:var(--fg);font:inherit;cursor:pointer}.wayon-workbench #workflow-guide .workflow-close{float:right}.wayon-workbench #workflow-guide p{font-size:12px;color:var(--muted);line-height:1.65}.wayon-workbench #completion-refresh-state:empty{display:none}.wayon-workbench #completion-refresh-state{font-size:11px;color:var(--muted);line-height:1.5;margin:0;max-width:320px}.wayon-workbench #completion-refresh-state[data-state="unknown"]{color:var(--warn,#9a6700)}@media(max-width:599px){.wayon-workbench .workflow-icon{width:44px;height:44px}.wayon-workbench .workspace-sub-bar{flex-wrap:wrap}.wayon-workbench #completion-refresh-state{max-width:100%;flex-basis:100%}}';
+  document.head.append(style);
+  const layoutStyle=document.createElement('style');layoutStyle.id='workflow-layout';layoutStyle.textContent="\n.wayon-workbench .workspace-sub-bar{align-items:flex-start;gap:8px}\n.wayon-workbench #workflow-tools{margin-left:auto;align-items:center;position:relative}\n.wayon-workbench #workflow-checks{position:static;flex:none}\n.wayon-workbench #workflow-checks[hidden]{display:none}\n.wayon-workbench #workflow-checks>summary{list-style:none}\n.wayon-workbench #workflow-checks>summary::-webkit-details-marker{display:none}\n.wayon-workbench #workflow-checks[open]>summary{color:var(--accent);border-color:var(--accent)}\n.wayon-workbench #workflow-checks-panel{position:absolute;right:0;top:calc(100% + 8px);z-index:60;box-sizing:border-box;width:min(380px,calc(100vw - 32px));padding:14px 16px;display:grid;gap:9px;border:1px solid var(--line);border-radius:14px;background:var(--card);box-shadow:0 12px 36px #0002;text-align:left}\n.wayon-workbench #workflow-checks:not([open])>#workflow-checks-panel{display:none}\n.wayon-workbench #workflow-checks-panel #schedule-health,.wayon-workbench #workflow-checks-panel #completion-refresh-state{margin:0;padding:0;max-width:none;min-width:0;font-size:12px;line-height:1.6;overflow-wrap:anywhere;white-space:normal}\n.wayon-workbench #workflow-checks-panel #schedule-health:empty,.wayon-workbench #workflow-checks-panel #completion-refresh-state:empty{display:none!important}\n.wayon-workbench #workflow-checks-panel #schedule-health.health-ok{display:flex;align-items:baseline;gap:6px}\n@media(max-width:599px){.wayon-workbench #workflow-tools{gap:6px}.wayon-workbench #workflow-checks-panel{width:min(340px,calc(100vw - 32px))}}\n";document.head.append(layoutStyle);
+  const guide = document.createElement('dialog'); guide.id = 'workflow-guide'; guide.setAttribute('aria-labelledby','workflow-guide-title');
+  const close = document.createElement('button');close.type='button';close.className='workflow-icon workflow-close';close.title='Close';close.setAttribute('aria-label','Close workflow guide');close.textContent='×';close.onclick=()=>guide.close();
+  const heading=document.createElement('h2');heading.id='workflow-guide-title';heading.textContent='Daily Workflow';guide.append(close,heading);
+  for (const [title, entries] of [
+    ['Before work', [['Tasks · 核对今日安排','tab-plan'],['Assigned · 查看实际已布置','tab-assigned'],['Follow-ups · 处理待催作业','tab-chasing']]],
+    ['During & after work', [['Progress · 记录完成情况与备注','tab-done'],['Vocabulary · 记录线下抽背','tab-quiz'],['Notices · 核对明日课程通知','nav-notice'],['Rooms · 核对教室冲突','nav-rooms']]]
+  ]) {
+    const h=document.createElement('h3');h.textContent=title;const ul=document.createElement('ul');
+    for(const [text,id] of entries){const li=document.createElement('li'),b=document.createElement('button');b.type='button';b.textContent=text;b.onclick=()=>{guide.close();if(id.startsWith('tab-'))document.getElementById('nav-today')?.click();document.getElementById(id)?.click();};li.append(b);ul.append(li);}guide.append(h,ul);
+  }
+  const note=document.createElement('p');note.textContent='此处是操作顺序。复制不等于已发送，页面展示不等于归档成功；18:10 归档结果以当次报告为准。';guide.append(note);
+  const refreshNote=document.createElement('p');refreshNote.textContent='刷新作业状态：打开 GitHub → Run workflow。只重新读取已登记作业，不布置作业、不发微信。完成后重新加载工作台查看核对时间。';guide.append(refreshNote);document.body.append(guide);
+  guide.addEventListener('click',event=>{if(event.target===guide){const r=guide.getBoundingClientRect();if(event.clientX<r.left||event.clientX>r.right||event.clientY<r.top||event.clientY>r.bottom)guide.close();}});
+  const tools=document.createElement('div');tools.id='workflow-tools';
+  let refresh=document.createElement('a');refresh.id='completion-refresh';refresh.className='workflow-icon';refresh.href=workflowUrl;refresh.target='_blank';refresh.rel='noopener noreferrer';refresh.title='Refresh homework status · 在 GitHub 点击 Run workflow';refresh.setAttribute('aria-label','Refresh homework status: open GitHub, then Run workflow');refresh.innerHTML=refreshIcon;
+  const button=document.createElement('button');button.type='button';button.className='workflow-icon';button.id='workflow-guide-open';button.title='Daily workflow · 上下班操作顺序';button.setAttribute('aria-label','Open daily workflow');button.innerHTML=listIcon;button.onclick=()=>guide.showModal();tools.append(button,refresh);
+  const status=document.createElement('p');status.id='completion-refresh-state';status.setAttribute('role','status');
+  const checks=document.createElement('details');checks.id='workflow-checks';
+  const checksToggle=document.createElement('summary');checksToggle.className='workflow-icon';checksToggle.title='Check times';checksToggle.setAttribute('aria-label','Check times · 查看核对时间');checksToggle.setAttribute('aria-controls','workflow-checks-panel');
+  checksToggle.innerHTML=svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>');
+  const checksPanel=document.createElement('div');checksPanel.id='workflow-checks-panel';checksPanel.setAttribute('role','group');checksPanel.setAttribute('aria-label','核对时间与刷新进度');
+  checks.append(checksToggle,checksPanel);tools.prepend(checks);
+  let closeChecks=0;
+  checks.addEventListener('mouseenter',()=>{clearTimeout(closeChecks);if(matchMedia('(hover:hover)').matches)checks.open=true;});
+  checks.addEventListener('mouseleave',()=>{clearTimeout(closeChecks);closeChecks=setTimeout(()=>{if(!checks.contains(document.activeElement))checks.open=false;},150);});
+  checks.addEventListener('focusout',()=>queueMicrotask(()=>{if(!checks.contains(document.activeElement))checks.open=false;}));
+  document.addEventListener('pointerdown',event=>{if(!checks.contains(event.target))checks.open=false;});
+  document.addEventListener('keydown',event=>{if(event.key==='Escape'&&checks.open){checks.open=false;checksToggle.focus();}});
+
+  let working=false,pending=null;
+  const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
+  const message=(text,state='unknown')=>{status.textContent=text;status.dataset.state=state;checks.open=true;};
+  const runRefresh=async()=>{
+    if(working)return;
+    const api=globalThis.wayonRefreshAPI;if(!api?.enabled)return;
+    working=true;refresh.disabled=true;refresh.setAttribute('aria-busy','true');
+    const deadline=Date.now()+12*60*1000;
+    try{
+      if(!pending){
+        pending=crypto.randomUUID();
+        message('正在请求刷新…');
+        const result=await api.start(pending);
+        if(result.state==='busy'){pending=null;message('已有状态刷新正在运行，请稍后查看。');return;}
+        if(result.request_id)pending=result.request_id;
+        if(result.state==='failed'){pending=null;message('后台未能启动刷新，请检查部署权限。');return;}
+      }
+      while(Date.now()<deadline){
+        const result=await api.status(pending);
+        if(result.state==='failed'){pending=null;message('刷新未全部完成；请以最近核对时间为准。');return;}
+        if(result.state==='succeeded'){
+          message('核对已完成，正在更新页面…');
+          const response=await fetch('completion-refresh-status.json?v='+Date.now(),{cache:'no-store',credentials:'omit'});
+          const value=response.ok?await response.json():null;
+          if(value?.request_id===pending){
+            if(value.status!=='verified'||value.page_rebuilt!==true){pending=null;message('本次核对未完整完成，保留上次结果。');return;}
+            const date=new Date(value.checked_at);
+            if(!Number.isFinite(date.valueOf()))throw Error('RESULT_UNKNOWN');
+            const applied=Date.parse(await api.reloadPublished());
+            if(!Number.isFinite(applied)||applied<date.valueOf()){await pause(4000);continue;}
+            message('作业状态已更新 · '+date.toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false}),'verified');pending=null;return;
+          }
+        }else message(result.state==='running'?'正在核对作业完成情况…':result.state==='unknown'?'启动结果待确认，正在查询；不会重复启动。':'刷新正在排队…');
+        await pause(document.visibilityState==='hidden'?10000:4000);
+      }
+      message('刷新仍未结束；稍后再点此按钮会继续查询进度。');
+    }catch(error){
+      if(error.message==='DISPATCH_DENIED'){pending=null;message('后台没有启动权限，未执行刷新。');}
+      else if(error.message==='LOGIN_REQUIRED')message('请先登录工作台，再查询刷新进度。');
+      else if(error.message==='REQUEST_NOT_FOUND'){pending=null;message('尚未找到刷新请求，请再点一次。');}
+      else message('刷新结果尚未确认；再点此按钮会查询进度，不会重复启动。');
+    }finally{working=false;refresh.disabled=false;refresh.removeAttribute('aria-busy');configureRefresh();}
+  };
+  const configureRefresh=()=>{
+    if(working)return;
+    const enabled=globalThis.wayonRefreshAPI?.enabled===true;
+    if((refresh.tagName==='BUTTON')===enabled)return;
+    const next=document.createElement(enabled?'button':'a');next.id='completion-refresh';next.className='workflow-icon';next.innerHTML=refreshIcon;
+    if(enabled){next.type='button';next.title='Refresh homework status';next.setAttribute('aria-label','Refresh homework status');next.onclick=runRefresh;refreshNote.textContent='点刷新即可重新核对已登记作业；排队、进度和结果会在工作台显示，不布置新作业、不发微信。';}
+    else {next.href=workflowUrl;next.target='_blank';next.rel='noopener noreferrer';next.title='Refresh homework status · 在 GitHub 点击 Run workflow';next.setAttribute('aria-label','Refresh homework status: open GitHub, then Run workflow');}
+    refresh.replaceWith(next);refresh=next;
+  };
+  window.addEventListener('wayon-refresh-ready',configureRefresh);configureRefresh();
+  const mount=()=>{
+    const bar=document.querySelector('.workspace-sub-bar')||document.querySelector('.workspace-top-bar');
+    const rooms=document.body.dataset.mode==='classroom';
+    const target=rooms?(document.querySelector('.sidebar-footer')||document.querySelector('.sidebar')):bar;
+    tools.style.flexDirection=rooms?'column':'row';
+    if(target&&tools.parentNode!==target)target.append(tools);
+    checks.hidden=rooms;
+    const health=document.getElementById('schedule-health');
+    if(health&&health.parentNode!==checksPanel)checksPanel.prepend(health);
+    if(status.parentNode!==checksPanel)checksPanel.append(status);
+  };
+  new MutationObserver(mount).observe(document.body,{childList:true,subtree:true});mount();
+  // One read per page load; this does not start a refresh or poll a backend.
+  fetch('completion-refresh-status.json?v='+Date.now(),{cache:'no-store',credentials:'omit'}).then(r=>r.ok?r.json():null).then(value=>{
+    if(working || pending || !value||!['verified','unknown','error'].includes(value.status))return;
+    const stamp=value.status==='verified'?value.checked_at:value.last_success_at;
+    const date=typeof stamp==='string'?new Date(stamp):null;
+    const time=date&&!Number.isNaN(date.valueOf())?date.toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false}):'未核实';
+    status.dataset.state=value.status==='verified'?'verified':'unknown';
+    status.textContent=value.status==='verified'?'作业核对（北京时间）：'+time:'最近一次刷新未完成；上次成功核对：'+time;
+  }).catch(()=>{});
+})();
+</script>
+<script>(() => {
+  if (window.wayonRulesEntryMounted) return;
+  window.wayonRulesEntryMounted = true;
+
+  const svgIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>';
+
+  // Style for rules buttons and toolbar integration
+  const entryStyle = document.createElement('style');
+  entryStyle.id = 'wayon-rules-entry-style';
+  entryStyle.textContent = `
+    .sidebar-rules-icon-btn {
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 40px !important;
+      min-width: 40px !important;
+      height: 40px !important;
+      min-height: 40px !important;
+      padding: 0 !important;
+      border: 1px solid var(--line, rgba(30,30,40,.09)) !important;
+      border-radius: 10px !important;
+      background: var(--card, #fff) !important;
+      color: var(--muted, #6e6e73) !important;
+      cursor: pointer !important;
+      flex: none !important;
+      box-sizing: border-box !important;
+      transition: all .15s ease !important;
+      text-decoration: none !important;
+      line-height: 1 !important;
+    }
+    .sidebar-rules-icon-btn:hover {
+      color: var(--accent, #0071e3) !important;
+      border-color: var(--accent, #0071e3) !important;
+      background: var(--accent-subtle, #eaf3ff) !important;
+    }
+    .sidebar-rules-icon-btn svg {
+      width: 19px !important;
+      height: 19px !important;
+      flex: none !important;
+      pointer-events: none !important;
+    }
+    .sidebar-rules-card-btn,
+    .rules-subbar-pill,
+    .wayon-workbench #wayon-rules-open-btn {
+      display: none !important;
+    }
+    @media (max-width: 1023px) {
+      .sidebar-rules-icon-btn {
+        width: 40px !important;
+        min-width: 40px !important;
+        height: 40px !important;
+        min-height: 40px !important;
+      }
+    }
+    @media (max-width: 599px) {
+      .sidebar-rules-icon-btn {
+        width: 44px !important;
+        min-width: 44px !important;
+        height: 44px !important;
+        min-height: 44px !important;
+        border-radius: 10px !important;
+      }
+    }
+    .wayon-rules-dialog:not([open]) {
+      display: none !important;
+    }
+    .wayon-rules-dialog[open] {
+      position: fixed !important;
+      inset: 0 !important;
+      margin: auto !important;
+      z-index: 99999 !important;
+      display: flex !important;
+      flex-direction: column !important;
+      box-sizing: border-box;
+      width: min(1100px, calc(100vw - 24px));
+      height: min(90vh, 920px);
+      max-height: 90vh;
+      padding: 0;
+      border: 1px solid var(--line-strong, rgba(0,0,0,0.12));
+      border-radius: 20px;
+      background: var(--bg, #f5f5f7);
+      color: var(--fg, #1d1d1f);
+      box-shadow: 0 28px 90px rgba(0,0,0,0.35);
+      overflow: hidden;
+      font-family: var(--sans, -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "PingFang SC", sans-serif);
+    }
+    .wayon-rules-dialog::backdrop {
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+  `;
+  (document.head || document.documentElement).append(entryStyle);
+
+  let dialog = null;
+  let isMounted = false;
+
+  async function openRulesModal() {
+    if (!dialog) {
+      dialog = document.createElement('dialog');
+      dialog.id = 'wayon-rules-dialog';
+      dialog.className = 'wayon-rules-dialog';
+      dialog.setAttribute('aria-label', '任务规则 · Task Rules');
+      document.body.append(dialog);
+
+      // Close on backdrop click
+      dialog.addEventListener('click', event => {
+        if (event.target === dialog) {
+          const rect = dialog.getBoundingClientRect();
+          if (
+            event.clientX < rect.left ||
+            event.clientX > rect.right ||
+            event.clientY < rect.top ||
+            event.clientY > rect.bottom
+          ) {
+            dialog.close();
+          }
+        }
+      });
+    }
+
+    if (!dialog.open) {
+      dialog.showModal();
+    }
+
+    if (!isMounted) {
+      isMounted = true;
+      dialog.innerHTML = `
+        <div style="padding:48px 20px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif">
+          <p style="font-size:16px;font-weight:600;color:var(--fg,#1d1d1f);margin:0 0 8px">正在载入统一规则管理面板…</p>
+          <div style="font-size:12px;color:var(--muted,#888)">正在连接 Supabase 规则库</div>
+        </div>
+      `;
+
+      try {
+        let sdk;
+        try {
+          sdk = await import('https://esm.sh/@supabase/supabase-js@2.49.4');
+        } catch {
+          try {
+            sdk = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm');
+          } catch {
+            sdk = await import('https://unpkg.com/@supabase/supabase-js@2.49.4/dist/module/index.js');
+          }
+        }
+
+        const config = await (await fetch('./checks-public-config.json?v=' + Date.now(), { cache: 'no-store' })).json();
+        const client = sdk.createClient(config.url, config.key);
+        const { mountRules } = await import('./rules-editor.mjs?v=' + Date.now());
+        await mountRules({
+          document,
+          client,
+          container: dialog,
+          onClose: () => dialog.close()
+        });
+      } catch (err) {
+        console.error('Failed to load rules editor:', err);
+        dialog.innerHTML = `
+          <div style="padding:40px 24px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif">
+            <h3 style="margin:0 0 8px;color:var(--bad,#d93025)">无法载入任务规则</h3>
+            <p style="font-size:13px;color:var(--muted,#666);margin:0 0 16px">请检查网络或刷新页面后重试；当前页面数据保持原样。</p>
+            <button onclick="this.closest('dialog').close()" style="padding:8px 18px;border-radius:8px;border:1px solid #ddd;background:#fff;cursor:pointer">关闭</button>
+          </div>
+        `;
+        isMounted = false;
+      }
+    }
+  }
+
+  // Expose global trigger
+  window.wayonOpenRules = openRulesModal;
+
+  const mountButtons = () => {
+    // 1. Clean up any deprecated or extra buttons
+    document.getElementById('wayon-rules-open-btn')?.remove();
+    document.getElementById('wayon-rules-sidebar-btn')?.remove();
+    document.getElementById('wayon-rules-subbar-btn')?.remove();
+
+    // 2. Mount single icon-only button near Settings in .sidebar-footer
+    if (!document.getElementById('wayon-rules-btn')) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.id = 'wayon-rules-btn';
+      btn.className = 'sidebar-rules-icon-btn';
+      btn.title = '任务规则 · Task Rules';
+      btn.setAttribute('aria-label', '任务规则 · Task Rules');
+      btn.innerHTML = svgIcon;
+      btn.onclick = openRulesModal;
+
+      const settings = document.getElementById('account-settings');
+      const footer = document.querySelector('.sidebar-footer');
+      if (settings && settings.parentNode) {
+        settings.parentNode.insertBefore(btn, settings);
+      } else if (footer) {
+        footer.append(btn);
+      } else {
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) sidebar.append(btn);
+      }
+    }
+  };
+
+  const startObserving = () => {
+    mountButtons();
+    const target = document.body || document.documentElement;
+    if (target) {
+      new MutationObserver(mountButtons).observe(target, { childList: true, subtree: true });
+    }
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startObserving, { once: true });
+    const rootEl = document.documentElement;
+    if (rootEl) {
+      try {
+        new MutationObserver(mountButtons).observe(rootEl, { childList: true, subtree: true });
+      } catch {}
+    }
+  } else {
+    startObserving();
+  }
+
+  window.addEventListener('load', mountButtons);
+})();
+</script>
+<script type="module" src="./plan-presentation.mjs?v=20261025-01"></script>
+</body>
+</html>

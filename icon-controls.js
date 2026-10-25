@@ -75,7 +75,7 @@
         const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',paths[kind]);svg.append(path);icon.append(svg);
       }else{icon.className='wayon-emoji';icon.textContent=kind;}
       if(label==='Retry Copy'){
-        const msg=document.createElement('span');msg.className='wayon-status-text';msg.textContent='重试';
+        const msg=document.createElement('span');msg.className='wayon-status-text wayon-status-retry';msg.textContent='重试';
         e.replaceChildren(icon,msg);
       }else{
         e.replaceChildren(icon);

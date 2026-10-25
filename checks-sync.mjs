@@ -361,7 +361,7 @@ export async function boot({config,capture,apply,status:report,currentDay,hydrat
     play:'M8 4l12 8-12 8z'
   };
   const actions=new Map([
-    ['Retry Copy',['copy','Retry Copy']],['复制失败，请重试',['copy','Retry Copy']],['Copy Manually',['copy','Copy Manually']],['Unmarked',['pending','Unmarked']],['未标',['pending','Unmarked']],['✅ Done',['✅','Done']],['❌ Not Done',['❌','Not Done']],
+    ['Retry Copy',['⚠️','Retry Copy']],['复制失败，请重试',['⚠️','Retry Copy']],['Copy Manually',['copy','Copy Manually']],['Unmarked',['pending','Unmarked']],['未标',['pending','Unmarked']],['✅ Done',['✅','Done']],['❌ Not Done',['❌','Not Done']],
     ['All Done',['✅','All Done']],['全部完成',['✅','All Done']],['全部✅',['✅','All Done']],
     ['All Not Done',['❌','All Not Done']],['全部未完成',['❌','All Not Done']],
     ['Stop Reminders',['✋','Stop Reminders']],['停止催缴',['✋','Stop Reminders']],
@@ -396,11 +396,13 @@ export async function boot({config,capture,apply,status:report,currentDay,hydrat
   const byId={'nav-today':['calendar','Today'],'nav-notice':['bell','Class Notices'],'nav-rooms':['room','Rooms'],'tab-plan':['list','Tasks'],'tab-done':['check','Progress'],'tab-quiz':['books','Vocabulary Check'],'tab-assigned':['assigned','今日已布置'],'tab-chasing':['clock','Reminders']};
   const style=document.createElement('style');style.textContent=`
     .wayon-icon-control.wayon-icon-control{display:inline-flex;align-items:center;justify-content:center;position:relative;width:40px!important;min-width:40px!important;height:40px!important;min-height:40px!important;padding:0!important;line-height:1!important;flex-shrink:0;vertical-align:middle;border-radius:10px;list-style:none}
+    .wayon-icon-control[data-icon-action="Retry Copy"]{width:auto!important;min-width:54px!important;padding:0 8px!important;gap:4px;background:var(--bad-bg,#fff1f0)!important;color:var(--bad,#d93025)!important;border:1px solid var(--bad-border,#f1c8c5)!important}
+    .wayon-icon-control .wayon-status-text{font-size:12px;font-weight:600;white-space:nowrap}
     #tabs button.wayon-icon-control:before{display:none}.wayon-icon-control:focus-visible{outline:2px solid var(--accent,#0071e3);outline-offset:3px}
     .wayon-icon-control svg{width:19px;height:19px;flex:none;pointer-events:none}.wayon-icon-control .wayon-emoji{font-size:19px;line-height:1;pointer-events:none}
     summary.wayon-icon-control::-webkit-details-marker{display:none}.note-disclosure[open]>summary.wayon-icon-control{background:var(--accent-subtle);color:var(--accent)}
     .wayon-icon-control.has-note:after{content:'';position:absolute;right:5px;top:5px;width:5px;height:5px;border-radius:50%;background:var(--accent)}
-    @media(max-width:599px){.wayon-icon-control.wayon-icon-control{width:44px!important;min-width:44px!important;height:44px!important;min-height:44px!important}.wayon-workbench .head>.study-actions{gap:5px}}
+    @media(max-width:599px){.wayon-icon-control.wayon-icon-control{width:44px!important;min-width:44px!important;height:44px!important;min-height:44px!important}.wayon-icon-control[data-icon-action="Retry Copy"]{width:auto!important;min-width:54px!important;padding:0 8px!important}.wayon-workbench .head>.study-actions{gap:5px}}
   `;document.head.append(style);
   const refresh=()=>{
     for(const e of document.querySelectorAll('button,summary')){
@@ -415,7 +417,13 @@ export async function boot({config,capture,apply,status:report,currentDay,hydrat
         const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('fill','none');svg.setAttribute('stroke','currentColor');svg.setAttribute('stroke-width','1.7');svg.setAttribute('stroke-linecap','round');svg.setAttribute('stroke-linejoin','round');
         const path=document.createElementNS('http://www.w3.org/2000/svg','path');path.setAttribute('d',paths[kind]);svg.append(path);icon.append(svg);
       }else{icon.className='wayon-emoji';icon.textContent=kind;}
-      e.replaceChildren(icon);e.classList.add('wayon-icon-control');e.dataset.iconAction=label;
+      if(label==='Retry Copy'){
+        const msg=document.createElement('span');msg.className='wayon-status-text wayon-status-retry';msg.textContent='重试';
+        e.replaceChildren(icon,msg);
+      }else{
+        e.replaceChildren(icon);
+      }
+      e.classList.add('wayon-icon-control');e.dataset.iconAction=label;
       const input=e.closest('.note-disclosure')?.querySelector('input');e.classList.toggle('has-note',Boolean(input?.value));
     }
   };
