@@ -216,6 +216,7 @@ body.wayon-workbench{font-family:var(--sans);font-size:14px;font-weight:400;lett
 .wayon-workbench[data-mode="assigned"] .bar-lbl,.wayon-workbench[data-mode="assigned"] .track{display:none}
 @media(max-width:599px){.wayon-workbench .assigned-copy{width:44px;min-width:44px;height:44px}.wayon-workbench .assigned-text{font-size:16px}}
 </style>
+<script src="./aircon.js?v=20261025-01"></script>
 </head>
 <body class="wayon-workbench">
 
@@ -1473,9 +1474,11 @@ function captureChecks(day) {
     if(Array.isArray(k) && k.length===2 && value?.copied_at && typeof value.signature==='string') out[JSON.stringify(['notice-copy-v2',day,...k])]=value;
   }
   if(typeof study!=='undefined')Object.assign(out,study.capture(day));
+  Object.assign(out,globalThis.wayonAircon?.capture(day)||{});
   return out;
 }
 function applyChecks(day, fields) {
+  globalThis.wayonAircon?.apply(day,fields);
   if(typeof study!=='undefined')study.apply(day,fields);
   const done={},quiz={},plan={},notices={},chasingCopies={};
   for(const [raw,value] of Object.entries(fields)) {
@@ -1552,7 +1555,7 @@ function watch(){void checkCloud?.open(currentCloudDay());}
 function npush(){checkCloud?.observe(curN);}
 
 function nwatch(){if(checkCloud && !noticeOpened.has(curN)){noticeOpened.add(curN);void checkCloud.open(curN);}}
-function currentCloudDay(){return mode==='notice' ? curN : mode==='chasing' ? today : cur;}
+function currentCloudDay(){return globalThis.wayonAircon?.currentDay() || (mode==='notice' ? curN : mode==='chasing' ? today : cur);}
 setSync('本机已保存；正在检查云端配置…');
 import('./checks-sync.mjs?v=20261020-01').then(m=>m.boot({config: {"enabled": true, "url": "https://qcjyllyatiawkftwqfjf.supabase.co", "key": "sb_publishable_ljy3uwM1zNach70iWxqWdA_QYVGLvEo"},capture:captureChecks,apply:applyChecks,status:setSync,currentDay:currentCloudDay,hydrate:(client,owner)=>hydrateChasing(m,client,owner),refreshPublished:()=>refreshPublishedChasing(m)}))
 .then(x=>{checkCloud=x;if(mode==='notice')nwatch();else watch();}).catch(err=>{
