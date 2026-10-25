@@ -108,12 +108,6 @@ export function frequencyReason(row, day) {
   if (row["本次已完成"] === true || row["本次已完成"] === "__YES__")
     return "本次已完成";
   if (
-    !row._canonical_state &&
-    !String(row["备注"] || "").includes("覆盖旧暂停") &&
-    /暂停/.test(String(row["备注"] || "") + String(row["原提醒标题"] || ""))
-  )
-    return "历史暂停标记仍生效，恢复时需明确选择进行中";
-  if (
     row["date:下次日期:start"] &&
     day < row["date:下次日期:start"].slice(0, 10)
   )
@@ -406,3 +400,4 @@ export async function publishedContext(day) {
   if (!response.ok) throw Error("课表尚未读取");
   return contextFromData(publicData(await response.text()), day);
 }
+
