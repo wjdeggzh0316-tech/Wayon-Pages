@@ -1,6 +1,10 @@
 // Presentation only: identity keys and saved task definitions remain untouched.
 export function planDisplayName(value) {
-  return String(value||'').replace(/[【】「」]/g,'').trim().replace(/(?:[-－—]\s*)?(?:高中同步课程|初中同步课程|小学同步课程|英语能力提升课程|雅思(?:基础|强化)?(?:课程|班)|托福(?:基础|强化)?(?:课程|班))$/,'').trim();
+  let text=String(value||'').trim();
+  // Explicit person brackets retain the boundary before a course suffix.
+  const head=text.match(/^((?:\d+[.、．]\s*)?)(?:【([^】]+)】|「([^」]+)」|\[([^\]]+)\])(?=\s*(?:$|[-－—]?\s*(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语|高中|初中|小学)))/i);
+  if(head)text=head[1]+(head[2]||head[3]||head[4]);
+  return text.replace(/[【】「」]/g,'').trim().replace(/(?:[-－—]\s*)?(?:(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语)\s*(?:1\s*v\s*1|一对一|1对1)(?:课程|班)?|高中同步课程|初中同步课程|小学同步课程|英语能力提升课程|雅思(?:基础|强化)?(?:课程|班)|托福(?:基础|强化)?(?:课程|班))$/i,'').trim();
 }
 // Names only: completion marks, notes and numbered tasks must remain byte-for-byte intact.
 export function studentDisplayText(value) {
@@ -39,7 +43,6 @@ export function planDisplayText(value) {
    planCard=function(title,time,text,key,group){return card(name(title),time,copyText(text),key,group);};
    foldRow=function(id,label,when){return fold(id,name(label),when);};
    const titles=()=>{
-     if(typeof mode!=='undefined'&&mode==='chasing')return;
      for(const heading of document.querySelectorAll('#list .head .name,#list .qhead,#list .qname,#list .study-folded')){
        for(const node of heading.childNodes){
          if(node.nodeType!==3)continue;
@@ -92,7 +95,7 @@ export function formatChasingReminder(name,items) {
     const ordered=[...new Set(dates)].sort(),first=ordered[0],last=ordered.at(-1);
     label=first===last?md(first):md(first)+'-'+md(last);
   }
-  return '【'+String(name||'').replace(/[【】「」]/g,'').trim()+'】剩余未完成任务_'+label+'❗️\n\n'+items.map((item,i)=>(i+1)+'. '+item.title).join('\n');
+  return '【'+planDisplayName(name)+'】剩余未完成任务_'+label+'❗️\n\n'+items.map((item,i)=>(i+1)+'. '+item.title).join('\n');
 }
 
 // Admission is a projection, never a change to completion or manual state.
@@ -124,7 +127,7 @@ export async function admittedReminderRows(rows,policy) {
   script.textContent=`(() => {
     if(globalThis.wayonChasingCopyFormatInstalled)return;
     globalThis.wayonChasingCopyFormatInstalled=true;
-    const format=${formatChasingReminder.toString()},admit=${admittedReminderRows.toString()},copyText=${copyChasingText.toString()};
+    const planDisplayName=${planDisplayName.toString()},format=${formatChasingReminder.toString()},admit=${admittedReminderRows.toString()},copyText=${copyChasingText.toString()};
     const bound=new WeakSet();let busy=false,again=false;
     const bind=async()=>{
       if(busy){again=true;return;}
@@ -144,9 +147,10 @@ export async function admittedReminderRows(rows,policy) {
           const button=document.getElementById('chcopy-'+index);
           if(!button||button.disabled||bound.has(button))continue;
           const card=button.closest('.item'),heading=card?.querySelector('.head .name');
-          const expected=(index+1)+'. '+String(row.name||'').replace(/[【】]/g,'');
+          const expected=(index+1)+'. '+planDisplayName(row.name);
           const title=heading?.textContent||'';
-          if(!title.startsWith(expected)||(title.length>expected.length&&!/^\\s/.test(title.slice(expected.length))))continue;
+          const original=(index+1)+'. '+String(row.name||'').replace(/[【】]/g,'');
+          if(![expected,original].some(value=>title.startsWith(value)&&(title.length===value.length||/^\\s/.test(title.slice(value.length)))))continue;
           const value=()=>{
             const stopped=chasingStopIds(row),done=chasingDoneIds(row);
             return format(row.name,chasingDisplayItems((row.uncompleted_details||[]).filter(item=>!stopped.includes(String(item.id))&&!done.includes(String(item.id)))));
