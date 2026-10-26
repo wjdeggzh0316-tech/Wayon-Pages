@@ -94,6 +94,7 @@
 
   let dialog = null;
   let isMounted = false;
+  let controller = null;
 
   async function openRulesModal() {
     if (!dialog) {
@@ -147,7 +148,7 @@
         const config = await (await fetch('./checks-public-config.json?v=' + Date.now(), { cache: 'no-store' })).json();
         const client = sdk.createClient(config.url, config.key);
         const { mountRules } = await import('./rules-editor.mjs?v=' + Date.now());
-        await mountRules({
+        controller = await mountRules({
           document,
           client,
           container: dialog,
@@ -164,6 +165,8 @@
         `;
         isMounted = false;
       }
+    } else if (controller?.refreshIfClean) {
+      await controller.refreshIfClean();
     }
   }
 

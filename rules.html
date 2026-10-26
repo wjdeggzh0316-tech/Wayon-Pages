@@ -51,7 +51,7 @@
       border-radius: 20px;
       overflow: hidden;
       box-shadow: 0 4px 20px rgba(0,0,0,0.03);
-      min-height: 600px;
+      min-height: 0;
     }
   </style>
 </head>
@@ -68,7 +68,7 @@
     </div>
   </main>
   <script type="module">
-    import { mountRules } from './rules-editor.mjs?v=20261024-ux2';
+    import { mountRules } from './rules-editor.mjs?v=20261026-studio1';
     let sdk;
     try {
       sdk = await import('https://esm.sh/@supabase/supabase-js@2.49.4');
