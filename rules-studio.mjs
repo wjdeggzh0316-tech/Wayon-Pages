@@ -1,7 +1,7 @@
-import { clone, clean, SYSTEMS, todayShanghai, inspectTask, taskLines, manualTask, setManual, validateDraft } from './rules-model.mjs?v=20261026-studio1';
-import { canonical, saveCatalog } from './rules-store.mjs?v=20261026-studio1';
-import { buildRuleEntities, entityStatus, setEntityStatus, findEntityForRule, ruleEntityDisplayName } from './rules-entities.mjs?v=20261026-studio1';
-import { STYLE } from './rules-studio-style.mjs?v=20261026-studio1';
+import { clone, clean, SYSTEMS, todayShanghai, inspectTask, taskLines, manualTask, setManual, validateDraft } from './rules-model.mjs?v=20261026-studio2';
+import { canonical, saveCatalog } from './rules-store.mjs?v=20261026-studio2';
+import { buildRuleEntities, entityStatus, setEntityStatus, findEntityForRule, ruleEntityDisplayName } from './rules-entities.mjs?v=20261026-studio2';
+import { STYLE } from './rules-studio-style.mjs?v=20261026-studio2';
 
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const same = (a, b) => canonical(a) === canonical(b);
@@ -48,7 +48,7 @@ export async function mountRules({ document, client, container, onClose }) {
   const host = container || document.getElementById('rules') || document.body;
   const root = document.createElement('div'); root.className = 'rules-studio app'; host.replaceChildren(root);
   const q = selector => root.querySelector(selector);
-  const state = { owner: null, base: null, draft: null, view: 'people', selected: null, query: '', system: 'all', unit: 'all', collapsed: new Set(), busy: false, message: '正在读取规则…', error: false, editor: null, known: [] };
+  const state = { owner: null, base: null, draft: null, view: 'people', selected: null, query: '', system: 'all', status: 'all', expanded: new Set(), busy: false, message: '正在读取规则…', error: false, editor: null, known: [] };
   let dialog, toastTimer;
   const dirty = () => !!state.base && !!state.draft && !same(state.base.payload, state.draft);
   const entities = () => buildRuleEntities(state.draft || {});
@@ -114,7 +114,7 @@ export async function mountRules({ document, client, container, onClose }) {
     return html;
   }
   function taskSection(entity, scope, overview = false) {
-    const key = (overview ? 'overview:' : 'detail:') + entity.key + ':' + scope, collapsed = state.collapsed.has(key);
+    const key = (overview ? 'overview:' : 'detail:') + entity.key + ':' + scope, collapsed = !state.expanded.has(key);
     const title = overview ? entity.name : scope === 'attendance' ? '随课任务' : '打卡任务';
     return `<section class="task-section ${collapsed ? 'collapsed' : ''}" data-person="${escape(entity.key)}" data-scope="${scope}"><div class="section-heading"><button type="button" class="section-toggle" data-action="collapse" data-key="${escape(key)}" aria-expanded="${!collapsed}"><span class="chevron" aria-hidden="true">${collapsed ? '›' : '⌄'}</span><span class="section-title">${escape(title)}</span>${overview ? '<span class="system-pill">' + escape(entity.systemLabel) + '</span>' : ''}</button><div class="section-controls">${scope === 'checkin' ? statusSwitch(entity) : ''}${overview ? `<button type="button" class="icon-btn" data-action="open-person" data-person="${escape(entity.key)}" aria-label="查看${escape(entity.name)}的全部规则" title="查看完整规则">↗</button>` : ''}</div></div><div class="section-body" ${collapsed ? 'hidden' : ''}>${taskContents(entity, scope)}</div></section>`;
   }
@@ -127,7 +127,7 @@ export async function mountRules({ document, client, container, onClose }) {
       content.innerHTML = `<div class="detail-head"><button type="button" class="back-btn" data-action="back">‹ 返回${state.view === 'people' ? '名单' : '总览'}</button><h2 class="detail-title">${escape(entity.name)}<span class="system-pill">${escape(entity.systemLabel)}</span></h2></div><div class="detail-sections">${taskSection(entity, 'attendance')}${taskSection(entity, 'checkin')}</div>`;
     } else {
       const query = state.query.trim().toLocaleLowerCase();
-      const list = entities().filter(entity => (state.system === 'all' || entity.system === state.system) && (state.unit === 'all' || entity.unit === state.unit) && (!query || (entity.name + ' ' + (state.view === 'people' ? '' : items(entity, state.view === 'attendance' ? 'attendance' : 'checkin').map(item => item.text).join(' '))).toLocaleLowerCase().includes(query)));
+      const list = entities().filter(entity => (state.system === 'all' || entity.system === state.system) && (state.view !== 'checkin' || state.status === 'all' || entityStatus(entity, state.draft) === state.status) && (!query || (entity.name + ' ' + (state.view === 'people' ? '' : items(entity, state.view === 'attendance' ? 'attendance' : 'checkin').map(item => item.text).join(' '))).toLocaleLowerCase().includes(query)));
       if (!list.length) content.innerHTML = '<div class="empty-state">没有找到符合条件的学员或班级</div>';
       else if (state.view === 'people') content.innerHTML = `<div class="roster-grid">${list.map(entity => `<button type="button" class="person-card" data-action="open-person" data-person="${escape(entity.key)}"><span class="person-name">${escape(entity.name)}</span><span class="system-pill">${escape(entity.systemLabel)}</span><span class="chevron" aria-hidden="true">›</span></button>`).join('')}</div>`;
       else content.innerHTML = list.map(entity => taskSection(entity, state.view === 'attendance' ? 'attendance' : 'checkin', true)).join('');
@@ -137,7 +137,7 @@ export async function mountRules({ document, client, container, onClose }) {
   function render() {
     const ready = !!state.owner && !!state.draft;
     root.innerHTML = `<header class="topbar"><span class="brand">Wayon</span><h1 class="page-title">任务规则</h1><div class="header-actions"><button type="button" class="icon-btn" data-action="reload" title="重新读取规则" aria-label="重新读取规则">↻</button>${ready ? '<button type="button" class="icon-btn" data-action="specials" title="特殊安排" aria-label="管理特殊安排">⋯</button>' : ''}<button type="button" class="icon-btn" data-action="close" aria-label="关闭任务规则">${CLOSE}</button></div></header>
-      ${ready ? `<nav class="view-tabs" aria-label="规则视图">${[['people', '学员／班级'], ['attendance', '全部随课任务'], ['checkin', '全部打卡任务']].map(([key, text]) => `<button type="button" class="view-tab ${state.view === key ? 'active' : ''}" aria-current="${state.view === key ? 'page' : 'false'}" data-action="view" data-view="${key}">${text}</button>`).join('')}</nav><div class="toolbar" ${state.selected ? 'hidden' : ''}><label class="search"><span class="sr-only">搜索规则</span><input type="search" data-field="search" aria-label="搜索规则" placeholder="${state.view === 'people' ? '搜索姓名或班级' : '搜索姓名、班级或任务'}" value="${escape(state.query)}"></label><select class="filter-select" data-field="system" aria-label="筛选体系"><option value="all">全部体系</option>${[...new Set(entities().map(entity => entity.system))].map(system => `<option value="${escape(system)}" ${state.system === system ? 'selected' : ''}>${escape(LABELS[system] || system)}</option>`).join('')}</select><select class="filter-select" data-field="unit" aria-label="筛选学员或班级">${[['all', '学员与班级'], ['student', '仅学员'], ['class', '仅班级']].map(([key, label]) => `<option value="${key}" ${state.unit === key ? 'selected' : ''}>${label}</option>`).join('')}</select></div>` : ''}
+      ${ready ? `<nav class="view-tabs" aria-label="规则视图">${[['people', '学员／班级'], ['attendance', '全部随课任务'], ['checkin', '全部打卡任务']].map(([key, text]) => `<button type="button" class="view-tab ${state.view === key ? 'active' : ''}" aria-current="${state.view === key ? 'page' : 'false'}" data-action="view" data-view="${key}">${text}</button>`).join('')}</nav><div class="toolbar" ${state.selected ? 'hidden' : ''}><label class="search"><span class="sr-only">搜索规则</span><input type="search" data-field="search" aria-label="搜索规则" placeholder="${state.view === 'people' ? '搜索姓名或班级' : '搜索姓名、班级或任务'}" value="${escape(state.query)}"></label><select class="filter-select" data-field="system" aria-label="筛选体系"><option value="all">全部体系</option>${[...new Set(entities().map(entity => entity.system))].map(system => `<option value="${escape(system)}" ${state.system === system ? 'selected' : ''}>${escape(LABELS[system] || system)}</option>`).join('')}</select>${state.view === 'checkin' ? `<select class="filter-select" data-field="status" aria-label="筛选打卡状态">${[['all', '全部状态'], ['on', '正在进行'], ['off', '暂停'], ...((state.status === 'mixed' || entities().some(entity => entityStatus(entity, state.draft) === 'mixed')) ? [['mixed', '部分暂停']] : [])].map(([key, label]) => `<option value="${key}" ${state.status === key ? 'selected' : ''}>${label}</option>`).join('')}</select>` : ''}</div>` : ''}
       <main class="content ${state.selected ? 'person-detail' : ''}" aria-label="规则内容">${ready ? '' : state.owner ? '<div class="empty-state">规则未能读取。<button type="button" class="button" data-action="reload">重试读取</button></div>' : '<form class="login-form"><h2>登录后查看任务规则</h2><label class="field">邮箱<input name="email" type="email" autocomplete="username" required></label><label class="field">密码<input name="password" type="password" autocomplete="current-password" required></label><button type="submit" class="button primary">登录</button></form>'}</main>
       <footer class="footer"><div class="save-state" role="status" aria-live="polite"></div><div class="footer-actions">${ready ? '<button type="button" class="button ghost" data-action="diff">查看变更</button><button type="button" class="button ghost" data-action="discard">放弃修改</button><button type="button" class="button primary" data-action="save">保存修改</button>' : ''}</div></footer><dialog class="drawer-backdrop" aria-labelledby="rules-drawer-title"></dialog><div class="toast" role="status" aria-live="polite" hidden></div>`;
     dialog = q('dialog');
@@ -311,6 +311,8 @@ export async function mountRules({ document, client, container, onClose }) {
   }
   async function refreshIfClean() {
     if (state.busy) return { refreshed: false, reason: 'busy' };
+    state.expanded.clear();
+    if (state.draft) renderContent();
     try {
       const auth = await client.auth.getSession();
       if (auth.error) throw Error('AUTH_UNKNOWN');
@@ -326,10 +328,10 @@ export async function mountRules({ document, client, container, onClose }) {
   root.addEventListener('click', event => {
     const button = event.target.closest('[data-action]'); if (!button || !root.contains(button) || state.busy) return;
     const action = button.dataset.action;
-    if (action === 'view') { state.view = button.dataset.view; state.selected = null; state.query = ''; state.system = 'all'; state.unit = 'all'; render(); }
-    else if (action === 'open-person') { state.selected = button.dataset.person; render(); }
-    else if (action === 'back') { state.selected = null; render(); }
-    else if (action === 'collapse') { const key = button.dataset.key; state.collapsed.has(key) ? state.collapsed.delete(key) : state.collapsed.add(key); const collapsed = state.collapsed.has(key), section = button.closest('.task-section'); section.classList.toggle('collapsed', collapsed); section.querySelector('.section-body').hidden = collapsed; button.setAttribute('aria-expanded', String(!collapsed)); button.querySelector('.chevron').textContent = collapsed ? '›' : '⌄'; }
+    if (action === 'view') { state.expanded.clear(); state.view = button.dataset.view; state.selected = null; state.query = ''; state.system = 'all'; state.status = 'all'; render(); }
+    else if (action === 'open-person') { state.expanded.clear(); state.selected = button.dataset.person; render(); }
+    else if (action === 'back') { state.expanded.clear(); state.selected = null; render(); }
+    else if (action === 'collapse') { const key = button.dataset.key; state.expanded.has(key) ? state.expanded.delete(key) : state.expanded.add(key); const collapsed = !state.expanded.has(key), section = button.closest('.task-section'); section.classList.toggle('collapsed', collapsed); section.querySelector('.section-body').hidden = collapsed; button.setAttribute('aria-expanded', String(!collapsed)); button.querySelector('.chevron').textContent = collapsed ? '›' : '⌄'; }
     else if (action === 'toggle-status') { const entity = selectedEntity(button.dataset.person); setEntityStatus(state.draft, entity, entityStatus(entity, state.draft) !== 'on'); renderContent(); modified(); [...root.querySelectorAll('[data-action="toggle-status"]')].find(element => element.dataset.person === entity.key)?.focus({ preventScroll: true }); }
     else if (action === 'add-task' || action === 'edit-task') openEditor(button.dataset.person, button.dataset.scope, button.dataset.task);
     else if (action === 'weekday' && state.editor?.type === 'task') { const values = new Set(state.editor.days), day = button.dataset.day; values.has(day) ? values.delete(day) : values.add(day); state.editor.days = WEEKDAYS.filter(day => values.has(day)); button.classList.toggle('active', values.has(day)); button.setAttribute('aria-pressed', String(values.has(day))); }
@@ -355,7 +357,7 @@ export async function mountRules({ document, client, container, onClose }) {
     if (state.busy) return;
     const field = event.target.dataset.field;
     if (field === 'system') { state.system = event.target.value; renderContent(); }
-    else if (field === 'unit') { state.unit = event.target.value; renderContent(); }
+    else if (field === 'status') { state.status = event.target.value; state.expanded.clear(); renderContent(); }
     else if (field === 'task-repeat') q('[data-weekdays]').hidden = event.target.value !== '每周固定几天';
     else if (field === 'task-subject') q('[data-custom-subject]').hidden = event.target.value !== 'custom';
     else if (field === 'task-handler') inspection();
