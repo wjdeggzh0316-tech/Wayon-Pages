@@ -1,4 +1,5 @@
-import { RULE_SPEC } from "./rules-contract.mjs?v=20261024-ux2";
+import { RULE_SPEC } from "./rules-contract.mjs?v=20261026-studio3";
+import { taskUnitTexts } from './rule-task-text.mjs?v=20261026-studio3';
 export const clone = (x) => structuredClone(x);
 export const clean = (x) =>
   String(x || "")
@@ -21,6 +22,8 @@ export function inspectTask(text, system, manual = false) {
     return { mode: "invalid", label: "请把占位文字改成具体任务" };
   if (manual || re("manual").test(text))
     return { mode: "manual", label: "老师处理" };
+  if (/\r|\n|<br\s*\/?>/i.test(text) && !multilineVocabulary(text))
+    return { mode: 'unknown', label: '多行任务尚无完整自动配方，请确认或交老师处理' };
   if (system === "toefl" && re("redo").test(text))
     return { mode: "auto", kind: "vocab", subject: "单词", label: "自动布置" };
   if (/重做|重新做/.test(text))
@@ -57,15 +60,26 @@ export function inspectTask(text, system, manual = false) {
   return { mode: "unknown", label: "未识别，请写明数量/套数或选老师处理" };
 }
 export function taskLines(value) {
-  return String(value || "")
-    .replace(/<br\s*\/?>/gi, "\n")
-    .split(/\r?\n/)
-    .map((x) => x.trim().replace(/^\d+[、.．]\s*/, ""))
-    .filter(Boolean);
+  return taskUnitTexts(value);
+}
+export function multilineVocabulary(text) {
+  const lines = String(text || '').replace(/<br\s*\/?>/gi, '\n').split(/\r?\n|\r/).map(line => line.trim()).filter(Boolean);
+  if (lines.length < 2 || re('multiline_control').test(text)) return false;
+  const head = lines[0].match(re('multiline_vocab_header'));
+  const parts = head ? [...(head[1].trim() ? [head[1]] : []), ...lines.slice(1)] : lines;
+  if (parts.length < 1 || parts.length > 2 || !re('vocabulary').test(text)) return false;
+  const seen = new Set();
+  for (const part of parts) {
+    const match = part.match(re('multiline_vocab_part'));
+    if (!match || seen.has(match[1]) || Number(match[2]) < 1 || Number(match[2]) > 500) return false;
+    seen.add(match[1]);
+  }
+  return true;
 }
 export function expandedLines(row, day) {
   const result = [];
   for (const line of taskLines(row["任务内容"])) {
+    if (line.includes('\n')) { result.push(line); continue; }
     if (
       /听[、，\s]*说[、，\s]*读[、，\s]*写各一套|听力、口语、阅读、写作各一套/.test(
         line,
@@ -90,11 +104,23 @@ export function expandedLines(row, day) {
   return [...new Set(result)];
 }
 export function manualTask(rule, text) {
-  return (rule.manual_tasks || []).includes(text);
+  const keys = manualKeys(text);
+  return (rule.manual_tasks || []).some(flag => keys.has(normalizeManual(flag)));
+}
+function normalizeManual(value) {
+  return String(value || '').replace(/<br\s*\/?>/gi, '\n').replace(/\r\n?/g, '\n').trim().replace(/^\d+(?:、|[.．](?!\d))\s*/, '').trim();
+}
+function manualKeys(text) {
+  const value = normalizeManual(text);
+  return new Set([value, ...value.split('\n').map(normalizeManual)].filter(Boolean));
 }
 export function setManual(rule, text, value) {
   const values = new Set(rule.manual_tasks || []);
-  value ? values.add(text) : values.delete(text);
+  if (value) values.add(text);
+  else {
+    const keys = manualKeys(text);
+    for (const flag of values) if (keys.has(normalizeManual(flag))) values.delete(flag);
+  }
   rule.manual_tasks = [...values];
 }
 export function moveManual(rule, oldText, text) {

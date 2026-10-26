@@ -1,7 +1,8 @@
-import { clone, clean, SYSTEMS, todayShanghai, inspectTask, taskLines, manualTask, setManual, validateDraft } from './rules-model.mjs?v=20261026-studio2';
-import { canonical, saveCatalog } from './rules-store.mjs?v=20261026-studio2';
-import { buildRuleEntities, entityStatus, setEntityStatus, findEntityForRule, ruleEntityDisplayName } from './rules-entities.mjs?v=20261026-studio2';
-import { STYLE } from './rules-studio-style.mjs?v=20261026-studio2';
+import { clone, clean, SYSTEMS, todayShanghai, inspectTask, taskLines, manualTask, setManual, validateDraft } from './rules-model.mjs?v=20261026-studio3';
+import { canonical, saveCatalog } from './rules-store.mjs?v=20261026-studio3';
+import { buildRuleEntities, entityStatus, setEntityStatus, findEntityForRule, ruleEntityDisplayName } from './rules-entities.mjs?v=20261026-studio3';
+import { STYLE } from './rules-studio-style.mjs?v=20261026-studio3';
+import { parseTaskUnits, replaceTaskUnit, removeTaskUnit } from './rule-task-text.mjs?v=20261026-studio3';
 
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const same = (a, b) => canonical(a) === canonical(b);
@@ -25,14 +26,22 @@ export function attendanceItems(payload, entity) {
 }
 export function checkinItems(payload, entity) {
   return (payload.frequency_rows || []).filter(row => entity.frequencyIds.includes(row.id)).flatMap(row =>
-    taskLines(row['任务内容']).map((text, index) => ({ ref: JSON.stringify([row.id, index]), text, rule: row, rowId: row.id, index })));
+    parseTaskUnits(row['任务内容']).map((unit, index) => ({ ref: JSON.stringify([row.id, index]), text: unit.text, unit, rule: row, rowId: row.id, index })));
 }
 function authored(rule, scope) {
   return scope === 'checkin' ? taskLines(rule['任务内容']) : [rule.vocab_task, ...(rule.attendance_tasks || []), ...Object.values(rule.subject_rules || {}).flat()].filter(Boolean);
 }
-function updateManual(rule, scope, before, after, manual) {
+export function updateManual(rule, scope, before, after, manual) {
+  // An old line-level flag may apply to more than one logical parent. Preserve
+  // every other task's explicit teacher treatment before removing that flag.
+  let targetSkipped = false;
+  const preserve = authored(rule, scope).filter(text => {
+    if (!targetSkipped && text === after) { targetSkipped = true; return false; }
+    return manualTask(rule, text);
+  });
   if (before && before !== after && !authored(rule, scope).includes(before) && manualTask(rule, before)) setManual(rule, before, false);
   if (after && manualTask(rule, after) !== manual) setManual(rule, after, manual);
+  for (const text of preserve) if (!manualTask(rule, text)) setManual(rule, text, true);
 }
 const uuid = () => globalThis.crypto?.randomUUID?.() || 'rule-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2);
 const dateLabel = value => value ? String(value).slice(0, 10).replace(/^\d{4}-(\d{2})-(\d{2})$/, (_, month, day) => Number(month) + '月' + Number(day) + '日') : '';
@@ -218,7 +227,7 @@ export async function mountRules({ document, client, container, onClose }) {
         rule = addAttendance(entity, text, subject);
       }
     } else {
-      if (item) { rule = item.rule; const lines = taskLines(rule['任务内容']); lines[item.index] = text; rule['任务内容'] = lines.join('\n'); }
+      if (item) { rule = item.rule; rule['任务内容'] = replaceTaskUnit(rule['任务内容'], item.index, text); }
       else {
         rule = { id: uuid(), 学员: entity.rawLabels.find(label => state.draft.frequency_rows.some(row => row['学员'] === label)) || entity.rawLabels[0], system: entity.system, 任务: entity.name + '-打卡任务', 任务内容: text, 状态: entityStatus(entity, state.draft) === 'off' ? '暂停' : '进行中', _canonical_state: true, 形式: '线上', 重复: '每天', 周几: [] };
         state.draft.frequency_rows.push(rule);
@@ -248,7 +257,7 @@ export async function mountRules({ document, client, container, onClose }) {
     const entity = selectedEntity(editor.entityKey), item = items(entity, editor.scope).find(item => item.ref === editor.reference);
     if (!item) return;
     if (editor.scope === 'attendance') removeAttendance(item);
-    else { const lines = taskLines(item.rule['任务内容']); lines.splice(item.index, 1); if (lines.length) item.rule['任务内容'] = lines.join('\n'); else state.draft.frequency_rows = state.draft.frequency_rows.filter(row => row !== item.rule); }
+    else { const remaining = removeTaskUnit(item.rule['任务内容'], item.index); if (taskLines(remaining).length) item.rule['任务内容'] = remaining; else state.draft.frequency_rows = state.draft.frequency_rows.filter(row => row !== item.rule); }
     updateManual(item.rule, editor.scope, item.text, null, false);
     closeDrawer(); renderContent(); modified();
   }

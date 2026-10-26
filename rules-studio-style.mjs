@@ -86,7 +86,7 @@ export const STYLE = String.raw`
 .rules-studio .task-row { display: flex; align-items: center; gap: 16px; padding: 15px 0; border-bottom: 1px solid #eff0f4; min-height: 64px; }
 .rules-studio .task-row:last-child { border-bottom: 0; }
 .rules-studio .task-main { flex: 1; min-width: 0; }
-.rules-studio .task-name { font-size: 15px; line-height: 1.55; font-weight: 500; overflow-wrap: anywhere; }
+.rules-studio .task-name { font-size: 15px; line-height: 1.55; font-weight: 500; overflow-wrap: anywhere; white-space: pre-line; }
 .rules-studio .task-meta, .rules-studio .rule-meta { font-size: 12px; color: #9396a1; line-height: 1.65; margin-top: 4px; overflow-wrap: anywhere; }
 .rules-studio .task-actions { display: flex; align-items: center; gap: 5px; flex: none; }
 .rules-studio .icon-btn { border: 0; color: #8f95a1; border-radius: 8px; width: 34px; height: 34px; padding: 8px; display: inline-flex; align-items: center; justify-content: center; background: transparent; }
