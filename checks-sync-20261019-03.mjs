@@ -197,7 +197,28 @@ export function publishedChasing(source) {
   if(!Array.isArray(data._chasing) || !Number.isFinite(Date.parse(data._chasing_checked_at)) ||
      data._chasing.some(row=>!row || typeof row.name!=='string' || !Array.isArray(row.uncompleted_details) ||
        row.uncompleted_details.some(item=>!item || typeof item.title!=='string' || !['string','number'].includes(typeof item.id))))throw Error('CHASING_DATA_INVALID');
-  return Object.fromEntries(['_chasing','_chasing_checked_at','_chasing_status','_chasing_unknown','_reminder_admission'].filter(k=>Object.hasOwn(data,k)).map(k=>[k,data[k]]));
+  const result=Object.fromEntries(['_chasing','_chasing_checked_at','_chasing_status','_chasing_unknown','_reminder_admission','_schedule_status','_plan','_notice'].filter(k=>Object.hasOwn(data,k)).map(k=>[k,data[k]]));
+  result._days=Object.fromEntries(Object.entries(data).filter(([day,rows])=>/^\d{4}-\d{2}-\d{2}$/.test(day)&&Array.isArray(rows)));
+  return result;
+}
+// Only schedule-backed projections are replaced. Owner marks/copy state and
+// the last completion snapshot remain under their existing synchronization.
+export function applyPublishedSchedule(data,snapshot,{plan=data._plan||{},notice=data._notice||{},days=[]}={}) {
+  let changed=false,checked_at=null;
+  for(const [day,health] of Object.entries(snapshot._schedule_status||{})){
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||health?.status!=='verified')continue;
+    const incoming=Date.parse(health.checked_at),current=Date.parse(data._schedule_status?.[day]?.checked_at);
+    if(!Number.isFinite(incoming)||Number.isFinite(current)&&incoming<current)continue;
+    const before=JSON.stringify([data[day],data._schedule_status?.[day],plan[day],notice[day]]);
+    (data._schedule_status ||= {})[day]=structuredClone(health);
+    const rows=snapshot._days?.[day];
+    if(Array.isArray(rows)){data[day]=structuredClone(rows);if(!days.includes(day)){days.push(day);days.sort();}}
+    if(Array.isArray(snapshot._plan?.[day])){plan[day]=structuredClone(snapshot._plan[day]);data._plan=plan;}
+    if(Array.isArray(snapshot._notice?.[day])){notice[day]=structuredClone(snapshot._notice[day]);data._notice=notice;}
+    changed ||= before!==JSON.stringify([data[day],data._schedule_status?.[day],plan[day],notice[day]]);
+    if(!checked_at||incoming>Date.parse(checked_at))checked_at=health.checked_at;
+  }
+  return {changed,checked_at};
 }
 export const CLOUD_TIMEOUT_MS = 12000;
 export function withCloudTimeout(promise, ms=CLOUD_TIMEOUT_MS) {
