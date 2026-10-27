@@ -220,6 +220,15 @@ export function applyPublishedSchedule(data,snapshot,{plan=data._plan||{},notice
   }
   return {changed,checked_at};
 }
+// A refreshed room projection must not discard an open teacher edit sheet.
+export function roomFrameHasDraft(frame) {
+  try {
+    const doc=frame.contentDocument;
+    if(!doc)return true;
+    return Boolean(doc.getElementById('sh')?.classList.contains('on') ||
+      doc.activeElement?.matches?.('input,textarea,[contenteditable="true"]'));
+  } catch { return true; }
+}
 export const CLOUD_TIMEOUT_MS = 12000;
 export function withCloudTimeout(promise, ms=CLOUD_TIMEOUT_MS) {
   let timer;
