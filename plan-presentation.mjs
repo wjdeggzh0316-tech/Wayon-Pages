@@ -45,9 +45,10 @@ export function planDisplayText(value) {
    const name=${planDisplayName.toString()},tasks=${planDisplayTasks.toString()};
    const planDisplayName=name,planDisplayTasks=tasks,copyText=${planDisplayText.toString()};
    globalThis.wayonDisplayName=name;
+   globalThis.wayonPlanCopyText=copyText;
    globalThis.wayonDisplayCopyText=${studentDisplayText.toString()};
    const card=planCard,fold=foldRow;
-   planCard=function(title,time,text,key,group){return card(name(title),time,copyText(text),key,group);};
+   planCard=function(title,time,text,key,group,marker){return card(name(title),time,copyText(text),key,group,marker);};
    foldRow=function(id,label,when){return fold(id,name(label),when);};
    const titles=()=>{
      for(const heading of document.querySelectorAll('#list .head .name,#list .qhead,#list .qname,#list .study-folded')){
