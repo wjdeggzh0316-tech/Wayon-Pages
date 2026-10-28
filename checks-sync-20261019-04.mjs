@@ -62,6 +62,28 @@ export class CheckSync {
     const s=this.days.get(day);if(!s?.ready) return;
     this.apply(day,overlay(s.base.fields,s.queue));s.view=this.capture(day);
   }
+  // Replacing task projections is not a user edit.  A subsequent observe()
+  // must compare against the new safe view, not treat an old task key as a
+  // deletion and its old index-based mark as an edit to the new task.
+  // The caller must first preserve local state and remap it by proven task
+  // identities; rollback restores its own data and local state on failure.
+  tryTaskProjectionSwap(days, applyProjection, rollbackProjection) {
+    if (!Array.isArray(days) || !days.length || new Set(days).size!==days.length ||
+        typeof applyProjection!=='function' || typeof rollbackProjection!=='function' || this.running) return false;
+    const states=days.map(day=>this.days.get(day));
+    if(states.some((s,i)=>!s?.ready || !Array.isArray(s.queue) || s.queue.length || s.refreshing || !same(s.view,this.capture(days[i])))) return false;
+    const oldViews=states.map(s=>structuredClone(s.view));
+    try {
+      const output=applyProjection();
+      if(output && typeof output.then==='function') throw Error('PROJECTION_MUST_BE_SYNCHRONOUS');
+      for(const day of days)this.show(day);
+      return true;
+    } catch(error) {
+      rollbackProjection();
+      for(let i=0;i<states.length;i++)states[i].view=oldViews[i];
+      return false;
+    }
+  }
   observe(day) {
     const s=this.days.get(day);if(!s?.ready) {this.status('尚未连接云端，本机已保存');return;}
     const view=this.capture(day), delta=difference(s.view,view);
@@ -197,20 +219,22 @@ export function publishedChasing(source) {
   if(!Array.isArray(data._chasing) || !Number.isFinite(Date.parse(data._chasing_checked_at)) ||
      data._chasing.some(row=>!row || typeof row.name!=='string' || !Array.isArray(row.uncompleted_details) ||
        row.uncompleted_details.some(item=>!item || typeof item.title!=='string' || !['string','number'].includes(typeof item.id))))throw Error('CHASING_DATA_INVALID');
-  const result=Object.fromEntries(['_chasing','_chasing_checked_at','_chasing_status','_chasing_unknown','_reminder_admission','_schedule_status','_plan','_notice'].filter(k=>Object.hasOwn(data,k)).map(k=>[k,data[k]]));
+  const result=Object.fromEntries(['_chasing','_chasing_checked_at','_chasing_status','_chasing_unknown','_reminder_admission','_schedule_status','_plan','_notice','_cids','_task_changed'].filter(k=>Object.hasOwn(data,k)).map(k=>[k,data[k]]));
   result._days=Object.fromEntries(Object.entries(data).filter(([day,rows])=>/^\d{4}-\d{2}-\d{2}$/.test(day)&&Array.isArray(rows)));
   return result;
 }
 // Only schedule-backed projections are replaced. Owner marks/copy state and
 // the last completion snapshot remain under their existing synchronization.
-export function applyPublishedSchedule(data,snapshot,{plan=data._plan||{},notice=data._notice||{},days=[]}={}) {
+export function applyPublishedSchedule(data,snapshot,{plan=data._plan||{},notice=data._notice||{},days=[],safeTaskSwap=false}={}) {
   let changed=false,checked_at=null;
   for(const [day,health] of Object.entries(snapshot._schedule_status||{})){
     if(!/^\d{4}-\d{2}-\d{2}$/.test(day)||health?.status!=='verified')continue;
     const incoming=Date.parse(health.checked_at),current=Date.parse(data._schedule_status?.[day]?.checked_at);
     if(!Number.isFinite(incoming)||Number.isFinite(current)&&incoming<current)continue;
+    if(!safeTaskSwap && (Array.isArray(snapshot._days?.[day]) && !same(data[day],snapshot._days[day]) || Array.isArray(snapshot._plan?.[day]) && !same(plan[day],snapshot._plan[day])))throw Error('TASK_REFRESH_RELOAD_REQUIRED');
     const before=JSON.stringify([data[day],data._schedule_status?.[day],plan[day],notice[day]]);
     (data._schedule_status ||= {})[day]=structuredClone(health);
+    for(const field of ['_cids','_task_changed'])if(Object.hasOwn(snapshot[field]||{},day))(data[field] ||= {})[day]=structuredClone(snapshot[field][day]);
     const rows=snapshot._days?.[day];
     if(Array.isArray(rows)){data[day]=structuredClone(rows);if(!days.includes(day)){days.push(day);days.sort();}}
     if(Array.isArray(snapshot._plan?.[day])){plan[day]=structuredClone(snapshot._plan[day]);data._plan=plan;}
@@ -283,7 +307,8 @@ export async function boot({config,capture,apply,status:report,currentDay,hydrat
   const controller={
     observe(day){remember(day);if(engine)engine.observe(day);else status(client&&!user&&!initializing&&!connecting?'请登录以同步本次修改；本机输入保留':'尚未连接云端，本机输入保留；连接后自动保存本次修改');},
     open(day){remember(day);return engine?.open(day,{initialView:initialViews.get(day)});},
-    ready:day=>Boolean(engine?.days.get(day)?.ready)
+    ready:day=>Boolean(engine?.days.get(day)?.ready),
+    tryTaskProjectionSwap:(days,apply,rollback)=>Boolean(engine?.tryTaskProjectionSwap(days,apply,rollback))
   };
   if(!config.enabled){status('云端保存尚未配置；当前仅保存在本机');loginAction.hidden=retryAction.hidden=true;return controller;}
   const announceRefresh=async()=>{
@@ -302,9 +327,9 @@ export async function boot({config,capture,apply,status:report,currentDay,hydrat
   password.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();login.click();}});
   const conflict=button('处理冲突',async()=>{if(engine&&confirm('将当前设备保留的修改保存到云端？其他未修改项目保持原样。'))await engine.resolve(currentDay());});
   const legacy=button('下载旧本机记录',()=>{
-    const day=currentDay(),old=localStorage.getItem('wayon-before-cloud-'+day),recovery=engine&&localStorage.getItem(engine.recoveryKey(day));
-    if(!old&&!recovery){status('当天没有旧本机恢复副本');return;}
-    const raw=JSON.stringify({legacy:old?JSON.parse(old):null,cloud_recovery:recovery?JSON.parse(recovery):null});
+    const day=currentDay(),old=localStorage.getItem('wayon-before-cloud-'+day),recovery=engine&&localStorage.getItem(engine.recoveryKey(day)),tasks=localStorage.getItem('wayon-task-recovery-'+day);
+    if(!old&&!recovery&&!tasks){status('当天没有旧本机恢复副本');return;}
+    const raw=JSON.stringify({legacy:old?JSON.parse(old):null,cloud_recovery:recovery?JSON.parse(recovery):null,task_recovery:tasks?JSON.parse(tasks):null});
     const a=document.createElement('a'),url=URL.createObjectURL(new Blob([raw],{type:'application/json'}));a.href=url;a.download=`wayon-local-backup-${day}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
   });
   const logout=button('退出',async()=>{if(client)await client.auth.signOut();location.reload();});
