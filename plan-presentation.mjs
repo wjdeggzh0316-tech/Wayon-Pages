@@ -7,10 +7,17 @@ export function planDisplayName(value) {
   return text.replace(/[【】「」]/g,'').trim().replace(/(?:[-－—]\s*)?(?:(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语)\s*(?:1\s*v\s*1|一对一|1对1)(?:课程|班)?|高中同步课程|初中同步课程|小学同步课程|英语能力提升课程|雅思(?:基础|强化)?(?:课程|班)|托福(?:基础|强化)?(?:课程|班))$/i,'').trim();
 }
 // Names only: completion marks, notes and numbered tasks must remain byte-for-byte intact.
-export function studentDisplayText(value) {
+export function studentDisplayText(value, identity) {
+  const raw=String(identity||'').trim();
+  const bracket=raw.match(/^(?:【([^】]+)】|「([^」]+)」|\[([^\]]+)\])\s*(?:[-－—]?\s*(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语|高中|初中|小学))/i);
+  const person=bracket&&(bracket[1]||bracket[2]||bracket[3]);
   return String(value||'').split('\n').map((line,index)=>{
     if(index===0)line=line.replace(/【([^】]+)】/,(_,name)=>'【'+planDisplayName(name)+'】');
-    return line.replace(/^(\s*学生[：:]\s*)(.+)$/,(_,prefix,name)=>prefix+planDisplayName(name));
+    return line.replace(/^(\s*学生[：:]\s*)(.+)$/,(_,prefix,name)=>{
+      const display=planDisplayName(name);
+      if(person && new RegExp('^(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语)$','i').test(display.slice(person.length)) && display.startsWith(person))return prefix+person;
+      return prefix+display;
+    });
   }).join('\n');
 }
 export function planDisplayTasks(values) {

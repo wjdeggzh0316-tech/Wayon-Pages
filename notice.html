@@ -66,6 +66,16 @@ try { st = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e) {} push(); };
 const list = document.getElementById("list");
 document.getElementById("d").textContent = DATE;
+function noticeStudentText(r){
+ const raw=String(r[0]||'').trim();
+ const m=raw.match(/^(?:【([^】]+)】|「([^」]+)」|\[([^\]]+)\])\s*(?:[-－—]?\s*(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语|高中|初中|小学))/i);
+ if(!m)return r[2];
+ const person=m[1]||m[2]||m[3];
+ return String(r[2]).replace(/^(\s*学生[：:]\s*)(.+)$/gm,(_,prefix,name)=>{
+  if(name.startsWith(person)&&/^(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语)$/i.test(name.slice(person.length)))return prefix+person;
+  return prefix+name;
+ });
+}
 function render(){
   list.textContent = "";
   let n = 0;
@@ -77,13 +87,13 @@ function render(){
     const time = document.createElement("div"); time.className = "time"; time.textContent = r[1];
     head.append(name, time);
     if (done){ const s = document.createElement("div"); s.className = "state"; s.textContent = "✓ 已复制 " + done; head.append(s); }
-    const pre = document.createElement("pre"); pre.textContent = r[2];
+    const pre = document.createElement("pre"); pre.textContent = noticeStudentText(r);
     const b = document.createElement("button"); b.type = "button"; b.className = "copy"; b.id = "copy-" + i;
     b.textContent = done ? "再复制一次" : "复制";
     b.onclick = () => {
       const mark = () => { st[r[0]] = new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"}); save(); render(); };
       const sel = () => { const g = getSelection(), rg = document.createRange(); rg.selectNodeContents(pre); g.removeAllRanges(); g.addRange(rg); b.textContent = "已选中，按 ⌘C 复制"; };
-      try { navigator.clipboard.writeText(r[2]).then(mark, sel); } catch(e) { sel(); }
+      try { navigator.clipboard.writeText(noticeStudentText(r)).then(mark, sel); } catch(e) { sel(); }
     };
     head.append(b);
     if (done){ const u = document.createElement("button"); u.type = "button"; u.className = "undo"; u.textContent = "撤销"; u.onclick = () => { delete st[r[0]]; save(); render(); }; head.append(u); }

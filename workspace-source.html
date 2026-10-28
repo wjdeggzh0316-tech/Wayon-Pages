@@ -887,11 +887,11 @@ function renderNotice(){
     const meta = document.createElement("div"); meta.className = "meta"; meta.textContent = r[1];
     head.append(name, meta);
     if (done) { const x = document.createElement("div"); x.className = "state"; x.textContent = "✓ 已复制 " + done; head.append(x); }
-    const pre = document.createElement("pre"); pre.textContent = globalThis.wayonDisplayCopyText?.(r[2]) || r[2];
+    const pre = document.createElement("pre"); pre.textContent = globalThis.wayonDisplayCopyText?.(r[2],r[0]) || r[2];
     const b = document.createElement("button"); b.type = "button"; b.className = "copy"; b.id = "ncopy-" + i;
     b.textContent = done ? "再复制一次" : "复制";
     b.onclick = () => { const ok = () => { nc[noticeKey(r)] = {copied_at:hhmm(),signature:noticeSignature(r)}; nsave(); render(); }; const fail = () => { b.textContent = "复制失败，请重试"; };
-      try { navigator.clipboard.writeText(globalThis.wayonDisplayCopyText?.(r[2]) || r[2]).then(ok, fail); } catch(e) { fail(); } };
+      try { navigator.clipboard.writeText(globalThis.wayonDisplayCopyText?.(r[2],r[0]) || r[2]).then(ok, fail); } catch(e) { fail(); } };
     head.append(b);
     if (done) { const u = document.createElement("button"); u.type = "button"; u.className = "small"; u.textContent = "撤销"; u.onclick = () => { delete nc[noticeKey(r)]; nsave(); render(); }; head.append(u); }
     el.append(head, pre);
