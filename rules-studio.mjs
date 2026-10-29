@@ -1,8 +1,8 @@
-import { clone, clean, SYSTEMS, todayShanghai, inspectTask, taskLines, manualTask, setManual, validateDraft } from './rules-model.mjs?v=20261026-studio3';
-import { canonical, saveCatalog } from './rules-store.mjs?v=20261026-studio3';
-import { buildRuleEntities, entityStatus, setEntityStatus, findEntityForRule, ruleEntityDisplayName } from './rules-entities.mjs?v=20261026-studio3';
-import { STYLE } from './rules-studio-style.mjs?v=20261026-studio3';
-import { parseTaskUnits, replaceTaskUnit, removeTaskUnit } from './rule-task-text.mjs?v=20261026-studio3';
+import { clone, clean, SYSTEMS, todayShanghai, inspectTask, taskLines, manualTask, setManual, validateDraft } from './rules-model.mjs?v=20261029-weekend1';
+import { canonical, saveCatalog } from './rules-store.mjs?v=20261029-weekend1';
+import { buildRuleEntities, entityStatus, setEntityStatus, findEntityForRule, ruleEntityDisplayName } from './rules-entities.mjs?v=20261029-weekend1';
+import { STYLE } from './rules-studio-style.mjs?v=20261029-weekend1';
+import { parseTaskUnits, replaceTaskUnit, removeTaskUnit } from './rule-task-text.mjs?v=20261029-weekend1';
 
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const same = (a, b) => canonical(a) === canonical(b);
@@ -21,6 +21,13 @@ export function attendanceItems(payload, entity) {
     if (rule.vocab_task) add(rule.vocab_task, 'vocab', '通用', 0);
     (rule.attendance_tasks || []).forEach((text, index) => add(text, 'common', '通用', index));
     for (const [subject, texts] of Object.entries(rule.subject_rules || {})) texts.forEach((text, index) => add(text, 'subject', subject, index));
+    for (const window of rule.lesson_windows || []) {
+      const subject = window.weekdays.map(day => WEEKDAYS[day]).join('、') + ' ' + window.start + '–' + window.end + '（' + window.effective_from + '起；周末汇总）';
+      window.tasks.forEach((task, index) => {
+        add(task.text, 'window', subject, index);
+        result.at(-1).window = window;
+      });
+    }
   }
   return result;
 }
@@ -29,7 +36,7 @@ export function checkinItems(payload, entity) {
     parseTaskUnits(row['任务内容']).map((unit, index) => ({ ref: JSON.stringify([row.id, index]), text: unit.text, unit, rule: row, rowId: row.id, index })));
 }
 function authored(rule, scope) {
-  return scope === 'checkin' ? taskLines(rule['任务内容']) : [rule.vocab_task, ...(rule.attendance_tasks || []), ...Object.values(rule.subject_rules || {}).flat()].filter(Boolean);
+  return scope === 'checkin' ? taskLines(rule['任务内容']) : [rule.vocab_task, ...(rule.attendance_tasks || []), ...Object.values(rule.subject_rules || {}).flat(), ...(rule.lesson_windows || []).flatMap(window => window.tasks.map(task => task.text))].filter(Boolean);
 }
 export function updateManual(rule, scope, before, after, manual) {
   // An old line-level flag may apply to more than one logical parent. Preserve
@@ -93,7 +100,7 @@ export async function mountRules({ document, client, container, onClose }) {
   }
   function taskMeta(item, scope, entity) {
     const inspected = inspectTask(item.text, item.rule.system || entity.system, manualTask(item.rule, item.text));
-    if (scope === 'attendance') return inspected.label;
+    if (scope === 'attendance') return item.kind === 'window' ? '老师安排' + (item.window.tasks[item.index].weekend ? ' · 周末完成并汇总' : ' · 按当天课程') : inspected.label;
     const row = item.rule, parts = [frequency(row), row['形式'] || '', row['date:下次日期:start'] ? dateLabel(row['date:下次日期:start']) + '起' : '', row['date:重复截止:start'] ? '至' + dateLabel(row['date:重复截止:start']) : '', inspected.label];
     if (row['本次已完成'] === true || row['本次已完成'] === '__YES__') parts.push('本次已人工确认完成');
     if (entityStatus(entity, state.draft) === 'mixed') parts.push(row['状态'] === '进行中' ? '本安排正在进行' : '本安排暂停');
@@ -102,7 +109,7 @@ export async function mountRules({ document, client, container, onClose }) {
     return parts.filter(Boolean).join(' · ');
   }
   function taskRow(entity, scope, item) {
-    return `<div class="task-row" data-task="${escape(item.ref)}"><div class="task-main"><div class="task-name">${escape(item.text)}</div><div class="task-meta">${escape(taskMeta(item, scope, entity))}</div></div><div class="task-actions"><button type="button" class="icon-btn" data-action="edit-task" data-person="${escape(entity.key)}" data-scope="${scope}" data-task="${escape(item.ref)}" aria-label="编辑${escape(item.text)}" title="编辑任务">${EDIT}</button></div></div>`;
+    return `<div class="task-row" data-task="${escape(item.ref)}"><div class="task-main"><div class="task-name">${escape(item.text.replaceAll('{课程}', '当日'))}</div><div class="task-meta">${escape(taskMeta(item, scope, entity))}</div></div><div class="task-actions"><button type="button" class="icon-btn" data-action="edit-task" data-person="${escape(entity.key)}" data-scope="${scope}" data-task="${escape(item.ref)}" aria-label="编辑${escape(item.text)}" title="编辑任务">${EDIT}</button></div></div>`;
   }
   function relatedOverrides(entity) {
     return (state.draft.overrides || []).map((rule, index) => ({ rule, index })).filter(({ rule }) => (!rule.system || rule.system === entity.system) && entity.names.some(name => clean(name) === clean(rule.student)));
@@ -116,7 +123,7 @@ export async function mountRules({ document, client, container, onClose }) {
     if (!list.length) html = `<div class="empty-state">还没有${scope === 'attendance' ? '随课' : '打卡'}任务</div>`;
     else if (scope === 'attendance') {
       const subjects = [...new Set(list.map(item => item.subject))].sort((a, b) => a === '通用' ? -1 : b === '通用' ? 1 : 0);
-      html = subjects.map(subject => `<div class="task-group"><h3 class="group-caption">${subject === '通用' ? '每节课' : escape(subject) + '课'}</h3>${list.filter(item => item.subject === subject).map(item => taskRow(entity, scope, item)).join('')}</div>`).join('');
+      html = subjects.map(subject => `<div class="task-group"><h3 class="group-caption">${subject === '通用' ? '每节课' : escape(subject) + (list.some(item => item.subject === subject && item.kind === 'window') ? '' : '课')}</h3>${list.filter(item => item.subject === subject).map(item => taskRow(entity, scope, item)).join('')}</div>`).join('');
     } else html = list.map(item => taskRow(entity, scope, item)).join('');
     html += specialNotes(entity);
     html += `<button type="button" class="add-btn" data-action="add-task" data-person="${escape(entity.key)}" data-scope="${scope}">＋ 添加${scope === 'attendance' ? '随课' : '打卡'}任务</button>`;
@@ -171,9 +178,10 @@ export async function mountRules({ document, client, container, onClose }) {
     const row = item?.rule || {};
     state.editor = { type: 'task', entityKey, scope, reference, days: [...(row['周几'] || ['周一', '周三', '周五'])] };
     const subjects = [...new Set(['通用', '听力', '阅读', '写作', '口语', '语法', ...attendanceItems(state.draft, entity).map(item => item.subject)])];
-    const manual = item ? manualTask(row, item.text) || inspectTask(item.text, row.system || entity.system).mode === 'manual' : true;
+    const manual = item ? item.kind === 'window' || manualTask(row, item.text) || inspectTask(item.text, row.system || entity.system).mode === 'manual' : true;
     const body = `<p class="editor-person">${escape(entity.name)} <span class="system-pill">${escape(entity.systemLabel)}</span></p><form id="rules-task-form"><div class="field-grid">${field('任务内容', `<textarea id="task-title" name="title" aria-label="任务内容" required placeholder="写清具体任务与数量">${escape(item?.text || '')}</textarea>`, true)}${scope === 'attendance' ? field('适用课程', `<select data-field="task-subject" aria-label="适用课程">${options([...subjects.map(subject => [subject, subject === '通用' ? '每节课' : subject + '课']), ['custom', '自定义课程…']], item?.subject || '通用')}</select>`) : field('重复频率', `<select data-field="task-repeat" aria-label="重复频率">${options([['每天', '每天'], ['每周固定几天', '每周固定几天'], ['随课/每天', '有课日（历史规则）']], row['重复'] || '每天')}</select>`)}${field('处理方式', `<select data-field="task-handler" aria-label="处理方式">${options([['teacher', '老师／助教处理'], ['system', '自动识别']], manual ? 'teacher' : 'system')}</select>`)}${scope === 'attendance' ? '<label class="field full" data-custom-subject hidden><span>课程名称</span><input data-field="custom-subject" aria-label="课程名称" placeholder="填写课程名称"></label>' : `<div class="field full" data-weekdays ${row['重复'] === '每周固定几天' ? '' : 'hidden'}><span>执行日</span><div class="weekday-picker" role="group" aria-label="每周执行日">${WEEKDAYS.map(day => `<button type="button" class="${state.editor.days.includes(day) ? 'active' : ''}" data-action="weekday" data-day="${day}" aria-pressed="${state.editor.days.includes(day)}">${day.slice(1)}</button>`).join('')}</div></div>${field('开始日期', `<input type="date" data-field="task-start" aria-label="开始日期" value="${escape((row['date:下次日期:start'] || '').slice(0, 10))}">`)}${field('结束日期（含当天）', `<input type="date" data-field="task-end" aria-label="结束日期" value="${escape((row['date:重复截止:start'] || '').slice(0, 10))}">`)}${taskLines(row['任务内容']).length > 1 ? `<p class="small-note field full">本安排包含 ${taskLines(row['任务内容']).length} 项任务，频率与日期对这些任务共同生效。</p>` : ''}<details class="field full advanced-options"><summary>更多安排</summary>${field('形式', `<select data-field="task-form">${options(['线上', '自习', '线下'], row['形式'] || '线上')}</select>`)}${field('单词方式', `<select data-field="vocab-mode">${options(['跟随任务内容', '仅听力', '仅阅读', '听读交替', '两科分别布置'], row['单词布置方式'] || '跟随任务内容')}</select>`)}${field('阅读方式', `<select data-field="reading-mode">${options(['跟随默认', '完整原卷', '仅同卷P1/P2', '跨卷P1/P2三篇', '老师安排'], row['特殊阅读规则'] || '跟随默认')}</select>`)}${field('备注', `<textarea data-field="task-note">${escape(row['备注'] || '')}</textarea>`)}${row['本次已完成'] === true || row['本次已完成'] === '__YES__' ? '<p class="small-note">本次已人工确认完成；此记录保留。</p>' : ''}</details>`}</div><p class="small-note task-inspection"></p><p class="editor-error" role="alert" hidden></p></form>`;
     showDrawer((item ? '编辑' : '添加') + (scope === 'attendance' ? '随课任务' : '打卡任务'), body, `${item ? '<button type="button" class="button danger delete-task-button" data-action="delete-task">删除任务</button>' : ''}<button type="button" class="button" data-action="close-drawer">取消</button><button type="submit" form="rules-task-form" class="button primary">完成</button>`);
+    if (item?.kind === 'window') { q('[data-field="task-subject"]').disabled = true; q('[data-field="task-handler"]').disabled = true; }
     inspection(); q('textarea[name="title"]').focus();
   }
   function inspection() {
@@ -186,6 +194,7 @@ export async function mountRules({ document, client, container, onClose }) {
   function removeAttendance(item) {
     if (item.kind === 'vocab') item.rule.vocab_task = '';
     else if (item.kind === 'common') item.rule.attendance_tasks.splice(item.index, 1);
+    else if (item.kind === 'window') item.window.tasks.splice(item.index, 1);
     else item.rule.subject_rules[item.subject].splice(item.index, 1);
   }
   function addAttendance(entity, text, subject) {
@@ -221,6 +230,7 @@ export async function mountRules({ document, client, container, onClose }) {
         rule = item.rule;
         if (item.kind === 'vocab') rule.vocab_task = text;
         else if (item.kind === 'common') rule.attendance_tasks[item.index] = text;
+        else if (item.kind === 'window') item.window.tasks[item.index].text = text;
         else rule.subject_rules[subject][item.index] = text;
       } else {
         if (item) removeAttendance(item);

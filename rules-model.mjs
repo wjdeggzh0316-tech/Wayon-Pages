@@ -1,5 +1,5 @@
-import { RULE_SPEC } from "./rules-contract.mjs?v=20261026-studio3";
-import { taskUnitTexts } from './rule-task-text.mjs?v=20261026-studio3';
+import { RULE_SPEC } from "./rules-contract.mjs?v=20261029-weekend1";
+import { taskUnitTexts } from './rule-task-text.mjs?v=20261029-weekend1';
 export const clone = (x) => structuredClone(x);
 export const clean = (x) =>
   String(x || "")
@@ -104,6 +104,7 @@ export function expandedLines(row, day) {
   return [...new Set(result)];
 }
 export function manualTask(rule, text) {
+  if ((rule.lesson_windows || []).some(window => window.tasks.some(task => task.text === text))) return true;
   const keys = manualKeys(text);
   return (rule.manual_tasks || []).some(flag => keys.has(normalizeManual(flag)));
 }
@@ -179,6 +180,7 @@ function authored(rule, kind) {
     rule.vocab_task,
     ...(Array.isArray(rule.attendance_tasks) ? rule.attendance_tasks : []),
     ...Object.values(rule.subject_rules || {}).flat(),
+    ...(rule.lesson_windows || []).flatMap(window => window.tasks.map(task => task.text)),
   ].filter((x) => x !== null && x !== undefined && x !== "");
 }
 export function validateDraft(payload, base = {}) {
