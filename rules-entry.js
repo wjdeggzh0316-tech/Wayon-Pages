@@ -134,14 +134,15 @@
       `;
 
       try {
+        const within = (promise, ms) => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), ms))]);
         let sdk;
         try {
-          sdk = await import('https://esm.sh/@supabase/supabase-js@2.49.4');
+          sdk = await within(import('https://esm.sh/@supabase/supabase-js@2.49.4'), 15000);
         } catch {
           try {
-            sdk = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm');
+            sdk = await within(import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm'), 15000);
           } catch {
-            sdk = await import('https://unpkg.com/@supabase/supabase-js@2.49.4/dist/module/index.js');
+            sdk = await within(import('https://unpkg.com/@supabase/supabase-js@2.49.4/dist/module/index.js'), 15000);
           }
         }
 
@@ -160,10 +161,13 @@
           <div style="padding:40px 24px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,sans-serif">
             <h3 style="margin:0 0 8px;color:var(--bad,#d93025)">无法载入任务规则</h3>
             <p style="font-size:13px;color:var(--muted,#666);margin:0 0 16px">请检查网络或刷新页面后重试；当前页面数据保持原样。</p>
-            <button onclick="this.closest('dialog').close()" style="padding:8px 18px;border-radius:8px;border:1px solid #ddd;background:#fff;cursor:pointer">关闭</button>
+            <button type="button" data-rules-retry style="min-height:40px;padding:8px 20px;margin:0 6px;border-radius:10px;border:0;background:#0071e3;color:#fff;font:inherit;cursor:pointer">重试</button>
+            <button type="button" data-rules-close style="min-height:40px;padding:8px 20px;margin:0 6px;border-radius:10px;border:1px solid #ddd;background:#fff;font:inherit;cursor:pointer">关闭</button>
           </div>
         `;
         isMounted = false;
+        dialog.querySelector('[data-rules-close]').onclick = () => dialog.close();
+        dialog.querySelector('[data-rules-retry]').onclick = () => { void openRulesModal(); };
       }
     } else if (controller?.refreshIfClean) {
       await controller.refreshIfClean();

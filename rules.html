@@ -68,25 +68,54 @@
     </div>
   </main>
   <script type="module">
-    import { mountRules } from './rules-editor.mjs?v=20261029-weekend1';
-    let sdk;
-    try {
-      sdk = await import('https://esm.sh/@supabase/supabase-js@2.49.4');
-    } catch {
+    // Loading only: a failure never writes rules; it shows a visible error and a retry.
+    const root = document.getElementById('rules-standalone-root');
+    const within = (promise, ms) => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), ms))]);
+    const loadSdk = async () => {
+      const sources = [
+        'https://esm.sh/@supabase/supabase-js@2.49.4',
+        'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm',
+        'https://unpkg.com/@supabase/supabase-js@2.49.4/dist/module/index.js'
+      ];
+      let last;
+      for (const source of sources) {
+        try { return await within(import(source), 15000); } catch (error) { last = error; }
+      }
+      throw last || new Error('SDK_UNAVAILABLE');
+    };
+    const showLoading = () => {
+      root.innerHTML = '<div style="padding:48px 20px;text-align:center;color:#666"><p style="font-size:15px;margin:0 0 8px" role="status">正在连接统一规则库…</p></div>';
+    };
+    const showError = () => {
+      root.innerHTML = '<div style="padding:40px 20px;text-align:center" role="alert">'
+        + '<p style="font-size:16px;font-weight:600;color:#d93025;margin:0 0 8px">无法载入任务规则</p>'
+        + '<p style="font-size:13px;color:#666;margin:0 0 16px">网络或云端暂时连不上；规则没有任何改动。请检查网络后重试。</p>'
+        + '<button type="button" id="rules-retry" style="min-height:40px;padding:8px 20px;border:0;border-radius:10px;background:#0071e3;color:#fff;font:inherit;cursor:pointer">重试</button></div>';
+      document.getElementById('rules-retry').onclick = load;
+    };
+    async function load() {
+      showLoading();
       try {
-        sdk = await import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm');
-      } catch {
-        sdk = await import('https://unpkg.com/@supabase/supabase-js@2.49.4/dist/module/index.js');
+        const [{ mountRules }, sdk, response] = await Promise.all([
+          within(import('./rules-editor.mjs?v=20261029-weekend1'), 15000),
+          loadSdk(),
+          within(fetch('./checks-public-config.json', { cache: 'no-store' }), 15000)
+        ]);
+        if (!response.ok) throw new Error('CONFIG_UNAVAILABLE');
+        const config = await response.json();
+        const client = sdk.createClient(config.url, config.key);
+        await mountRules({
+          document,
+          client,
+          container: root,
+          onClose: () => { window.location.href = './'; }
+        });
+      } catch (error) {
+        console.error('Failed to load rules page:', error);
+        showError();
       }
     }
-    const config = await (await fetch('./checks-public-config.json', { cache: 'no-store' })).json();
-    const client = sdk.createClient(config.url, config.key);
-    await mountRules({
-      document,
-      client,
-      container: document.getElementById('rules-standalone-root'),
-      onClose: () => { window.location.href = './'; }
-    });
+    load();
   </script>
 </body>
 </html>
