@@ -27,13 +27,17 @@
   .wayon-room .k .s{font-size:13px;line-height:1.45;word-break:normal;overflow-wrap:anywhere}
   .wayon-room .room-teacher{display:block;font-size:12px;opacity:.75;white-space:nowrap}
   .wayon-room .room-subject{display:block}.wayon-room .k .tt{font-size:12px;line-height:1.4;white-space:nowrap;font-variant-numeric:tabular-nums}
-  .wayon-room .hallbox{grid-template-columns:repeat(4,minmax(0,1fr))!important;grid-auto-rows:minmax(36px,auto);gap:5px;padding:4px;align-content:start;overflow:auto;border-radius:12px}
+  .wayon-room .hallbox{grid-template-columns:repeat(auto-fill,minmax(84px,1fr))!important;grid-auto-rows:minmax(36px,auto);gap:5px;padding:4px;align-content:start;overflow:auto;border-radius:12px}
   .wayon-room .hallbox>.seat.free{display:none}.wayon-room .hallbox>.seat.room-seat-add{display:flex;opacity:1;min-height:36px;cursor:pointer;background:transparent;color:var(--accent);border:1px dashed var(--line-strong);font-size:12px}
   .wayon-room .c.seat{min-height:36px;border-radius:7px;padding:0}
   .wayon-room .k.chip{padding:6px 5px;border-radius:7px;min-height:36px;width:100%}
-  .wayon-room .k.chip .w{font-size:12px;font-weight:550;line-height:1.4;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+  .wayon-room .k.chip .w{font-size:12px;font-weight:550;line-height:1.3;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;word-break:normal}
   .wayon-room .k.chip.pre{border-color:var(--hallb);background:var(--hall)!important;opacity:.85}
   .wayon-room .k.chip .x{border-radius:0 7px 7px 0;padding:0 6px;min-width:24px}
+  .wayon-room .room-cont{display:flex;flex-direction:column;justify-content:center;gap:2px;height:100%;min-height:48px;padding:10px 12px;border-radius:10px;border:1px dashed var(--line-strong,rgba(0,0,0,.18));color:var(--muted);font-size:12px;line-height:1.4;box-sizing:border-box}
+  .wayon-room .room-cont b{color:var(--fg);font-weight:600;font-size:13px;overflow-wrap:anywhere}
+  .wayon-room .room-scroll-hint{display:none;font-size:12px;color:var(--muted);flex:none;margin:-2px 0 2px}
+  .wayon-room.room-overflow .room-scroll-hint{display:block}
   .wayon-room .foot{font-size:12px;line-height:1.5;padding-top:2px;flex:none}.wayon-room .foot:empty{display:none}
   .room-info{position:relative;order:2;margin-left:auto;flex:none;font-size:12px}
   .room-info>summary{display:grid;place-items:center;list-style:none;width:36px;height:36px;border:1px solid var(--line);border-radius:9px;color:var(--muted);cursor:pointer;font-size:16px}
@@ -43,7 +47,7 @@
   .room-info-panel p{margin:0 0 8px}.room-info-panel [role=status]{padding:8px 0 0!important;background:transparent!important;border:0!important;font-size:11px!important}
   .room-info-panel #sync{white-space:normal;display:block;margin-top:6px}
   .wayon-room .sheet{max-height:calc(100dvh - 16px);overflow-y:auto}
-  @media(max-height:650px) and (min-width:880px){body.wayon-room{padding:12px!important;gap:6px!important}.wayon-room .top{padding-bottom:6px;min-height:38px}.wayon-room .legend{font-size:11px}.wayon-room .k{padding:7px 9px;gap:1px}.wayon-room .k .w{font-size:14px;line-height:1.3}.wayon-room .k .s{font-size:12px;line-height:1.3}.wayon-room .k .tt,.wayon-room .room-teacher{font-size:11px}.wayon-room .hallbox{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:3px;grid-auto-rows:minmax(28px,auto)}.wayon-room .c.seat,.wayon-room .k.chip,.wayon-room .hallbox>.seat.room-seat-add{min-height:28px}.wayon-room .k.chip{padding:3px 5px}.wayon-room .foot{font-size:11px}}
+  @media(max-height:650px) and (min-width:880px){body.wayon-room{padding:12px!important;gap:6px!important}.wayon-room .top{padding-bottom:6px;min-height:38px}.wayon-room .legend{font-size:11px}.wayon-room .k{padding:7px 9px;gap:1px}.wayon-room .k .w{font-size:14px;line-height:1.3}.wayon-room .k .s{font-size:12px;line-height:1.3}.wayon-room .k .tt,.wayon-room .room-teacher{font-size:11px}.wayon-room .hallbox{grid-template-columns:repeat(auto-fill,minmax(84px,1fr))!important;gap:3px;grid-auto-rows:minmax(28px,auto)}.wayon-room .c.seat,.wayon-room .k.chip,.wayon-room .hallbox>.seat.room-seat-add{min-height:28px}.wayon-room .k.chip{padding:3px 5px}.wayon-room .foot{font-size:11px}}
   @media(max-width:1023px){.wayon-workbench:has(#classroom-frame) #list>div:has(>a[target="_blank"]){min-height:44px!important}.wayon-workbench .sidebar #workflow-tools{position:absolute;left:14px;top:calc(100% + 8px);flex-direction:row!important;gap:4px!important;margin:0!important;z-index:4}}
   @media(max-width:700px){body.wayon-room{padding:10px!important}.wayon-room .top>b{font-size:17px}.wayon-room #cf{font-size:12px}.wayon-room .days{order:4;flex-basis:100%;margin:0}.wayon-room .days button{min-height:44px;height:44px;flex:1}.room-info>summary{width:44px;height:44px}.room-info-panel{right:0;width:min(320px,calc(100vw - 32px))}.wayon-room .room-scroll>.grid{min-height:540px;grid-template-rows:42px repeat(4,minmax(116px,1fr))!important}.wayon-room .legend{font-size:11px;gap:5px 10px}.wayon-room .c.seat,.wayon-room .k.chip,.wayon-room .hallbox>.seat.room-seat-add{min-height:44px}.wayon-room .sheet button{min-height:44px}}
   `;
@@ -76,7 +80,28 @@
     const help=document.createElement('p');help.textContent='点击课程格可编辑；按住课程块可拖动。大厅虚线姓名为课后预占，点一下确认；“＋ 加座”可填写空座。';
     panel.append(help);const status=document.querySelector('body>[role="status"]');if(status)panel.append(status);
     const sync=document.getElementById('sync');if(sync)panel.append(sync);info.append(summary,panel);top.append(info);
+    const plain = value => String(value||'').replace(/[【】「」]/g,'').trim();
     const decorate = () => {
+      // Names only: brackets around a student name are presentation, never stored data.
+      grid.querySelectorAll('.k .w').forEach(node => {const next=plain(node.textContent);if(next!==node.textContent)node.textContent=next;});
+      // A lesson that continues from the previous slot is shown as a continuation, not a blank cell.
+      grid.querySelectorAll('.c.used:not(.seat)').forEach(cell => {
+        if(cell.querySelector('.k,.room-cont'))return;
+        let list=[];
+        try{if(typeof items==='function')list=items(Number(cell.dataset.ri),Number(cell.dataset.si))||[];}catch(_){list=[];}
+        const lessons=list.filter(Boolean);
+        const box=document.createElement('div');box.className='room-cont';
+        if(!lessons.length){box.textContent='占用中';cell.append(box);return;}
+        for(const x of lessons){
+          const line=document.createElement('div');
+          const who=document.createElement('b');who.textContent=plain(x[0])||'课程';
+          const end=String(x[3]||'').split('-')[1];
+          line.append(who,document.createTextNode(' 接上节'+(end?' · 至 '+end.trim():'')));
+          box.append(line);
+        }
+        cell.setAttribute('aria-label','上一时段课程延续：'+lessons.map(x=>plain(x[0])).join('、'));
+        cell.append(box);
+      });
       grid.querySelectorAll('.k:not(.chip) .s').forEach(node => {
         if(node.dataset.roomLayout)return;
         node.dataset.roomLayout='1';const text=node.textContent,i=text.lastIndexOf('·');if(i<0)return;
@@ -89,6 +114,16 @@
       const foot=document.getElementById('f');if(foot&&foot.textContent.includes('按住课程块'))foot.textContent=foot.textContent.split('按住课程块')[0].trim();
     };
     decorate();new MutationObserver(decorate).observe(grid,{childList:true});
+    // Narrow screens: say that the room table scrolls sideways, and hide the hint at the end.
+    const scroller=grid.closest('.room-scroll');
+    if(scroller){
+      const hint=document.createElement('div');hint.className='room-scroll-hint';hint.setAttribute('aria-hidden','true');hint.textContent='← 左右滑动查看全部教室 →';
+      scroller.before(hint);
+      const update=()=>{const more=scroller.scrollWidth-scroller.clientWidth>4;document.body.classList.toggle('room-overflow',more);hint.style.visibility=more&&scroller.scrollLeft+scroller.clientWidth<scroller.scrollWidth-4?'visible':'hidden';};
+      scroller.addEventListener('scroll',update,{passive:true});window.addEventListener('resize',update);
+      if(typeof ResizeObserver==='function')new ResizeObserver(update).observe(scroller);
+      update();
+    }
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
 })();

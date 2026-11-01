@@ -6,6 +6,40 @@ export function planDisplayName(value) {
   if(head)text=head[1]+(head[2]||head[3]||head[4]);
   return text.replace(/[【】「」]/g,'').trim().replace(/(?:[-－—]\s*)?(?:(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语)\s*(?:1\s*v\s*1|一对一|1对1)(?:课程|班)?|高中同步课程|初中同步课程|小学同步课程|英语能力提升课程|雅思(?:基础|强化)?(?:课程|班)|托福(?:基础|强化)?(?:课程|班))$/i,'').trim();
 }
+// Explicitly bracketed roster identities map their bracket-free spelling to the person name.
+export function rosterPeople(identities) {
+  const people=new Map();
+  for(const raw of identities||[]){
+    const text=String(raw||'').trim();
+    if(!/^(?:【[^】]+】|「[^」]+」|\[[^\]]+\])/.test(text))continue;
+    const person=planDisplayName(text),plain=text.replace(/[【】「」\[\]]/g,'').trim();
+    if(person&&plain&&plain!==person)people.set(plain,person);
+  }
+  return people;
+}
+// Presentation only: a course label is removed only after a roster-confirmed person,
+// and a reversed Chinese/Latin name follows the spelling already used on the roster.
+export function rosterDisplayName(value, people, names) {
+  const text=planDisplayName(value),parts=text.match(/^((?:\d+[.、．]\s*)?)([\s\S]*)$/),prefix=parts[1],body=parts[2];
+  const label=/^\s*[-－—]?\s*(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语)\s*(?:基础|强化|冲刺|提高|进阶|1\s*v\s*1|一对一|1对1)?\s*(?:课程|班)?(?:\s*[-－—]\s*(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语)\s*(?:基础|强化|冲刺|提高|进阶|1\s*v\s*1|一对一|1对1)?\s*(?:课程|班)?)?$/i;
+  for(const [plain,person] of people||[]){
+    if(body===plain||body===person)return prefix+person;
+    for(const start of [plain,person])if(body.startsWith(start)&&label.test(body.slice(start.length)))return prefix+person;
+  }
+  // A plain roster name followed by a separated course label, e.g. 丁嘉宝-雅思基础.
+  if(names&&typeof names[Symbol.iterator]==='function'&&!(typeof names.has==='function'&&names.has(body))){
+    for(const known of names)if(known&&body.startsWith(known)&&/^\s*[-－—]/.test(body.slice(known.length))&&label.test(body.slice(known.length)))return prefix+known;
+  }
+  const swap=body.match(/^([一-鿿]{2,4})([A-Za-z]+)$/)||body.match(/^([A-Za-z]+)([一-鿿]{2,4})$/);
+  if(swap&&names&&typeof names.has==='function'&&!names.has(body)&&names.has(swap[2]+swap[1]))return prefix+swap[2]+swap[1];
+  return text;
+}
+// Only the bracketed name in the first line changes; task lines stay byte-for-byte intact.
+export function rosterHeaderText(value, display) {
+  const lines=String(value||'').split('\n');
+  lines[0]=lines[0].replace(/【([^】]+)】/,(_,name)=>'【'+display(name)+'】');
+  return lines.join('\n');
+}
 // Names only: completion marks, notes and numbered tasks must remain byte-for-byte intact.
 export function studentDisplayText(value, identity) {
   const raw=String(identity||'').trim();
@@ -42,11 +76,24 @@ export function planDisplayText(value) {
    if(typeof planCard!=='function'||typeof foldRow!=='function'||document.documentElement.dataset.wayonStudentNames==='1')return;
    document.documentElement.dataset.wayonPlanDisplay='1';
    document.documentElement.dataset.wayonStudentNames='1';
-   const name=${planDisplayName.toString()},tasks=${planDisplayTasks.toString()};
-   const planDisplayName=name,planDisplayTasks=tasks,copyText=${planDisplayText.toString()};
+   const base=${planDisplayName.toString()},tasks=${planDisplayTasks.toString()};
+   const planDisplayName=base,planDisplayTasks=tasks,baseCopyText=${planDisplayText.toString()};
+   const people=${rosterPeople.toString()},resolve=${rosterDisplayName.toString()},header=${rosterHeaderText.toString()},studentText=${studentDisplayText.toString()};
+   const identities=()=>{
+     const ids=[];
+     try{
+       for(const [day,rows] of Object.entries(DATA)){
+         if(/^\\d{4}-\\d{2}-\\d{2}$/.test(day)&&Array.isArray(rows))for(const row of rows)if(Array.isArray(row)&&typeof row[0]==='string')ids.push(row[0]);
+       }
+       for(const rows of Object.values(DATA._plan||{}))if(Array.isArray(rows))for(const row of rows)if(Array.isArray(row)&&typeof row[0]==='string')ids.push(row[0]);
+     }catch{}
+     return ids;
+   };
+   const name=value=>{const ids=identities();return resolve(value,people(ids),new Set(ids.map(x=>base(x))));};
+   const copyText=value=>header(baseCopyText(value),name);
    globalThis.wayonDisplayName=name;
    globalThis.wayonPlanCopyText=copyText;
-   globalThis.wayonDisplayCopyText=${studentDisplayText.toString()};
+   globalThis.wayonDisplayCopyText=(value,identity)=>header(studentText(value,identity),name);
    const card=planCard,fold=foldRow;
    planCard=function(title,time,text,key,group,marker){return card(name(title),time,copyText(text),key,group,marker);};
    foldRow=function(id,label,when){return fold(id,name(label),when);};
