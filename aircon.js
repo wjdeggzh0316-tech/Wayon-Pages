@@ -76,7 +76,7 @@
     body[data-aircon-open] #list,body[data-aircon-open] .workspace-top-bar,body[data-aircon-open] .workspace-sub-bar,body[data-aircon-open] .sidebar-footer .bar{display:none!important}
     #aircon-panel{width:100%}#aircon-panel[hidden]{display:none!important}
     .aircon-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:20px}
-    .aircon-heading h2{font-size:24px;letter-spacing:-.025em;margin:0}.aircon-heading select{max-width:100%;min-height:44px;border:1px solid var(--line-strong);border-radius:10px;background:var(--card);color:var(--fg);padding:8px 12px;font:inherit}
+    .aircon-heading h2{font-size:24px;letter-spacing:-.025em;margin:0}.aircon-heading select{max-width:100%;min-height:44px;border:1px solid var(--line-strong);border-radius:10px;background:var(--card) url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2212%22%20height%3D%2212%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236e6e73%22%20stroke-width%3D%222.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%2F%3E%3C%2Fsvg%3E") no-repeat right 12px center/11px 11px;color:var(--fg);padding:8px 34px 8px 12px;font:inherit;appearance:none;-webkit-appearance:none}
     .aircon-hint{font-size:12px;color:var(--muted);line-height:1.6;margin:0 0 16px}.aircon-empty{padding:24px;border:1px solid var(--line);border-radius:16px;background:var(--card);color:var(--muted)}
     #aircon-panel pre{margin:16px 0 0;padding:16px;border-radius:12px;background:var(--code-bg);font:15px/1.8 var(--sans);white-space:pre-wrap;overflow-wrap:anywhere}
     #aircon-panel .aircon-card.folded{padding:0!important;display:block!important;height:auto;min-height:44px}
@@ -129,6 +129,9 @@
   function mount() {
     const tabs=document.getElementById('tabs'),list=document.getElementById('list');if(!tabs || !list)return;
     if(!root){root=make('section');root.id='aircon-panel';root.hidden=true;root.setAttribute('aria-label','空调加时');list.before(root);}
+    // Keep the cloud notice above the panel, matching the other views.
+    const notice=list.parentNode&&[...list.parentNode.children].find(e=>e.classList.contains('wayon-sync-notice'));
+    if(notice&&root.compareDocumentPosition(notice)&Node.DOCUMENT_POSITION_FOLLOWING)notice.after(root);
     if(!document.getElementById('nav-aircon')) {
       const button=make('button','wayon-icon-control'+(open?' on':''));button.id='nav-aircon';button.type='button';button.title='空调加时';button.setAttribute('aria-label','空调加时');button.setAttribute('aria-pressed',String(open));
       button.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20 M3.34 7l17.32 10 M3.34 17L20.66 7 M8 4l4 4 4-4 M8 20l4-4 4 4 M3 11l5-1-1-5 M17 19l-1-5 5-1 M3 13l5 1-1 5 M17 5l-1 5 5 1"/></svg>';

@@ -135,19 +135,23 @@
 
       try {
         const within = (promise, ms) => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), ms))]);
-        let sdk;
-        try {
-          sdk = await within(import('https://esm.sh/@supabase/supabase-js@2.49.4'), 15000);
-        } catch {
-          try {
-            sdk = await within(import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm'), 15000);
-          } catch {
-            sdk = await within(import('https://unpkg.com/@supabase/supabase-js@2.49.4/dist/module/index.js'), 15000);
-          }
-        }
-
         const config = await (await fetch('./checks-public-config.json?v=' + Date.now(), { cache: 'no-store' })).json();
-        const client = sdk.createClient(config.url, config.key);
+        // Reuse the workspace's client: a second auth client on the same storage key races it.
+        const shared = globalThis.wayonSupabaseClient;
+        let client = shared && shared.url === config.url ? shared.client : null;
+        if (!client) {
+          let sdk;
+          try {
+            sdk = await within(import('https://esm.sh/@supabase/supabase-js@2.49.4'), 15000);
+          } catch {
+            try {
+              sdk = await within(import('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm'), 15000);
+            } catch {
+              sdk = await within(import('https://unpkg.com/@supabase/supabase-js@2.49.4/dist/module/index.js'), 15000);
+            }
+          }
+          client = sdk.createClient(config.url, config.key);
+        }
         const { mountRules } = await import('./rules-editor.mjs?v=' + Date.now());
         controller = await mountRules({
           document,

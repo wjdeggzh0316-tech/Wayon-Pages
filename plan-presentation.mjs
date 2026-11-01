@@ -35,9 +35,10 @@ export function rosterDisplayName(value, people, names) {
   return text;
 }
 // Only the bracketed name in the first line changes; task lines stay byte-for-byte intact.
+// A header may nest the person bracket, e.g. 【【陈书进】雅思强化课程】, so match the outer pair.
 export function rosterHeaderText(value, display) {
   const lines=String(value||'').split('\n');
-  lines[0]=lines[0].replace(/【([^】]+)】/,(_,name)=>'【'+display(name)+'】');
+  lines[0]=lines[0].replace(/【((?:【[^】]*】|[^【】])+)】/,(_,name)=>'【'+display(name)+'】');
   return lines.join('\n');
 }
 // Names only: completion marks, notes and numbered tasks must remain byte-for-byte intact.
@@ -46,13 +47,22 @@ export function studentDisplayText(value, identity) {
   const bracket=raw.match(/^(?:【([^】]+)】|「([^」]+)」|\[([^\]]+)\])\s*(?:[-－—]?\s*(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语|高中|初中|小学))/i);
   const person=bracket&&(bracket[1]||bracket[2]||bracket[3]);
   return String(value||'').split('\n').map((line,index)=>{
-    if(index===0)line=line.replace(/【([^】]+)】/,(_,name)=>'【'+planDisplayName(name)+'】');
+    if(index===0)line=line.replace(/【((?:【[^】]*】|[^【】])+)】/,(_,name)=>'【'+planDisplayName(name)+'】');
     return line.replace(/^(\s*学生[：:]\s*)(.+)$/,(_,prefix,name)=>{
       const display=planDisplayName(name);
       if(person && new RegExp('^(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语)$','i').test(display.slice(person.length)) && display.startsWith(person))return prefix+person;
       return prefix+display;
     });
   }).join('\n');
+}
+// A single-student card drops a leading 「本人」 marker carried over from a merged-class rule;
+// merged cards keep it because it names which member the task belongs to.
+export function ownTaskText(value) {
+  const lines=String(value||'').split('\n');
+  const person=(lines[0].match(/【([^】]+)】/)||[])[1]?.trim();
+  if(!person||/[&＆/／、,，]/.test(person))return lines.join('\n');
+  const own=new RegExp('^(\\s*\\d+[、.．]\\s*)[「【]'+person.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'[」】]\\s*');
+  return lines.map((line,index)=>index?line.replace(own,'$1'):line).join('\n');
 }
 export function planDisplayTasks(values) {
   const tasks=values.map(x=>String(x).trim()).filter(Boolean);
@@ -61,7 +71,7 @@ export function planDisplayTasks(values) {
 }
 export function planDisplayText(value) {
   const lines=String(value||'').split('\n');
-  const header=lines.shift().replace(/【([^】]+)】/,(_,name)=>'【'+planDisplayName(name)+'】');
+  const header=lines.shift().replace(/【((?:【[^】]*】|[^【】])+)】/,(_,name)=>'【'+planDisplayName(name)+'】');
   const numbered=lines.filter(x=>/^\s*\d+[、.．]\s*/.test(x));
   if(!numbered.length)return [header,...lines].join('\n');
   // Only rewrite a generated numbered list, never a free-form teacher paragraph.
@@ -78,7 +88,7 @@ export function planDisplayText(value) {
    document.documentElement.dataset.wayonStudentNames='1';
    const base=${planDisplayName.toString()},tasks=${planDisplayTasks.toString()};
    const planDisplayName=base,planDisplayTasks=tasks,baseCopyText=${planDisplayText.toString()};
-   const people=${rosterPeople.toString()},resolve=${rosterDisplayName.toString()},header=${rosterHeaderText.toString()},studentText=${studentDisplayText.toString()};
+   const people=${rosterPeople.toString()},resolve=${rosterDisplayName.toString()},header=${rosterHeaderText.toString()},studentText=${studentDisplayText.toString()},own=${ownTaskText.toString()};
    const identities=()=>{
      const ids=[];
      try{
@@ -90,10 +100,11 @@ export function planDisplayText(value) {
      return ids;
    };
    const name=value=>{const ids=identities();return resolve(value,people(ids),new Set(ids.map(x=>base(x))));};
-   const copyText=value=>header(baseCopyText(value),name);
+   const copyText=value=>own(header(baseCopyText(value),name));
    globalThis.wayonDisplayName=name;
+   globalThis.wayonOwnTaskText=own;
    globalThis.wayonPlanCopyText=copyText;
-   globalThis.wayonDisplayCopyText=(value,identity)=>header(studentText(value,identity),name);
+   globalThis.wayonDisplayCopyText=(value,identity)=>own(header(studentText(value,identity),name));
    const card=planCard,fold=foldRow;
    planCard=function(title,time,text,key,group,marker){return card(name(title),time,copyText(text),key,group,marker);};
    foldRow=function(id,label,when){return fold(id,name(label),when);};
@@ -202,9 +213,10 @@ export async function admittedReminderRows(rows,policy) {
           const button=document.getElementById('chcopy-'+index);
           if(!button||button.disabled||bound.has(button))continue;
           const card=button.closest('.item'),heading=card?.querySelector('.head .name');
-          const expected=(index+1)+'. '+planDisplayName(row.name);
-          const title=heading?.textContent||'';
-          const original=(index+1)+'. '+String(row.name||'').replace(/[【】]/g,'');
+          // Open follow-ups are numbered among themselves, so match the name after the number.
+          const expected=planDisplayName(row.name);
+          const title=(heading?.textContent||'').replace(/^\\d+\\.\\s*/,'');
+          const original=String(row.name||'').replace(/[【】]/g,'');
           if(![expected,original].some(value=>title.startsWith(value)&&(title.length===value.length||/^\\s/.test(title.slice(value.length)))))continue;
           const value=()=>{
             const stopped=chasingStopIds(row),done=chasingDoneIds(row);
