@@ -103,6 +103,27 @@
   .wayon-room .tl-hall-label{font-size:11px;color:var(--muted);grid-column:1/-1;padding:2px 4px 0}
   .wayon-room .tl-now{z-index:3;height:2px;background:var(--bad);align-self:start;pointer-events:none;position:relative}
   .wayon-room .tl-now::before{content:"";position:absolute;left:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--bad)}
+  .wayon-room .tl-hallband{border-top:1px solid var(--line);background:color-mix(in srgb,var(--hall) 38%,transparent);border-radius:0 0 8px 8px;cursor:copy;position:relative;margin-bottom:2px}
+  .wayon-room .tl-hallband:hover{background:color-mix(in srgb,var(--hall) 70%,transparent)}
+  .wayon-room .tl-hallband.over{background:var(--bad-bg);box-shadow:inset 0 0 0 1.5px var(--bad)}
+  .wayon-room .tl-hallband.man::after{content:"✎";position:absolute;right:6px;bottom:3px;font-size:10px;color:var(--edit)}
+  .wayon-room .tl-hallcount{position:absolute;right:6px;top:3px;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums;pointer-events:none}
+  .wayon-room .tl-hallband.over .tl-hallcount{color:var(--bad);font-weight:700}
+  .wayon-room .tl-hallbar{z-index:1;justify-self:start;display:flex;flex-direction:column;gap:2px;margin:18px 0 3px;padding:6px 7px;border-radius:7px;background:var(--hall);border:1px solid var(--hallb);border-left-width:3px;color:var(--fg);font-size:12.5px;font-weight:600;line-height:1.25;overflow:hidden;cursor:pointer;min-width:0;box-sizing:border-box}
+  .wayon-room .tl-hallbar.pre{background:transparent;border-style:dashed;border-left-width:1px;color:var(--fg-secondary)}
+  .wayon-room .tl-hallbar.vertical{align-items:center;padding:6px 0}
+  .wayon-room .tl-hallbar.vertical .tl-hallname{writing-mode:vertical-rl;text-orientation:mixed;letter-spacing:.06em;white-space:nowrap}
+  .wayon-room .tl-hallname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .wayon-room .tl-hallmeta{font-size:10.5px;font-weight:400;color:var(--muted)}
+  .wayon-room .tl-hallbar:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+  .wayon-room #tlhall .tl-fields{display:grid;grid-template-columns:1fr;gap:8px}
+  .wayon-room #tlhall label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+  .wayon-room #tlhall input:not([type=checkbox]){font:inherit;font-size:16px;min-height:40px;padding:6px 8px;border:1px solid var(--line-strong);border-radius:8px;background:var(--bg);color:var(--fg)}
+  .wayon-room #tlhall .tl-hallsegs{display:flex;flex-wrap:wrap;gap:8px}
+  .wayon-room #tlhall .tl-hallseg{flex-direction:row;align-items:center;gap:6px;min-height:40px;padding:0 12px;border:1px solid var(--line-strong);border-radius:9px;font-size:13px;color:var(--fg);cursor:pointer}
+  .wayon-room #tlhall .tl-hallseg:has(input:checked){border-color:var(--accent);background:var(--accent-subtle)}
+  .wayon-room #tlhall .tl-hallseg input{width:18px;height:18px;margin:0}
+  .wayon-room #tlhall .tl-err{color:var(--bad);font-size:13px;min-height:1em}
   .wayon-room #tlsh .tl-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
   .wayon-room #tlsh label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
   .wayon-room #tlsh input,.wayon-room #tlsh select{font:inherit;font-size:16px;min-height:40px;padding:6px 8px;border:1px solid var(--line-strong);border-radius:8px;background:var(--bg);color:var(--fg);min-width:0}
@@ -156,31 +177,67 @@
     }
     const lineOf = m => Math.round((m - view.lo) / STEP) + 2;
     const place = (node, row1, row2, col) => { node.style.gridRow = row1 + ' / ' + row2; node.style.gridColumn = String(col); return node; };
-    function hallBox(ri, si) {   // unchanged hall behaviour: one box of seats per A–D period
-      const s = S[si], harr = items(ri, si), n = seated(harr);
-      const hb = el('div', 'hallbox' + (has(key(ri, si)) ? ' man' : '') + (n > SEATS ? ' over' : ''));
-      hb.title = '大厅 ' + s[0] + ' 段 ' + s[1] + '-' + s[2] + '：已坐 ' + n + ' / ' + SEATS;
-      hb.append(el('div', 'tl-hall-label', s[0] + ' 段 · ' + n + '/' + SEATS));
-      harr.forEach((x, k) => {
-        const c = el('div', 'c seat ' + (x ? 'used' : 'free'));
-        c.dataset.ri = ri; c.dataset.si = si; c.dataset.seat = k; c.tabIndex = 0; c.setAttribute('role', 'button');
-        c.setAttribute('aria-label', '大厅 ' + s[0] + ' 段 座位 ' + (k + 1));
-        const pre = x && x[1] === '课后';
-        if (x) {
-          const b = block(x, ri, si, k); b.classList.add('chip'); if (pre) b.classList.add('pre');
-          b.title = plain(x[0]) + (pre ? '（预占：上完课，点一下改成确定）' : x[1] ? '（' + x[1] + '）' : '');
-          const del = el('button', 'x', '×'); del.type = 'button'; del.setAttribute('aria-label', '从这个时段的大厅删除 ' + plain(x[0]));
-          del.addEventListener('pointerdown', e => e.stopPropagation());
-          del.onclick = e => { e.stopPropagation(); const before = JSON.stringify(ed); const a2 = items(ri, si).slice(); a2[k] = null; setCell(ri, si, a2); commit(before); };
-          b.append(del); c.append(b);
-        }
-        c.onclick = () => { if (dragged) return;
-          if (pre) { const before = JSON.stringify(ed); const a2 = items(ri, si).slice(); a2[k] = [x[0], '确定', '', x[3] || '']; setCell(ri, si, a2); commit(before); }
-          else openSheet(ri, si, k); };
-        c.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSheet(ri, si, k); } };
-        hb.append(c);
+    // Hall: one whole-day board. Each person is a bar running through the periods they sit in the hall.
+    // Storage is unchanged: one seat entry per A–D period, as before.
+    function hallPeople() {
+      const people = new Map();
+      S.forEach((_, si) => items(HALL, si).forEach(x => {
+        if (!x) return;
+        const name = String(x[0] || '').trim(); if (!name) return;
+        if (!people.has(name)) people.set(name, {name, segs: new Map()});
+        people.get(name).segs.set(si, x);
+      }));
+      return [...people.values()].sort((p, q) => Math.min(...p.segs.keys()) - Math.min(...q.segs.keys()) || p.name.localeCompare(q.name, 'zh'));
+    }
+    function setHallPerson(oldName, name, wanted, confirm) {
+      S.forEach((_, si) => {
+        const arr = items(HALL, si).slice(), at = arr.findIndex(x => x && String(x[0] || '').trim() === oldName);
+        if (wanted.has(si)) {
+          const prev = at >= 0 ? arr[at] : null;
+          const status = prev ? (confirm && prev[1] === '课后' ? '确定' : prev[1]) : '自习';
+          const entry = [name, status || '自习', prev ? prev[2] || '' : '', prev ? prev[3] || '' : ''];
+          if (at >= 0) arr[at] = entry; else { const free = arr.findIndex(x => !x); if (free < 0) arr.push(entry); else arr[free] = entry; }
+        } else if (at >= 0) arr[at] = null;
+        setCell(HALL, si, arr);
       });
-      return {hb, n};
+    }
+    function hallBoard(col) {
+      let maxHall = 0;
+      S.forEach((s, si) => {   // period bands: counts, capacity, click to add someone
+        const n = seated(items(HALL, si)); if (n > maxHall) maxHall = n;
+        const band = el('div', 'tl-hallband' + (n > SEATS ? ' over' : '') + (has(key(HALL, si)) ? ' man' : ''));
+        band.append(el('span', 'tl-hallcount', s[0] + ' · ' + n + '/' + SEATS));
+        band.title = '大厅 ' + s[0] + ' 段 ' + s[1] + '–' + s[2] + '：已坐 ' + n + ' / ' + SEATS + '（点空白处添加自习）';
+        band.onclick = () => openHall(null, si);
+        place(band, lineOf(toM(s[1])), lineOf(Math.min(toM(s[2]), view.hi)), col); grid.append(band);
+      });
+      const people = hallPeople(), lanes = Math.max(1, people.length);
+      const width = view.cols[HALL] ? view.cols[HALL].getBoundingClientRect().width : 200;
+      const vertical = width / lanes < 64;
+      people.forEach((person, lane) => {
+        const segs = [...person.segs.keys()].sort((a, b) => a - b), runs = [];
+        segs.forEach(si => { const last = runs[runs.length - 1]; if (last && last[last.length - 1] === si - 1) last.push(si); else runs.push([si]); });
+        runs.forEach(run => {
+          const pre = run.every(si => person.segs.get(si)[1] === '课后');
+          const from = S[run[0]][1], to = S[run[run.length - 1]][2];
+          const bar = el('div', 'tl-hallbar' + (pre ? ' pre' : '') + (vertical ? ' vertical' : ''));
+          bar.append(el('span', 'tl-hallname', plain(person.name)));
+          if (!vertical) bar.append(el('span', 'tl-hallmeta', run.map(si => S[si][0]).join(' ')));
+          bar.style.width = 'calc(' + (100 / lanes) + '% - 3px)';
+          bar.style.marginLeft = 'calc(' + (100 * lane / lanes) + '%)';
+          bar.tabIndex = 0; bar.setAttribute('role', 'button');
+          const label = plain(person.name) + ' 大厅 ' + run.map(si => S[si][0]).join('、') + ' 段 ' + from + '–' + to + (pre ? '，预占（上完课自动放入，点一下确认）' : '');
+          bar.title = label; bar.setAttribute('aria-label', label);
+          const act = () => {
+            if (pre) { const before = JSON.stringify(ed); setHallPerson(person.name, person.name, new Set(person.segs.keys()), true); commit(before); }
+            else openHall(person);
+          };
+          bar.onclick = e => { e.stopPropagation(); act(); };
+          bar.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); act(); } };
+          place(bar, lineOf(toM(from)), lineOf(Math.min(toM(to), view.hi)), col); grid.append(bar);
+        });
+      });
+      return maxHall;
     }
     function lessonNode(lesson, col, lane, lanes, man, bad) {
       const x = lesson.x, minutes = toM(lesson.b) - toM(lesson.a);
@@ -264,11 +321,7 @@
           grid.append(lessonNode(l, ri + 2, j, c.ends.length, !originals.has(l.id), conflict));
         });
       });
-      S.forEach((s, si) => {
-        const {hb, n} = hallBox(HALL, si);
-        if (n > maxHall) maxHall = n;
-        place(hb, lineOf(toM(s[1])), lineOf(Math.min(toM(s[2]), hi)), hallCol); grid.append(hb);
-      });
+      maxHall = hallBoard(hallCol);
       if (curD === today) {
         const now = new Date(new Date().toLocaleString('en-US', {timeZone: 'Asia/Shanghai'})), m = now.getHours() * 60 + now.getMinutes();
         if (m >= lo && m < hi) {
@@ -379,12 +432,43 @@
     bDel.onclick = () => { if (!sheetLesson) return; const before = JSON.stringify(ed); removeLesson(sheetLesson); closeLesson(); commit(before); };
     bReset.onclick = () => { const ri = sheetLesson ? sheetLesson.ri : +inRoom.value, before = JSON.stringify(ed); S.forEach((_, si) => setCell(ri, si, null)); closeLesson(); commit(before); };
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && sheet.classList.contains('on')) closeLesson(); });
+    // Hall editor: a name and the periods that person sits in the hall.
+    const hallSheet = el('div', 'sheet'); hallSheet.id = 'tlhall'; hallSheet.setAttribute('role', 'dialog');
+    const hTitle = el('div', 't'), hFields = el('div', 'tl-fields'), hErr = el('div', 'tl-err'), hSegs = el('div', 'tl-hallsegs');
+    const hName = el('input'); { const box = el('label', '', '姓名'); box.append(hName); hFields.append(box); }
+    const hChecks = S.map((s, si) => { const box = el('label', 'tl-hallseg'), c = el('input'); c.type = 'checkbox'; c.value = String(si); box.append(c, document.createTextNode(s[0] + ' 段 ' + s[1] + '–' + s[2])); hSegs.append(box); return c; });
+    const hRow = el('div', 'row'), hSave = el('button', 'pri', '保存'), hDel = el('button', '', '从大厅移除'), hCancel = el('button', '', '取消');
+    [hSave, hDel, hCancel].forEach(b => { b.type = 'button'; hRow.append(b); });
+    hallSheet.append(hTitle, hFields, hSegs, hErr, hRow, el('div', 'hint', '勾选这个人在大厅的时段；每段最多 ' + SEATS + ' 座，超出会标红。只改这张表。'));
+    document.body.append(hallSheet);
+    let hallPerson = null;
+    function openHall(person, si) {
+      hallPerson = person;
+      hTitle.textContent = person ? '大厅 · ' + plain(person.name) : '添加到大厅';
+      hName.value = person ? person.name : '';
+      hChecks.forEach((c, i) => { c.checked = person ? person.segs.has(i) : i === si; });
+      hDel.hidden = !person; hErr.textContent = '';
+      hallSheet.classList.add('on'); hName.focus();
+    }
+    const closeHall = () => { hallSheet.classList.remove('on'); hallPerson = null; };
+    hCancel.onclick = closeHall;
+    hSave.onclick = () => {
+      const name = hName.value.trim(), wanted = new Set(hChecks.filter(c => c.checked).map(c => +c.value));
+      if (!name) { hErr.textContent = '请填写姓名'; hName.focus(); return; }
+      if (!wanted.size) { hErr.textContent = '至少勾选一个时段；不在大厅请点「从大厅移除」'; return; }
+      const before = JSON.stringify(ed);
+      if (hallPerson && hallPerson.name !== name) setHallPerson(hallPerson.name, name, new Set(), false);
+      setHallPerson(hallPerson && hallPerson.name === name ? hallPerson.name : name, name, wanted, false);
+      closeHall(); commit(before);
+    };
+    hDel.onclick = () => { if (!hallPerson) return; const before = JSON.stringify(ed); setHallPerson(hallPerson.name, hallPerson.name, new Set(), false); closeHall(); commit(before); };
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && hallSheet.classList.contains('on')) closeHall(); });
     render = timelineRender;   // the page's own commit/useDay/cloud apply call render()
     if (scroller && typeof ResizeObserver === 'function') {
       let last = 0;
       new ResizeObserver(() => { if (!view || tdrag) return; const next = rowHeight((view.hi - view.lo) / STEP); if (next !== view.rowH && next !== last) { last = next; render(); } }).observe(scroller);
     }
-    setInterval(() => { if (!tdrag && !sheet.classList.contains('on') && curD === today) render(); }, 300000);
+    setInterval(() => { if (!tdrag && !sheet.classList.contains('on') && !hallSheet.classList.contains('on') && curD === today) render(); }, 300000);
     render();
   }
   const setup = () => {

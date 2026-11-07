@@ -37,8 +37,9 @@
    const day=days[b.day], ri=day.rows.indexOf(b.room);
    day.segs.forEach((seg,si)=>{
     const stop=seg[0]==='D'?'21:30':seg[2];if(!(b.start<stop&&b.end>seg[1]))return;
-    const rows=day.cells[ri][si].filter(x=>x?.[0]!=='课表待更新');
     const span=x=>x[3]||seg[1]+'-'+seg[2];
+    // The reservation file is newer than the baked page: it replaces a borrowed entry at the same room and time.
+    const rows=day.cells[ri][si].filter(x=>x?.[0]!=='课表待更新' && !(/（课表外）$/.test(String(x?.[1]||'')) && span(x)===b.start+'-'+b.end && !entries.some(e=>e&&e.day===b.day&&e.room===b.room&&e.start===b.start&&e.end===b.end&&e.label===x[0])));
     if(!rows.some(x=>x[0]===b.label && span(x)===b.start+'-'+b.end))rows.push([b.label,b.course+'（课表外）','',b.start+'-'+b.end]);
     day.cells[ri][si]=rows;
    });
