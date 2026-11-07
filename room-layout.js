@@ -52,6 +52,318 @@
   @media(max-width:700px){body.wayon-room{padding:10px!important}.wayon-room .top>b{font-size:17px}.wayon-room #cf{font-size:12px}.wayon-room .days{order:4;flex-basis:100%;margin:0}.wayon-room .days button{min-height:44px;height:44px;flex:1}.room-info>summary{width:44px;height:44px}.room-info-panel{right:0;width:min(320px,calc(100vw - 32px))}.wayon-room .room-scroll>.grid{min-height:540px;grid-template-rows:42px repeat(4,minmax(116px,1fr))!important}.wayon-room .legend{font-size:11px;gap:5px 10px}.wayon-room .c.seat,.wayon-room .k.chip,.wayon-room .hallbox>.seat.room-seat-add{min-height:44px}.wayon-room .sheet button{min-height:44px}}
   `;
   document.head.append(style);
+  const timelineStyle = document.createElement('style');
+  timelineStyle.id = 'wayon-room-timeline';
+  timelineStyle.textContent = `
+  .wayon-room .room-scroll>.grid.tl{height:auto!important;min-height:0!important;row-gap:0!important;column-gap:8px!important;align-items:stretch}
+  .wayon-room .grid.tl>.h{position:sticky;top:0;z-index:4;background:var(--card);padding-bottom:6px}
+  .wayon-room .grid.tl>.h.man::after{content:" ✎";color:var(--edit);font-size:12px}
+  .wayon-room .grid.tl>.h.tl-corner{left:0;z-index:5}
+  .wayon-room .tl-time{position:sticky;left:0;z-index:2;background:var(--card);font-size:11px;line-height:1;color:var(--muted);text-align:right;padding-right:8px;font-variant-numeric:tabular-nums;transform:translateY(-5px);white-space:nowrap}
+  .wayon-room .tl-time.first{transform:none}
+  .wayon-room .tl-time.hour{color:var(--fg-secondary);font-weight:600;font-size:12px}
+  .wayon-room .tl-slot{border-top:1px solid var(--line);cursor:copy;min-width:0}
+  .wayon-room .tl-slot.half{border-top-style:dashed}
+  .wayon-room .tl-slot.off{background:repeating-linear-gradient(135deg,transparent 0 6px,var(--line) 6px 7px)}
+  .wayon-room .tl-slot:hover{background:var(--accent-subtle)}
+  .wayon-room .k.tl-lesson{position:relative;z-index:1;justify-self:start;margin:1px 0;padding:6px 9px;border-radius:8px;gap:1px;overflow:hidden;justify-content:flex-start;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .wayon-room .k.tl-lesson .tt{order:-1}
+  .wayon-room .k.tl-lesson.short{padding:2px 8px;flex-direction:row;align-items:center;gap:6px}
+  .wayon-room .k.tl-lesson.short .s{display:none}.wayon-room .k.tl-lesson.short .w{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .wayon-room .k.tl-lesson.man{outline:1.5px solid var(--edit);outline-offset:-1.5px}
+  .wayon-room .k.tl-lesson.man::after{content:"✎";position:absolute;top:3px;right:6px;font-size:10px;color:var(--edit)}
+  .wayon-room .k.tl-lesson.bad{outline:2px solid var(--bad);outline-offset:-2px}
+  .wayon-room .k.tl-lesson:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+  .wayon-room .tl-preview{z-index:3;border:2px dashed var(--accent);border-radius:8px;background:var(--accent-subtle);color:var(--accent);font-size:12px;font-weight:600;padding:4px 8px;pointer-events:none;font-variant-numeric:tabular-nums;margin:1px 0}
+  .wayon-room .grid.tl .hallbox{margin:2px 0;border:1px dashed var(--line-strong);grid-auto-rows:minmax(28px,auto)!important;grid-template-columns:repeat(auto-fill,minmax(72px,1fr))!important}
+  .wayon-room .grid.tl .c.seat,.wayon-room .grid.tl .k.chip,.wayon-room .grid.tl .hallbox>.seat.room-seat-add{min-height:28px}
+  .wayon-room .grid.tl .k.chip{padding:3px 5px}
+  .wayon-room .tl-hall-label{font-size:11px;color:var(--muted);grid-column:1/-1;padding:2px 4px 0}
+  .wayon-room .tl-now{z-index:3;height:2px;background:var(--bad);align-self:start;pointer-events:none;position:relative}
+  .wayon-room .tl-now::before{content:"";position:absolute;left:-4px;top:-3px;width:8px;height:8px;border-radius:50%;background:var(--bad)}
+  .wayon-room #tlsh .tl-fields{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px}
+  .wayon-room #tlsh label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--muted)}
+  .wayon-room #tlsh input,.wayon-room #tlsh select{font:inherit;font-size:16px;min-height:40px;padding:6px 8px;border:1px solid var(--line-strong);border-radius:8px;background:var(--bg);color:var(--fg);min-width:0}
+  .wayon-room #tlsh .tl-err{color:var(--bad);font-size:13px;min-height:1em}
+  @media(max-width:700px){.wayon-room .tl-time{font-size:10px;padding-right:4px}.wayon-room .k.tl-lesson{padding:4px 6px}.wayon-room .k.tl-lesson .w{font-size:13px}.wayon-room .k.tl-lesson .s,.wayon-room .k.tl-lesson .tt{font-size:11px}}
+  `;
+  document.head.append(timelineStyle);
+  // Calendar view: rooms on a real time axis instead of four fixed two-hour cells.
+  // Storage is unchanged: a lesson still lives in every A–D cell it overlaps, with its exact time in x[3].
+  function installTimeline(grid) {
+    if (typeof render !== 'function' || typeof items !== 'function' || typeof setCell !== 'function') return;
+    const STEP = 5, SNAP = 10, MIN_ROW = 6, MAX_ROW = 11;   // grid rows are 5 minutes; dragging snaps to 10
+    const toM = t => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '').trim()); return m ? +m[1] * 60 + +m[2] : NaN; };
+    const toT = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+    const plain = value => String(value || '').replace(/[【】「」]/g, '').trim();
+    // The page data matches D up to 21:30 while showing 15:40–17:40 (same rule as the generator).
+    const segStop = si => S[si][0] === 'D' ? '21:30' : S[si][2];
+    const spanOf = (x, si) => { const m = /^(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})$/.exec(String(x[3] || '').trim()); return m ? [m[1], m[2]] : [S[si][1], S[si][2]]; };
+    const idOf = (x, si) => { const [a, b] = spanOf(x, si); return JSON.stringify([x[0] || '', x[1] || '', x[2] || '', a, b]); };
+    const rooms = R.map((_, i) => i).filter(i => i !== HALL);
+    const lessonsOf = (ri, source) => {
+      const out = [];
+      S.forEach((_, si) => (source(ri, si) || []).forEach(x => {
+        if (!x) return;
+        const id = idOf(x, si);
+        let lesson = out.find(l => l.id === id);
+        if (!lesson) { const [a, b] = spanOf(x, si); lesson = {id, x, a, b, ri, segs: []}; out.push(lesson); }
+        if (!lesson.segs.includes(si)) lesson.segs.push(si);
+      }));
+      return out.sort((p, q) => p.a.localeCompare(q.a) || p.b.localeCompare(q.b));
+    };
+    function removeLesson(lesson) {
+      lesson.segs.forEach(si => setCell(lesson.ri, si, items(lesson.ri, si).filter(x => !(x && idOf(x, si) === lesson.id))));
+    }
+    function addLesson(ri, who, subject, teacher, a, b) {
+      let targets = S.map((_, si) => si).filter(si => a < segStop(si) && b > S[si][1]);
+      if (!targets.length) {   // e.g. a lunch-time lesson: keep it in the nearest cell, shown at its real time
+        const mid = (toM(a) + toM(b)) / 2, dist = si => Math.min(Math.abs(mid - toM(S[si][1])), Math.abs(mid - toM(S[si][2])));
+        targets = [S.map((_, si) => si).sort((p, q) => dist(p) - dist(q))[0]];
+      }
+      targets.forEach(si => {
+        const time = a === S[si][1] && b === S[si][2] ? '' : a + '-' + b;
+        setCell(ri, si, items(ri, si).concat([[who, subject, teacher, time]]));
+      });
+    }
+    let view = null, tdrag = null, sheetLesson = null;
+    const scroller = grid.closest('.room-scroll');
+    function rowHeight(rows) {
+      const head = 44, room = scroller ? scroller.clientHeight - head - 8 : 0;
+      return Math.max(MIN_ROW, Math.min(MAX_ROW, Math.floor(room / rows) || MIN_ROW));
+    }
+    const lineOf = m => Math.round((m - view.lo) / STEP) + 2;
+    const place = (node, row1, row2, col) => { node.style.gridRow = row1 + ' / ' + row2; node.style.gridColumn = String(col); return node; };
+    function hallBox(ri, si) {   // unchanged hall behaviour: one box of seats per A–D period
+      const s = S[si], harr = items(ri, si), n = seated(harr);
+      const hb = el('div', 'hallbox' + (has(key(ri, si)) ? ' man' : '') + (n > SEATS ? ' over' : ''));
+      hb.title = '大厅 ' + s[0] + ' 段 ' + s[1] + '-' + s[2] + '：已坐 ' + n + ' / ' + SEATS;
+      hb.append(el('div', 'tl-hall-label', s[0] + ' 段 · ' + n + '/' + SEATS));
+      harr.forEach((x, k) => {
+        const c = el('div', 'c seat ' + (x ? 'used' : 'free'));
+        c.dataset.ri = ri; c.dataset.si = si; c.dataset.seat = k; c.tabIndex = 0; c.setAttribute('role', 'button');
+        c.setAttribute('aria-label', '大厅 ' + s[0] + ' 段 座位 ' + (k + 1));
+        const pre = x && x[1] === '课后';
+        if (x) {
+          const b = block(x, ri, si, k); b.classList.add('chip'); if (pre) b.classList.add('pre');
+          b.title = plain(x[0]) + (pre ? '（预占：上完课，点一下改成确定）' : x[1] ? '（' + x[1] + '）' : '');
+          const del = el('button', 'x', '×'); del.type = 'button'; del.setAttribute('aria-label', '从这个时段的大厅删除 ' + plain(x[0]));
+          del.addEventListener('pointerdown', e => e.stopPropagation());
+          del.onclick = e => { e.stopPropagation(); const before = JSON.stringify(ed); const a2 = items(ri, si).slice(); a2[k] = null; setCell(ri, si, a2); commit(before); };
+          b.append(del); c.append(b);
+        }
+        c.onclick = () => { if (dragged) return;
+          if (pre) { const before = JSON.stringify(ed); const a2 = items(ri, si).slice(); a2[k] = [x[0], '确定', '', x[3] || '']; setCell(ri, si, a2); commit(before); }
+          else openSheet(ri, si, k); };
+        c.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openSheet(ri, si, k); } };
+        hb.append(c);
+      });
+      return {hb, n};
+    }
+    function lessonNode(lesson, col, lane, lanes, man, bad) {
+      const x = lesson.x, minutes = toM(lesson.b) - toM(lesson.a);
+      // Borrowed rooms ("（课表外）") read like lessons — student, then subject·teacher — and are always grey.
+      // A booking label "易赛 老师👉学生" splits into teacher and student; the stored entry is unchanged.
+      const borrowed = /（课表外）$/.test(String(x[1] || ''));
+      let who = plain(x[0]), subject = x[1] || '', teacher = x[2] || '';
+      if (borrowed) {
+        subject = subject.replace(/（课表外）$/, '').trim();
+        const arrow = who.indexOf('👉');
+        if (arrow >= 0) { teacher = who.slice(0, arrow).trim() || teacher; who = who.slice(arrow + 2).trim() || who; }
+      }
+      const tone = borrowed ? '5' : tcol[x[2]] || '5';
+      const node = el('div', 'k tl-lesson' + (borrowed ? ' borrowed' : '') + (minutes < 45 ? ' short' : '') + (man ? ' man' : '') + (bad ? ' bad' : ''));
+      node.style.background = 'var(--t' + tone + ')';
+      node.style.borderLeftColor = 'var(--t' + tone + 'b)';
+      node.append(el('div', 'tt', lesson.a + '–' + lesson.b));
+      node.append(el('div', 'w', who));
+      const sub = [subject, teacher].filter(Boolean).join('·');
+      if (sub) node.append(el('div', 's', sub));
+      node.tabIndex = 0; node.setAttribute('role', 'button');
+      node.setAttribute('aria-label', R[lesson.ri] + ' ' + lesson.a + '到' + lesson.b + ' ' + who + (sub ? ' ' + sub : '') + (borrowed ? '，借用教室' : '') + (bad ? '，时间冲突' : ''));
+      node.title = who + ' ' + lesson.a + '–' + lesson.b + (sub ? '\n' + sub : '') + (borrowed ? '\n借用教室（课表外）' : '') + (bad ? '\n⚠️ 与同教室另一节课时间重叠' : '');
+      node.style.width = 'calc(' + (100 / lanes) + '% - ' + (lanes > 1 ? 3 : 0) + 'px)';
+      node.style.marginLeft = 'calc(' + (100 * lane / lanes) + '%)';
+      place(node, lineOf(toM(lesson.a)), lineOf(toM(lesson.b)), col);
+      node.addEventListener('pointerdown', e => lessonDown(e, node, lesson));
+      node.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openLesson(lesson); } };
+      return node;
+    }
+    function timelineRender() {
+      grid.textContent = ''; grid.classList.add('tl');
+      const current = rooms.map(ri => lessonsOf(ri, items));
+      let lo = toM(S[0][1]), hi = toM(S[S.length - 1][2]);
+      current.flat().forEach(l => { lo = Math.min(lo, toM(l.a)); hi = Math.max(hi, toM(l.b)); });
+      lo = Math.floor(lo / 30) * 30; hi = Math.ceil(hi / 30) * 30;
+      const rows = (hi - lo) / STEP, rowH = rowHeight(rows), hallCol = R.length + 1;
+      view = {lo, hi, rowH, cols: {}};
+      grid.style.setProperty('grid-template-columns', '52px repeat(' + rooms.length + ',minmax(104px,1fr)) minmax(190px,1.15fr)', 'important');
+      grid.style.setProperty('grid-template-rows', '44px repeat(' + rows + ',' + rowH + 'px)', 'important');
+      const corner = el('div', 'h tl-corner', ''); place(corner, 1, 2, 1); grid.append(corner);
+      R.forEach((name, ri) => {
+        const head = el('div', 'h', name.replace('教室', '').replace('（自习）', ''));
+        if (ri === HALL) head.append(el('small', '', SEATS + ' 座'));
+        else if (S.some((_, si) => has(key(ri, si)))) { head.classList.add('man'); head.title = '这间教室今天手动改过'; }
+        place(head, 1, 2, ri + 2); grid.append(head);
+        view.cols[ri] = head;
+      });
+      const gaps = [];
+      for (let i = 0; i + 1 < S.length; i++) gaps.push([toM(S[i][2]), toM(S[i + 1][1])]);
+      const off = m => gaps.some(([a, b]) => m >= a && m < b);
+      for (let m = lo; m < hi; m += 30) {
+        const label = el('div', 'tl-time' + (m % 60 ? '' : ' hour') + (m === lo ? ' first' : ''), toT(m));
+        place(label, lineOf(m), lineOf(m) + 2, 1); grid.append(label);
+        rooms.forEach(ri => {
+          for (let part = 0; part < 30; part += 10) {
+            const t = m + part, slot = el('div', 'tl-slot' + (part ? ' sub' : m % 60 ? ' half' : '') + (off(t) ? ' off' : ''));
+            if (part) slot.style.borderTopColor = 'transparent';
+            slot.setAttribute('aria-hidden', 'true');
+            slot.onclick = () => { if (!tdrag) openLesson(null, ri, toT(t)); };
+            place(slot, lineOf(t), lineOf(t + 10), ri + 2); grid.append(slot);
+          }
+        });
+      }
+      let bad = 0, maxHall = 0;
+      rooms.forEach((ri, i) => {
+        const list = current[i], originals = new Set(lessonsOf(ri, orig).map(l => l.id));
+        // Overlapping lessons in one room sit side by side and are flagged as a conflict.
+        const lane = [], clusters = [];
+        list.forEach(l => {
+          let c = clusters[clusters.length - 1];
+          if (!c || l.a >= c.end) { c = {end: l.b, ends: []}; clusters.push(c); }
+          if (l.b > c.end) c.end = l.b;
+          let j = c.ends.findIndex(e => e <= l.a); if (j < 0) j = c.ends.length;
+          c.ends[j] = l.b; lane.push([c, j]);
+        });
+        list.forEach((l, k) => {
+          const [c, j] = lane[k], conflict = c.ends.length > 1;
+          if (conflict) bad++;
+          grid.append(lessonNode(l, ri + 2, j, c.ends.length, !originals.has(l.id), conflict));
+        });
+      });
+      S.forEach((s, si) => {
+        const {hb, n} = hallBox(HALL, si);
+        if (n > maxHall) maxHall = n;
+        place(hb, lineOf(toM(s[1])), lineOf(Math.min(toM(s[2]), hi)), hallCol); grid.append(hb);
+      });
+      if (curD === today) {
+        const now = new Date(new Date().toLocaleString('en-US', {timeZone: 'Asia/Shanghai'})), m = now.getHours() * 60 + now.getMinutes();
+        if (m >= lo && m < hi) {
+          const line = el('div', 'tl-now'); line.style.marginTop = ((m - lo) % STEP) / STEP * rowH + 'px';
+          line.setAttribute('aria-hidden', 'true'); place(line, lineOf(m - (m - lo) % STEP), lineOf(m - (m - lo) % STEP) + 1, '2 / ' + hallCol); grid.append(line);
+        }
+      }
+      const legend = $('lg'), anyBorrowed = !!grid.querySelector('.tl-lesson.borrowed');
+      if (legend && anyBorrowed && !legend.querySelector('.lg-borrowed')) {
+        const item = el('span', 'lg-borrowed'), dot = el('i'); dot.style.background = 'var(--t5b)';
+        item.append(dot, document.createTextNode('借用教室')); legend.prepend(item);
+      } else if (legend && !anyBorrowed) legend.querySelector('.lg-borrowed')?.remove();
+      const pairs = Math.ceil(bad / 2);
+      $('cf').className = DATA.missing ? 'miss' : (bad || maxHall > SEATS) ? 'no' : 'ok';
+      $('cf').textContent = DATA.missing ? (DATA.booking_preview ? '课表待更新；已显示借用预留' : '这天还没生成')
+        : (bad ? '⚠️ ' + pairs + ' 处教室时间重叠' : '✓ 无冲突') + (maxHall > SEATS ? ' · ⚠️ 大厅超员' : ' · 大厅最多 ' + maxHall + '/' + SEATS);
+      const dl = $('days'); dl.textContent = '';
+      [...new Set([today, tomorrow, ...Object.keys(ALL).filter(d => d >= today)])].sort().slice(0, 7).forEach(d => {
+        const b = el('button', d === curD ? 'on' : '', relD(d) + mdD(d)); b.type = 'button'; b.onclick = () => { if (d !== curD) useDay(d); }; dl.append(b); });
+    }
+    // Drag a lesson to another room or time; the preview snaps to 10 minutes and keeps the length.
+    function lessonDown(e, node, lesson) {
+      if (e.button !== undefined && e.button !== 0) return;
+      e.stopPropagation();
+      const r = node.getBoundingClientRect();
+      tdrag = {node, lesson, x0: e.clientX, y0: e.clientY, grab: e.clientY - r.top, moved: false, preview: null, target: null, raf: 0, px: 0, py: 0};
+      try { node.setPointerCapture(e.pointerId); } catch (_) {}
+      node.onpointermove = lessonMove; node.onpointerup = lessonUp; node.onpointercancel = () => finishDrag(false);
+    }
+    function dropAt(px, py) {
+      const length = toM(tdrag.lesson.b) - toM(tdrag.lesson.a);
+      const ri = rooms.find(r => { const box = view.cols[r].getBoundingClientRect(); return px >= box.left - 4 && px <= box.right + 4; });
+      if (ri === undefined) return null;
+      const top = view.cols[ri].getBoundingClientRect().bottom;
+      let start = view.lo + Math.round((py - tdrag.grab - top) / (view.rowH * SNAP / STEP)) * SNAP;
+      start = Math.max(view.lo, Math.min(view.hi - length, start));
+      return {ri, a: toT(start), b: toT(start + length)};
+    }
+    function paintDrag() {
+      tdrag.raf = 0;
+      const target = dropAt(tdrag.px, tdrag.py);
+      tdrag.target = target;
+      if (!target) { if (tdrag.preview) tdrag.preview.hidden = true; return; }
+      if (!tdrag.preview) { tdrag.preview = el('div', 'tl-preview'); grid.append(tdrag.preview); }
+      tdrag.preview.hidden = false;
+      tdrag.preview.textContent = R[target.ri].replace('教室', '') + ' ' + target.a + '–' + target.b;
+      place(tdrag.preview, lineOf(toM(target.a)), lineOf(toM(target.b)), target.ri + 2);
+    }
+    function lessonMove(e) {
+      if (!tdrag) return;
+      tdrag.px = e.clientX; tdrag.py = e.clientY;
+      if (!tdrag.moved) { if (Math.hypot(e.clientX - tdrag.x0, e.clientY - tdrag.y0) < 5) return; tdrag.moved = true; tdrag.node.classList.add('dragging'); }
+      if (!tdrag.raf) tdrag.raf = requestAnimationFrame(paintDrag);
+    }
+    function finishDrag(apply, quiet) {
+      const d = tdrag; if (!d) return;
+      if (d.raf) cancelAnimationFrame(d.raf);
+      d.node.onpointermove = d.node.onpointerup = d.node.onpointercancel = null;
+      setTimeout(() => { tdrag = null; }, 0);
+      const t = d.target, l = d.lesson;
+      if (apply && t && (t.ri !== l.ri || t.a !== l.a)) {
+        const before = JSON.stringify(ed);
+        removeLesson(l); addLesson(t.ri, l.x[0] || '', l.x[1] || '', l.x[2] || '', t.a, t.b);
+        commit(before);
+      } else if (!quiet) render();
+    }
+    function lessonUp(e) {
+      if (!tdrag) return;
+      if (!tdrag.moved) { const lesson = tdrag.lesson; finishDrag(false, true); openLesson(lesson); return; }
+      tdrag.px = e.clientX; tdrag.py = e.clientY; paintDrag(); finishDrag(true);
+    }
+    // Lesson editor: who / subject / teacher / room / start / end. Only this page's table changes.
+    const sheet = el('div', 'sheet'); sheet.id = 'tlsh'; sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'false');
+    const title = el('div', 't'), fields = el('div', 'tl-fields'), err = el('div', 'tl-err');
+    const field = (label, input) => { const box = el('label', '', label); box.append(input); fields.append(box); return input; };
+    const inWho = field('学生 / 班级', el('input')), inSub = field('科目', el('input')), inTeacher = field('老师', el('input'));
+    const inRoom = field('教室', el('select')), inA = field('开始', el('input')), inB = field('结束', el('input'));
+    inA.type = inB.type = 'time'; inA.step = inB.step = 600;
+    const teacherList = el('datalist'); teacherList.id = 'tl-teachers'; inTeacher.setAttribute('list', teacherList.id);
+    rooms.forEach(ri => { const o = el('option', '', R[ri]); o.value = String(ri); inRoom.append(o); });
+    const row = el('div', 'row'), bSave = el('button', 'pri', '保存'), bDel = el('button', '', '删除这节'), bReset = el('button', '', '恢复这间教室原样'), bCancel = el('button', '', '取消');
+    [bSave, bDel, bReset, bCancel].forEach(b => { b.type = 'button'; row.append(b); });
+    const hint = el('div', 'hint', '只改这张表，不会改小SaaS 课表、不写备忘录。时间按 10 分钟对齐；同一教室时间重叠会标红。');
+    sheet.append(title, fields, err, row, hint, teacherList); document.body.append(sheet);
+    function openLesson(lesson, ri, start) {
+      sheetLesson = lesson;
+      teacherList.textContent = ''; (DATA.teachers || []).forEach(t => { const o = el('option'); o.value = t; teacherList.append(o); });
+      const r = lesson ? lesson.ri : ri, a = lesson ? lesson.a : start;
+      const b = lesson ? lesson.b : toT(Math.min(toM(start) + 60, view.hi + 120));
+      title.textContent = lesson ? '修改课程' : '添加课程 · ' + R[r] + ' ' + a;
+      inWho.value = lesson ? lesson.x[0] || '' : '';
+      inSub.value = lesson ? lesson.x[1] || '' : ''; inTeacher.value = lesson ? lesson.x[2] || '' : '';
+      inRoom.value = String(r); inA.value = a; inB.value = b; err.textContent = '';
+      bDel.hidden = !lesson; bReset.hidden = !S.some((_, si) => has(key(r, si)));
+      sheet.classList.add('on'); (lesson ? inA : inWho).focus();
+    }
+    const closeLesson = () => { sheet.classList.remove('on'); sheetLesson = null; };
+    bCancel.onclick = closeLesson;
+    bSave.onclick = () => {
+      const who = inWho.value.trim(), a = inA.value, b = inB.value, ri = +inRoom.value;
+      if (!who) { err.textContent = '请填写学生或班级'; inWho.focus(); return; }
+      if (!/^\d{2}:\d{2}$/.test(a) || !/^\d{2}:\d{2}$/.test(b) || a >= b) { err.textContent = '结束时间要晚于开始时间'; inB.focus(); return; }
+      const before = JSON.stringify(ed);
+      if (sheetLesson) removeLesson(sheetLesson);
+      addLesson(ri, who, inSub.value.trim(), inTeacher.value.trim(), a, b);
+      closeLesson(); commit(before);
+    };
+    bDel.onclick = () => { if (!sheetLesson) return; const before = JSON.stringify(ed); removeLesson(sheetLesson); closeLesson(); commit(before); };
+    bReset.onclick = () => { const ri = sheetLesson ? sheetLesson.ri : +inRoom.value, before = JSON.stringify(ed); S.forEach((_, si) => setCell(ri, si, null)); closeLesson(); commit(before); };
+    document.addEventListener('keydown', e => { if (e.key === 'Escape' && sheet.classList.contains('on')) closeLesson(); });
+    render = timelineRender;   // the page's own commit/useDay/cloud apply call render()
+    if (scroller && typeof ResizeObserver === 'function') {
+      let last = 0;
+      new ResizeObserver(() => { if (!view || tdrag) return; const next = rowHeight((view.hi - view.lo) / STEP); if (next !== view.rowH && next !== last) { last = next; render(); } }).observe(scroller);
+    }
+    setInterval(() => { if (!tdrag && !sheet.classList.contains('on') && curD === today) render(); }, 300000);
+    render();
+  }
   const setup = () => {
     if (document.body.classList.contains('wayon-workbench')) {
       let scheduled=false;
@@ -77,7 +389,7 @@
     const info = document.createElement('details');info.className='room-info';
     const summary = document.createElement('summary');summary.textContent='ⓘ';summary.setAttribute('aria-label','课表状态与操作说明');
     const panel = document.createElement('div');panel.className='room-info-panel';
-    const help=document.createElement('p');help.textContent='点击课程格可编辑；按住课程块可拖动。大厅虚线姓名为课后预占，点一下确认；“＋ 加座”可填写空座。';
+    const help=document.createElement('p');help.textContent='课程按真实时间排列：点空白时间可添加课程，点课程可改时间或教室，按住课程块可拖到别的教室或时间（10 分钟对齐）。大厅虚线姓名为课后预占，点一下确认；“＋ 加座”可填写空座。';
     panel.append(help);const status=document.querySelector('body>[role="status"]');if(status)panel.append(status);
     const sync=document.getElementById('sync');if(sync)panel.append(sync);info.append(summary,panel);top.append(info);
     const plain = value => String(value||'').replace(/[【】「」]/g,'').trim();
@@ -113,6 +425,7 @@
       const legend=document.getElementById('lg');if(legend)legend.querySelectorAll('span').forEach(span=>{if(span.querySelector('.lg-pre,.lg-ok')){span.title=span.textContent;span.textContent=span.querySelector('.lg-pre')?'虚线：预占':'实色：已确认';}});
       const foot=document.getElementById('f');if(foot&&foot.textContent.includes('按住课程块'))foot.textContent=foot.textContent.split('按住课程块')[0].trim();
     };
+    installTimeline(grid);
     decorate();new MutationObserver(decorate).observe(grid,{childList:true});
     // Narrow screens: say that the room table scrolls sideways, and hide the hint at the end.
     const scroller=grid.closest('.room-scroll');
