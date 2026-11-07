@@ -4,7 +4,8 @@
   const style = document.createElement('style');
   style.id = 'wayon-room-layout';
   style.textContent = `
-  .wayon-workbench:has(#classroom-frame) #list{columns:1}
+  .wayon-workbench:has(#classroom-frame) #list{columns:1;max-width:none!important}
+  .wayon-workbench:has(#classroom-frame) .main-content{max-width:none!important}
   .wayon-workbench:has(#classroom-frame) .main-content{padding-bottom:18px!important}
   @media(min-width:1024px){.wayon-workbench:has(#classroom-frame) .sidebar{height:calc(100dvh - var(--room-shell-height,172px))}}
   body.wayon-workbench .app-layout #classroom-frame{display:block;width:100%!important;max-width:none!important;height:var(--room-frame-height,calc(100dvh - 140px))!important;min-height:0!important;border:0!important;border-radius:16px!important}
