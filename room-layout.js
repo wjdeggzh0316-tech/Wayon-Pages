@@ -55,6 +55,28 @@
   const timelineStyle = document.createElement('style');
   timelineStyle.id = 'wayon-room-timeline';
   timelineStyle.textContent = `
+  /* Header: title + status pill on the left, segmented day picker and info on the right. */
+  body.wayon-room{gap:8px!important}
+  .wayon-room .top{display:flex;align-items:center;flex-wrap:wrap;gap:10px 12px;min-height:40px;padding:0!important;border-bottom:0!important}
+  .wayon-room .top>b{font-size:20px!important;font-weight:650!important;letter-spacing:-.02em;order:0}
+  .wayon-room .top #cf{order:1;display:inline-flex;align-items:center;height:24px;padding:0 10px;border-radius:999px;font-size:12px!important;font-weight:550;background:var(--done-bg);color:var(--done-dark)}
+  .wayon-room .top #cf.no,.wayon-room .top #cf.miss{background:var(--bad-bg);color:var(--bad-dark)}
+  .wayon-room .top #cf:empty{display:none}
+  .wayon-room .top .days{order:2;margin-left:auto!important;display:inline-flex;gap:2px!important;padding:3px;border-radius:10px;background:var(--code-bg);border:1px solid var(--line)}
+  .wayon-room .top .days button{height:30px!important;min-height:30px!important;padding:0 14px!important;border:0!important;border-radius:7px!important;background:transparent!important;color:var(--muted)!important;box-shadow:none!important;font-size:13px!important;font-weight:550!important;font-variant-numeric:tabular-nums}
+  .wayon-room .top .days button:hover{color:var(--fg)!important}
+  .wayon-room .top .days button.on{background:var(--card)!important;color:var(--fg)!important;box-shadow:0 1px 3px rgba(0,0,0,.12)!important;font-weight:650!important}
+  .wayon-room .top .room-info{order:3;margin-left:0}
+  .wayon-room .top .room-info>summary{width:34px;height:34px;border-radius:9px;font-size:15px}
+  .wayon-room .legend{gap:4px 14px!important;font-size:12px!important;color:var(--muted);padding:0 0 4px}
+  .wayon-room .legend i{width:8px!important;height:8px!important;border-radius:50%!important}
+  .wayon-room .legend .lg-hall-note{margin-left:auto;opacity:.85}
+  /* Column headers: one line each, aligned, with a hairline under them. */
+  .wayon-room .grid.tl>.h{flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:6px;font-size:13px!important;font-weight:600;padding:0 0 6px!important;border-bottom:1px solid var(--line-strong);white-space:nowrap}
+  .wayon-room .grid.tl>.h small{display:inline;font-size:11px!important;font-weight:400;color:var(--muted)}
+  .wayon-room .grid.tl>.h.man::after{content:"✎";font-size:11px}
+  .wayon-room .grid.tl>.h.tl-corner{border-bottom-color:transparent}
+  @media(max-width:700px){.wayon-room .top .days{order:4;flex-basis:100%;margin-left:0!important}.wayon-room .top .days button{flex:1;height:38px!important;min-height:38px!important}.wayon-room .top .room-info{margin-left:auto}.wayon-room .top .room-info>summary{width:40px;height:40px}.wayon-room .legend .lg-hall-note{margin-left:0}}
   .wayon-room .room-scroll>.grid.tl{height:auto!important;min-height:0!important;row-gap:0!important;column-gap:8px!important;align-items:stretch}
   .wayon-room .grid.tl>.h{position:sticky;top:0;z-index:4;background:var(--card);padding-bottom:6px}
   .wayon-room .grid.tl>.h.man::after{content:" ✎";color:var(--edit);font-size:12px}
@@ -129,7 +151,7 @@
     let view = null, tdrag = null, sheetLesson = null;
     const scroller = grid.closest('.room-scroll');
     function rowHeight(rows) {
-      const head = 44, room = scroller ? scroller.clientHeight - head - 8 : 0;
+      const head = 34, room = scroller ? scroller.clientHeight - head - 8 : 0;
       return Math.max(MIN_ROW, Math.min(MAX_ROW, Math.floor(room / rows) || MIN_ROW));
     }
     const lineOf = m => Math.round((m - view.lo) / STEP) + 2;
@@ -198,11 +220,12 @@
       const rows = (hi - lo) / STEP, rowH = rowHeight(rows), hallCol = R.length + 1;
       view = {lo, hi, rowH, cols: {}};
       grid.style.setProperty('grid-template-columns', '52px repeat(' + rooms.length + ',minmax(104px,1fr)) minmax(190px,1.15fr)', 'important');
-      grid.style.setProperty('grid-template-rows', '44px repeat(' + rows + ',' + rowH + 'px)', 'important');
+      grid.style.setProperty('grid-template-rows', '34px repeat(' + rows + ',' + rowH + 'px)', 'important');
       const corner = el('div', 'h tl-corner', ''); place(corner, 1, 2, 1); grid.append(corner);
       R.forEach((name, ri) => {
         const head = el('div', 'h', name.replace('教室', '').replace('（自习）', ''));
         if (ri === HALL) head.append(el('small', '', SEATS + ' 座'));
+        if (ri === HALL) head.title = '大厅按 A–D 段排座：虚线 = 课后预占（点一下确认），实色 = 已确认';
         else if (S.some((_, si) => has(key(ri, si)))) { head.classList.add('man'); head.title = '这间教室今天手动改过'; }
         place(head, 1, 2, ri + 2); grid.append(head);
         view.cols[ri] = head;
@@ -422,7 +445,13 @@
       grid.querySelectorAll('.hallbox').forEach(box=>{
         const free=box.querySelector('.seat.free');if(free&&!free.classList.contains('room-seat-add')){free.classList.add('room-seat-add');free.textContent='＋ 加座';free.title=free.getAttribute('aria-label')+'：添加自习';}
       });
-      const legend=document.getElementById('lg');if(legend)legend.querySelectorAll('span').forEach(span=>{if(span.querySelector('.lg-pre,.lg-ok')){span.title=span.textContent;span.textContent=span.querySelector('.lg-pre')?'虚线：预占':'实色：已确认';}});
+      // Hall notes collapse into one quiet item at the end of the legend.
+      const legend=document.getElementById('lg');
+      if(legend&&legend.querySelector('.lg-pre,.lg-ok')){
+        const notes=[...legend.children].filter(span=>span.querySelector('.lg-pre,.lg-ok'));
+        const note=document.createElement('span');note.className='lg-hall-note';note.textContent='大厅：虚线预占 · 实色已确认';note.title=notes.map(span=>span.textContent).join('；');
+        notes.forEach(span=>span.remove());legend.append(note);
+      }
       const foot=document.getElementById('f');if(foot&&foot.textContent.includes('按住课程块'))foot.textContent=foot.textContent.split('按住课程块')[0].trim();
     };
     installTimeline(grid);
