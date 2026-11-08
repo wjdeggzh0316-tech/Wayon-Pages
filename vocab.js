@@ -90,6 +90,11 @@
     });
     return lines.join('\n').trim();
   }
+  // A saved result is re-rendered from its items and marks, so results saved in an older copy format copy in the current one.
+  function resultText(p) {
+    if (!p || !Array.isArray(p.items) || !Array.isArray(p.marks) || !p.student || !p.day) return p?.text || '';
+    try { return quizCopyText(p.student, p.course || '', p.course_no, p.day, p.items, new Map(p.marks.map(m => [m.index, {result: m.result, reason: m.reason || ''}]))); } catch { return p.text || ''; }
+  }
   // Teachers sometimes list words with no heading and no Chinese (e.g. after 「课后：…背诵词汇」). A run of 3+ short
   // English-only lines outside any section, introduced as words or 6+ lines long, is read as a 词汇 section
   // (same rule as mark_bare_lists in Manager/vocab_import.py).
@@ -1419,13 +1424,13 @@
     // Finished today and the list is unchanged since: the card shows the result instead of 「开始抽背」.
     const doneNow = !!(finished && items.length && wordsOf(finished.payload?.items) === wordsOf(items));
     const showResult = res => {
-      const last = overlay('抽背结果'); last.body.append(make('pre', 'fb-body', res.payload.text));
-      last.foot.append(btn('fb-btn pri', '复制结果', async () => { try { await navigator.clipboard.writeText(res.payload.text); flash('已复制'); } catch { flash('复制失败，请手动选中文字复制', true); } }), btn('fb-btn', '关闭', last.close));
+      const last = overlay('抽背结果'); last.body.append(make('pre', 'fb-body', resultText(res.payload)));
+      last.foot.append(btn('fb-btn pri', '复制结果', async () => { try { await navigator.clipboard.writeText(resultText(res.payload)); flash('已复制'); } catch { flash('复制失败，请手动选中文字复制', true); } }), btn('fb-btn', '关闭', last.close));
     };
     const actions = make('div', 'vq-actions');
     if (previousResult && !doneNow) actions.append(btn('', '上次结果', () => {
-      const last = overlay('上次抽背结果'); last.body.append(make('pre', 'fb-body', previousResult.value.payload.text));
-      last.foot.append(btn('fb-btn pri', '复制结果', async () => { try { await navigator.clipboard.writeText(previousResult.value.payload.text); flash('已复制'); } catch { flash('复制失败，请手动选中文字复制', true); } }), btn('fb-btn', '关闭', last.close));
+      const last = overlay('上次抽背结果'); last.body.append(make('pre', 'fb-body', resultText(previousResult.value.payload)));
+      last.foot.append(btn('fb-btn pri', '复制结果', async () => { try { await navigator.clipboard.writeText(resultText(previousResult.value.payload)); flash('已复制'); } catch { flash('复制失败，请手动选中文字复制', true); } }), btn('fb-btn', '关闭', last.close));
     }));
     actions.append(btn('', '选词', () => openPicker(student, learners, items, keep)));
     if (phase === '课前') actions.append(btn('', '推荐', async () => { try { const lib = await vocabFor(learners); (await recommend(lib, learners, day, todaysCourse(student))).forEach(r => { if (!items.some(x => x.word.toLowerCase() === r.word.toLowerCase())) items.push(fromRow(r, r._from)); }); await materializeItems(items); keep(); } catch (e) { flash('推荐未能保存：' + (e.message || e), true); } }, '推荐：今天这门课上一节的全部生词，再补错过的和到期复习的'));
@@ -1475,7 +1480,7 @@
       row.append(make('span', 'vq-done-mark', '✓ 已完成'), make('span', 'vq-label', listLabel(items, phase)), tally,
         btn('fb-link vq-again', '再抽一次', () => startQuiz(student, phase, items, redraw)),
         btn('fb-btn', '查看', () => showResult(finished)),
-        btn('fb-btn pri', '复制结果', async () => { try { await navigator.clipboard.writeText(finished.payload.text); flash('已复制'); } catch { showResult(finished); } }));
+        btn('fb-btn pri', '复制结果', async () => { try { await navigator.clipboard.writeText(resultText(finished.payload)); flash('已复制'); } catch { showResult(finished); } }));
       vq.append(row);
     } else if (items.length || draft) {   // no word chips: one line naming the lesson, and the start button
       const ready = make('div', 'vq-ready');
