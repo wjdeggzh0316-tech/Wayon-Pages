@@ -89,13 +89,34 @@
     });
     return lines.join('\n\n');
   }
+  // Teachers sometimes list words with no heading and no Chinese (e.g. after 「课后：…背诵词汇」). A run of 3+ short
+  // English-only lines outside any section, introduced as words or 6+ lines long, is read as a 词汇 section
+  // (same rule as mark_bare_lists in Manager/vocab_import.py).
+  const BARE_LINE = /^\s*(?:[-–•·*]\s*|\d{1,3}[.、)）]\s*)?[A-Za-z][A-Za-z0-9'‘’\-\s,./()&?!]*$/;
+  function markBareLists(lines) {
+    const out = []; let inside = false, i = 0;
+    const isBare = x => x.trim() && BARE_LINE.test(x) && x.split(/\s+/).filter(Boolean).length <= 8 && !x.includes('http') && !/^\s*(?:[A-Z]\d+|C\d+T\d+)/.test(x);
+    while (i < lines.length) {
+      const line = lines[i], text = line.trim();
+      if (feedbackSection(line) || (/词汇|生词|单词/.test(line) && (line.replace(/[^\w一-鿿]/g, '').length <= 12 || /比如|例如|以下|如下|[:：]\s*$/.test(line)) && !WORD_LINE.test(line))) inside = true;
+      else if (/^\s*[【\[][^】\]]+[】\]]\s*[:：]?\s*$/.test(line)) inside = true;
+      else if (SECTION_END.test(line) || (text && /^课后(?:作业|练习|任务)\s*[:：]?$/.test(feedbackHeading(line)))) inside = false;
+      let j = i; while (j < lines.length && isBare(lines[j])) j++;
+      const before = lines.slice(Math.max(0, i - 3), i).reverse().find(x => x.trim()) || '';
+      if (!inside && j - i >= 3 && (i === 0 || !lines[i - 1].trim() || !BARE_LINE.test(lines[i - 1])) && (j - i >= 6 || /词|vocab|words/i.test(before))) {
+        out.push('词汇', ...lines.slice(i, j), ''); i = j; continue;
+      }
+      out.push(line); i++;
+    }
+    return out;
+  }
   function parseFeedback(body) {
     const words = []; let parent = null, numbered = false, inVocab = false, section = '', heading = '';
     const add = (item, raw) => {
       if (section) item.extra = META_PREFIX + JSON.stringify({section, heading, line: raw.trim().replace(WRONG, '').replace(/✅|✔️|✔|⭕️?|◯|○/g, '').trimEnd(), word: item.word, pos: item.pos || '', meaning: item.meaning || '', notes: item.extra ? [item.extra] : []});
       words.push(item); return item;
     };
-    for (const raw of String(body || '').replace(/[\x00-\x08\x0b-\x1f\x7f]/g, ' ').split('\n')) {   // control characters count as spaces, as in Python
+    for (const raw of markBareLists(String(body || '').replace(/[\x00-\x08\x0b-\x1f\x7f]/g, ' ').split('\n'))) {   // control characters count as spaces, as in Python
       let line = raw.replace(/\s+$/, '');
       if (!line.trim()) continue;
       const header = feedbackSection(line);
