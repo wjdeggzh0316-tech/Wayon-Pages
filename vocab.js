@@ -1380,13 +1380,14 @@
   }
   // "20261031-阅读L3": the lesson most of the chosen words come from (teacher's lesson number); else the list name.
   function listLabel(items, phase) {
+    if (phase === '补充') return '补充单词';   // pasted extras: where a word was first learned is not what this list is
     const counts = new Map(); items.forEach(it => { if (it.lesson_id) counts.set(it.lesson_id, (counts.get(it.lesson_id) || 0) + 1); });
     const main = [...counts.entries()].sort((a, b) => b[1] - a[1])[0], l = main && (index || []).find(x => x.id === main[0]);
     if (!l) return phase === '补充' ? '补充单词' : phase + '单词';
     const no = lessonNo(l.title), many = counts.size > 1;
     return (l.lesson_date || '').replace(/-/g, '') + '-' + subjectOf(l.subject) + (no ? 'L' + no : '') + (many ? ' 等 ' + counts.size + ' 节' : '');
   }
-  const fromRow = (r, from) => ({vocab_id: r._pending ? null : r.id, learner: r.learner, word: r.word, meaning: r.meaning || '', pos: r.pos || '', extra: r.extra || '', wrong: (r.wrong_count || 0) > 0, lesson_id: from || r.lesson_id || null, lesson_date: r.lesson_date || null, subject: r.subject || '', ...(r._pending ? {_pending: true} : {})});
+  const fromRow = (r, from) => ({vocab_id: r._pending ? null : r.id, learner: r.learner, word: r.word, meaning: String(r.meaning || '').replace(/\s*[⭕◯○]\uFE0F?\s*$/u, ''),   // a teacher's ⭕ is a mark, not meaning pos: r.pos || '', extra: r.extra || '', wrong: (r.wrong_count || 0) > 0, lesson_id: from || r.lesson_id || null, lesson_date: r.lesson_date || null, subject: r.subject || '', ...(r._pending ? {_pending: true} : {})});
   // Today's course for this student, from the published schedule (e.g. "阅读").
   const todaysCourse = student => { try { const r = quizRows([]).find(x => plainName(x[0]) === student); return r ? r[2] || '' : ''; } catch { return ''; } };
   // The previous lesson's own word list first, then words answered wrong, then words due for review.
@@ -1586,8 +1587,8 @@
       // "陈书进_阅读L3_11/7" (student_course+lesson no_quiz date), then every word with ✅ / ❌ (+ reason) as marked.
       const counts = new Map(); items.forEach(it => { if (it.lesson_id) counts.set(it.lesson_id, (counts.get(it.lesson_id) || 0) + 1); });
       const main = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
-      const lesson = main && (index || []).find(l => l.id === main[0]);
-      const course = resume?.payload?.course || (lesson ? subjectOf(lesson.subject) : subjectOf(todaysCourse(student)) || phase);
+      const lesson = phase === '补充' ? null : main && (index || []).find(l => l.id === main[0]);   // 补充 is titled 补充, not after a source lesson
+      const course = phase === '补充' && !resume?.payload?.course ? '补充' : resume?.payload?.course || (lesson ? subjectOf(lesson.subject) : subjectOf(todaysCourse(student)) || phase);
       const courseNo = resume?.payload && 'course_no' in resume.payload ? resume.payload.course_no : lesson ? lessonNo(lesson.title) : null;
       const text = quizCopyText(student, course, courseNo, day, items, marks);
       const payload = {schema: 1, session_id: sessionId, state, student, phase, list_day: listDay, day, saved_at: new Date().toISOString(),
