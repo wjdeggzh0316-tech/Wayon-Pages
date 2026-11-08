@@ -680,7 +680,11 @@
     .qgroup.vq-card{position:relative}.qgroup.vq-card>.qhead{padding-right:40px}
     .vq-fold{position:absolute;top:10px;right:10px;width:30px;height:30px;border:0;border-radius:8px;background:transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:var(--muted)}
     .vq-fold:hover{background:var(--code-bg);color:var(--fg)}.vq-fold svg{width:16px;height:16px;transition:transform .2s}.vq-collapsed .vq-fold svg{transform:rotate(-90deg)}
-    .qgroup.vq-card.vq-collapsed>:not(.qhead){display:none!important}.qgroup.vq-card.vq-collapsed>.qhead{margin:0}
+    .vq-fold-note{display:none;font-size:13px;font-weight:450;color:var(--muted)}
+    .qgroup.vq-card.vq-collapsed{background:var(--code-bg);padding:9px 14px!important;cursor:pointer}
+    .qgroup.vq-card.vq-collapsed>:not(.qhead){display:none!important}.qgroup.vq-card.vq-collapsed>.qhead{margin:0;padding-right:0;gap:6px;flex-wrap:nowrap}
+    .qgroup.vq-card.vq-collapsed .vq-meta{display:none}.qgroup.vq-card.vq-collapsed .vq-fold-note{display:inline}
+    .qgroup.vq-card.vq-collapsed .vq-fold{position:static;width:auto;height:auto;padding:0 2px;background:none}.qgroup.vq-card.vq-collapsed .vq-fold svg{display:none}.qgroup.vq-card.vq-collapsed .vq-fold:after{content:'▸';font-size:11px;color:var(--muted)}
     .vq-session{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
     .vq-check{min-height:28px;padding:0 10px;border:1px solid var(--line-strong);border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer}
     .vq-check.on{background:var(--done-bg);border-color:var(--done-border);color:var(--done-dark);font-weight:600}
@@ -1343,7 +1347,10 @@
       const fold = make('button', 'vq-fold'); fold.type = 'button'; fold.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
       const setFold = on => { g.classList.toggle('vq-collapsed', on); fold.setAttribute('aria-expanded', String(!on)); fold.title = on ? '展开' : '收起'; fold.setAttribute('aria-label', (on ? '展开 ' : '收起 ') + student); };
       fold.onclick = e => { e.stopPropagation(); const on = !g.classList.contains('vq-collapsed'); setFold(on); const f = readFolds(); if (on) f[foldKey] = 1; else delete f[foldKey]; try { localStorage.setItem('wayon-vq-folds', JSON.stringify(f)); } catch {} };
-      head.append(meta, fold); setFold(!!folded[foldKey]);
+      const checks = [...meta.querySelectorAll('.vq-check')], doneN = checks.filter(b => b.classList.contains('on')).length;
+      const note = make('span', 'vq-fold-note', '· ' + (doneN === 0 ? '未抽背' : doneN === checks.length ? '已抽背' : checks.map(b => b.textContent.replace(/^✓\s*/, '')).join(' · ')));
+      head.append(note, meta, fold); setFold(!!folded[foldKey]);
+      head.addEventListener('click', e => { if (g.classList.contains('vq-collapsed') && !e.target.closest('button:not(.vq-fold)')) fold.click(); });   // the whole folded line opens it
       const vq = make('div', 'vq'); vq.dataset.student = student; head.after(vq);
       void fillLists(vq, student);
     });
