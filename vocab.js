@@ -82,7 +82,7 @@
       const original = meta && meta.word === it.word && meta.pos === (it.pos || '') && meta.meaning === (it.meaning || '');
       const line = original ? meta.line : it.word + (it.pos ? ' ' + it.pos + '.' : '') + (it.meaning ? (it.pos ? '' : ' ') + it.meaning : '');
       const mark = marks.get(i), short = {拼写: '拼', 意思: '意', 发音: '音'};
-      lines.push(line + (mark?.result === 'wrong' ? '❌' + (short[mark.reason] || '') : '✅'), ...entryNotes(it));
+      lines.push(line + (mark?.result === 'wrong' ? '❌' + (short[mark.reason] || '') : mark?.result === 'right' ? '✅' : ''), ...entryNotes(it));
     });
     return lines.join('\n\n');
   }
@@ -152,14 +152,14 @@
   // ---------- Store: owner cloud tables, or local preview data on this computer only ----------
   const client = () => globalThis.wayonSupabaseClient?.client || null;
   const isLocal = /^(127\.0\.0\.1|localhost)$/.test(location.hostname);
-  let mode = 'pending', preview = null, index = null;
+  let mode = 'pending', preview = null, index = null, activeOwner = null;
   const bodies = new Map(), vocabCache = new Map(), listCache = new Map();
   async function ready() {
     if (mode === 'cloud' || mode === 'preview') return mode;
     const c = client();
-    if (c) { try { const {data} = await c.auth.getSession(); if (data?.session) return (mode = 'cloud'); } catch {} }
+    if (c) { try { const {data} = await vocabDeadline(c.auth.getSession()); if (data?.session) { activeOwner = data.session.user.id; setTimeout(() => void flushVocabBackups(activeOwner), 0); return (mode = 'cloud'); } } catch {} }
     if (isLocal) {
-      try { const r = await fetch('./vocab-preview-local.json', {cache: 'no-store'}); if (r.ok) { preview = await r.json(); preview.lists = {}; preview.reviews = []; return (mode = 'preview'); } } catch {}
+      try { const r = await fetch('./vocab-preview-local.json', {cache: 'no-store'}); if (r.ok) { preview = await r.json(); preview.lists = {}; preview.reviews = []; activeOwner = 'preview'; return (mode = 'preview'); } } catch {}
     }
     return (mode = c ? 'signedout' : 'none');
   }
@@ -386,6 +386,74 @@
     const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
     return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
   }
+
+  // Local transactions finish before the UI reports saved. Cloud backups run separately.
+  let localDB = null;
+  const LOCAL_PREFIX = 'wayon-vocab-local-v1:';
+  function openLocalDB() {
+    if (!globalThis.indexedDB) return Promise.resolve(null);
+    if (!localDB) localDB = new Promise((resolve, reject) => {
+      const request = indexedDB.open('wayon-vocab-local-v1', 1);
+      request.onupgradeneeded = () => { const s = request.result.createObjectStore('records', {keyPath: 'key'}); s.createIndex('pendingOwner', ['owner', 'status']); };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => { localDB = null; reject(Error('本机存储不可用')); };
+      request.onblocked = () => { localDB = null; reject(Error('请关闭旧工作台窗口后重试保存')); };
+    });
+    return localDB;
+  }
+  async function localRecord(key) {
+    const db = await openLocalDB();
+    if (!db) { const raw = localStorage.getItem(LOCAL_PREFIX + key); return raw ? JSON.parse(raw) : null; }
+    return new Promise((resolve, reject) => { const r = db.transaction('records').objectStore('records').get(key); r.onsuccess = () => resolve(r.result || null); r.onerror = () => reject(Error('本机记录读取失败')); });
+  }
+  async function localRecords(records) {
+    const db = await openLocalDB();
+    if (!db) { for (const r of records) localStorage.setItem(LOCAL_PREFIX + r.key, JSON.stringify(r)); return; }
+    await new Promise((resolve, reject) => { const tx = db.transaction('records', 'readwrite'); records.forEach(r => tx.objectStore('records').put(r)); tx.oncomplete = resolve; tx.onerror = tx.onabort = () => reject(Error('本机保存失败，请保留当前窗口重试')); });
+  }
+  async function pendingBackups(owner) {
+    const db = await openLocalDB();
+    if (!db) {
+      const rows = [];
+      for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (!k?.startsWith(LOCAL_PREFIX)) continue; const r = JSON.parse(localStorage.getItem(k)); if (r.owner === owner && r.status === 'pending') rows.push(r); }
+      return rows;
+    }
+    return new Promise((resolve, reject) => { const r = db.transaction('records').objectStore('records').index('pendingOwner').getAll(IDBKeyRange.only([owner, 'pending'])); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(Error('本机待备份记录读取失败')); });
+  }
+  function vocabDeadline(work, ms = 10000) {
+    let timer; return Promise.race([work, new Promise((_, reject) => { timer = setTimeout(() => reject(Error('备份暂未完成')), ms); })]).finally(() => clearTimeout(timer));
+  }
+  const backupRunning = new Set(), backupListeners = new Map(), backupRetry = new Map();
+  function backupStatus(key, text) { backupListeners.get(key)?.(text); }
+  function retryVocabBackup(owner) { if (!backupRetry.has(owner)) backupRetry.set(owner, setTimeout(() => { backupRetry.delete(owner); void flushVocabBackups(owner); }, 30000)); }
+  async function pendingStatus(owner, text) { for (const r of await pendingBackups(owner)) backupStatus(r.key, text); }
+  async function flushVocabBackups(owner) {
+    if (!owner || owner === 'preview' || backupRunning.has(owner)) return;
+    backupRunning.add(owner);
+    try {
+      const c = client(); if (!c) { await pendingStatus(owner, '已存本机 · 登录后备份'); return; }
+      const {data, error} = await vocabDeadline(c.auth.getSession());
+      if (error || data?.session?.user?.id !== owner) { await pendingStatus(owner, '已存本机 · 原账号登录后备份'); return; }
+      for (const record of await pendingBackups(owner)) {
+        const row = record.value;
+        try {
+          const {data: saved, error: e} = await vocabDeadline(c.from('wayon_vocab_sessions').upsert(row, {onConflict: 'id', ignoreDuplicates: true}).select('id,owner_id,payload_hash'));
+          if (e) throw e;
+          let ack = saved?.[0];
+          if (!ack) { const check = await vocabDeadline(c.from('wayon_vocab_sessions').select('id,owner_id,payload_hash').eq('id', row.id).eq('owner_id', owner).single()); if (check.error) throw check.error; ack = check.data; }
+          if (ack?.id !== row.id || ack?.owner_id !== owner || ack?.payload_hash !== row.payload_hash) throw Error('备份内容不一致');
+          await localRecords([{...record, status: 'backed_up'}]);
+          backupStatus(record.key, '已备份 · 下班统一处理');
+        } catch {
+          backupStatus(record.key, '已存本机 · 备份待重试');
+          retryVocabBackup(owner);
+          break;
+        }
+      }
+    } catch { try { await pendingStatus(owner, '已存本机 · 备份待重试'); } catch {} retryVocabBackup(owner); }
+    finally { backupRunning.delete(owner); }
+  }
+  const draftKey = (owner, day, student, phase) => 'draft:' + JSON.stringify([owner, student, phase]);
 
   // ---------- Learner mapping: a student's words live in their own folder and in their class folders ----------
   function learnersFor(student, all) {
@@ -1214,9 +1282,16 @@
     await ready();
     if (mode !== 'cloud' && mode !== 'preview') { vq.textContent = ''; vq.append(make('div', 'vq-empty', '登录工作台后可选词和抽背')); return; }
     const day = curDay();
+    const localKey = activeOwner ? draftKey(activeOwner, day, student, vqTab.get(student) || '课前') : null;
+    let localDraft = null, previousResult = null;
+    try { if (localKey) { localDraft = await localRecord(localKey); previousResult = await localRecord('result:' + localKey); } } catch (e) { flash(e.message, true); }
     let lists, learners;
     try { await lessonIndex(); lists = await getLists(day, student); learners = learnersFor(student, allLearners()); }
-    catch (e) { vq.textContent = ''; vq.append(make('div', 'vq-empty', '读取失败：' + (e.message || e))); return; }
+    catch (e) {
+      if (!localDraft && !previousResult) { vq.textContent = ''; vq.append(make('div', 'vq-empty', '读取失败：' + (e.message || e))); return; }
+      lists = {课前: [], 课后: [], 补充: []}; learners = [];
+      if (localDraft?.value?.state === 'draft') lists[localDraft.value.phase] = localDraft.value.payload.items;
+    }
     const phase = vqTab.get(student) || '课前', items = lists[phase];
     // Repair the display of lists saved by older clients without a cloud write.
     // Supplemental pasted words keep the user's own input order.
@@ -1237,6 +1312,10 @@
     tabs.title = learners.length ? '单词库：' + learners.map(l => l.replace(/\//g, '、')).join('，') : '还没有单词库（收集反馈后自动生成）';
     ['课前', '课后', '补充'].forEach(p => tabs.append(btn(p === phase ? 'on' : '', p + ' ' + lists[p].length, () => { vqTab.set(student, p); redraw(); })));
     const actions = make('div', 'vq-actions');
+    if (previousResult) actions.append(btn('', '上次结果', () => {
+      const last = overlay('上次抽背结果'); last.body.append(make('pre', 'fb-body', previousResult.value.payload.text));
+      last.foot.append(btn('fb-btn pri', '复制结果', async () => { try { await navigator.clipboard.writeText(previousResult.value.payload.text); flash('已复制'); } catch { flash('复制失败，请手动选中文字复制', true); } }), btn('fb-btn', '关闭', last.close));
+    }));
     actions.append(btn('', '选词', () => openPicker(student, learners, items, keep)));
     if (phase === '课前') actions.append(btn('', '推荐', async () => { try { const lib = await vocabFor(learners); (await recommend(lib, learners, day, todaysCourse(student))).forEach(r => { if (!items.some(x => x.word.toLowerCase() === r.word.toLowerCase())) items.push(fromRow(r, r._from)); }); await materializeItems(items); keep(); } catch (e) { flash('推荐未能保存：' + (e.message || e), true); } }, '推荐：今天这门课上一节的全部生词，再补错过的和到期复习的'));
     if (phase === '课后') actions.append(btn('', '本节全部内容', async () => {
@@ -1277,11 +1356,17 @@
       });
       add.append(ta, go); vq.append(add);
     }
-    if (items.length) {   // no word chips: one line naming the lesson, and the start button
+    const draft = localDraft?.value?.state === 'draft' ? localDraft.value : null;
+    if (items.length || draft) {   // no word chips: one line naming the lesson, and the start button
       const ready = make('div', 'vq-ready');
-      ready.append(make('span', 'vq-label', listLabel(items, phase)), make('span', 'vq-n', items.length + ' 项'),
+      ready.append(make('span', 'vq-label', draft ? '已暂存 · ' + (draft.payload.course || phase) + (draft.payload.course_no ? 'L' + draft.payload.course_no : '') : listLabel(items, phase)), make('span', 'vq-n', (draft ? draft.payload.items.length : items.length) + ' 项'),
         btn('vq-clear', '清空', () => { if (confirm('清空这个清单？（单词库里的词不受影响）')) { items.splice(0); keep(); } }),
-        btn('fb-btn pri vq-start', '▶ 开始抽背', () => startQuiz(student, phase, items, redraw)));
+        btn('fb-btn pri vq-start', draft ? '▶ 继续抽背' : '▶ 开始抽背', () => startQuiz(student, phase, items, redraw)));
+      if (draft) {
+        const pendingKey = 'snapshot:' + activeOwner + ':' + draft.id, backup = await localRecord(pendingKey);
+        const status = make('span', 'fb-meta', backup?.status === 'backed_up' ? '暂存已备份' : '暂存已存本机 · 待备份');
+        backupListeners.set(pendingKey, value => { if (status.isConnected) status.textContent = value; }); ready.append(status);
+      }
       vq.append(ready);
     }
   }
@@ -1432,11 +1517,20 @@
 
   // ---------- Quiz ----------
   // A scrolling list: read the Chinese (or English), tap ✗ on the ones the student gets wrong, then 完成.
-  // Unmarked rows count as right. Results are saved once, on 完成.
-  function startQuiz(student, phase, items, done) {
-    const marks = new Map();   // index -> {result: 'right'|'wrong', reason}
+  // Only explicit marks count. Drafts and completed results are committed locally first.
+  async function startQuiz(student, phase, items, done) {
+    const owner = activeOwner || (mode === 'preview' ? 'preview' : null);
+    if (!owner) { flash('请先登录工作台', true); return; }
+    const key = draftKey(owner, curDay(), student, phase);
+    let stored;
+    try { stored = await localRecord(key); } catch (e) { flash(e.message, true); return; }
+    const resume = stored?.value?.state === 'draft' ? stored.value : null;
+    if (resume) items = JSON.parse(JSON.stringify(resume.payload.items));
+    const marks = new Map((resume?.payload?.marks || []).map(m => [m.index, {result: m.result, reason: m.reason || ''}]));
+    const sessionId = resume?.session_id || uuid(), listDay = resume?.payload?.list_day || curDay();
+    let revision = resume?.revision || 0;
     let finishing = false;
-    let hide = localStorage.getItem('wayon-vocab-hide') || 'none';
+    let hide = resume?.payload?.hide || localStorage.getItem('wayon-vocab-hide') || 'none';
     const o = overlay(student + ' · ' + phase + '抽背 · ' + items.length + ' 项');
     const tools = make('div', 'fb-tabs vx-hide');
     const paintTools = () => { tools.textContent = ''; [['none', '都显示'], ['en', '遮英文'], ['zh', '遮中文']].forEach(([k, t]) => tools.append(btn(hide === k ? 'on' : '', t, () => { hide = k; try { localStorage.setItem('wayon-vocab-hide', k); } catch {} paintTools(); list.dataset.hide = k; }))); };
@@ -1447,7 +1541,7 @@
     const tally = make('span', 'fb-meta'), painters = [];
     const recount = () => {
       const w = [...marks.values()].filter(m => m.result === 'wrong').length, r = [...marks.values()].filter(m => m.result === 'right').length, left = items.length - w - r;
-      tally.textContent = '✅ ' + r + ' · ❌ ' + w + (left ? ' · 未标 ' + left + '（算对）' : '');
+      tally.textContent = '✅ ' + r + ' · ❌ ' + w + (left ? ' · 未标 ' + left : '');
     };
     let previousHeading = '';
     items.forEach((it, i) => {
@@ -1474,40 +1568,43 @@
       row.append(no, text, ok, x, reasons); list.append(row); paintRow();
     });
     paintTools(); recount();
-    o.foot.append(tally, btn('fb-btn pri', '完成并保存', () => finish()), btn('fb-btn', '取消', () => { if (!marks.size || confirm('不保存这次抽背结果？')) o.close(); }));
-    async function finish() {
+    o.foot.append(tally, btn('fb-btn', '暂存', () => finish('draft')), btn('fb-btn pri', '完成并保存', () => finish('completed')), btn('fb-btn', '取消', () => { if (!marks.size || confirm('不保存这次抽背结果？')) o.close(); }));
+    if (resume) { requestAnimationFrame(() => { o.body.scrollTop = resume.payload.scroll_top || 0; }); flash('已恢复暂存，可继续抽背'); }
+    async function finish(state) {
       if (finishing) return;
-      finishing = true; o.foot.querySelectorAll('button').forEach(b => { b.disabled = true; });
-      try { await materializeItems(items); } catch (e) { finishing = false; o.foot.querySelectorAll('button').forEach(b => { b.disabled = false; }); flash('抽背结果未保存：' + (e.message || e), true); return; }
-      const session = uuid(), day = today(), now = new Date().toISOString(), failed = [];
-      o.foot.querySelectorAll('button').forEach(b => { b.disabled = true; }); tally.textContent = '保存中…';
-      for (let i = 0; i < items.length; i++) {
-        const it = items[i], result = marks.get(i)?.result === 'wrong' ? 'wrong' : 'right', reason = marks.get(i)?.reason || null;
-        it.wrong = result === 'wrong';
-        if (!it.vocab_id) continue;
-        try {
-          const lib = (await vocabFor([it.learner])).find(r => r.id === it.vocab_id) || {};
-          const box = result === 'right' ? Math.min((lib.box || 0) + 1, 5) : 1;
-          const patch = {box, due_date: addDays(day, result === 'right' ? INTERVALS[box - 1] : 1), last_result: result, last_quizzed_at: now,
-            right_count: (lib.right_count || 0) + (result === 'right' ? 1 : 0), wrong_count: (lib.wrong_count || 0) + (result === 'wrong' ? 1 : 0)};
-          Object.assign(lib, patch);
-          await updateVocab(it.vocab_id, patch);
-          await addReview({vocab_id: it.vocab_id, learner: it.learner, student, result, reason, direction: hide === 'zh' ? 'en-zh' : 'zh-en', phase: phase === '补充' ? '其他' : phase, session_id: session});
-        } catch (e) { failed.push(it.word); }
-      }
-      const wrong = items.filter((_, i) => marks.get(i)?.result === 'wrong'), right = items.length - wrong.length;
+      finishing = true; o.ov.querySelectorAll('button').forEach(b => { b.disabled = true; });
+      const day = today();
+      const wrong = items.filter((_, i) => marks.get(i)?.result === 'wrong'), right = [...marks.values()].filter(m => m.result === 'right').length;
       // "陈书进_阅读L3_11/7" (student_course+lesson no_quiz date), then every word with ✅ / ❌ (+ reason) as marked.
       const counts = new Map(); items.forEach(it => { if (it.lesson_id) counts.set(it.lesson_id, (counts.get(it.lesson_id) || 0) + 1); });
       const main = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
       const lesson = main && (index || []).find(l => l.id === main[0]);
-      const course = lesson ? subjectOf(lesson.subject) : (subjectOf(todaysCourse(student)) || phase), courseNo = lesson ? lessonNo(lesson.title) : null;
+      const course = resume?.payload?.course || (lesson ? subjectOf(lesson.subject) : subjectOf(todaysCourse(student)) || phase);
+      const courseNo = resume?.payload && 'course_no' in resume.payload ? resume.payload.course_no : lesson ? lessonNo(lesson.title) : null;
       const text = quizCopyText(student, course, courseNo, day, items, marks);
-      markChecked(student, phase);
+      const payload = {schema: 1, session_id: sessionId, state, student, phase, list_day: listDay, day, saved_at: new Date().toISOString(),
+        items: JSON.parse(JSON.stringify(items)), marks: [...marks].map(([index, m]) => ({index, result: m.result, reason: m.result === 'wrong' ? m.reason || null : null})),
+        text, course, course_no: courseNo, hide, direction: hide === 'zh' ? 'en-zh' : 'zh-en', scroll_top: o.body.scrollTop};
+      let snapshot;
+      const snapshotKey = 'snapshot:' + owner + ':' + uuid();
+      try {
+        snapshot = {id: snapshotKey.split(':').at(-1), owner_id: owner, session_id: sessionId, revision: revision + 1, state, day, student, phase,
+          payload, payload_hash: await sha256(JSON.stringify(payload))};
+        const records = [{key, owner, status: state, value: snapshot}, {key: snapshotKey, owner, status: 'pending', value: snapshot}];
+        if (state === 'completed') records.push({key: 'result:' + key, owner, status: 'completed', value: snapshot});
+        await localRecords(records); revision++;
+      } catch (e) { finishing = false; o.ov.querySelectorAll('button').forEach(b => { b.disabled = false; }); flash('本机未能保存，请保留当前窗口重试', true); return; }
+      setTimeout(() => void flushVocabBackups(owner), 0);
+      if (state === 'draft') { o.close(); flash('已暂存本机，下次可继续'); done(); return; }
+      allRight.remove(); tools.remove(); o.head.querySelector('.vx-close').disabled = false;
+      marks.forEach((m, i) => { items[i].wrong = m.result === 'wrong'; });
+      if (listDay === curDay() && marks.size === items.length && items.length) markChecked(student, phase);
       list.textContent = ''; o.foot.textContent = '';
-      const sum = make('div', 'vx-summary'); sum.append(make('div', 'vx-score', right + ' / ' + items.length), make('pre', '', text));
-      if (failed.length) sum.append(make('div', 'fb-gap', '这些词的结果没存上，请稍后重抽：' + failed.join('、')));
+      const sum = make('div', 'vx-summary'); sum.append(make('div', 'fb-meta', '✅ ' + right + ' · ❌ ' + wrong.length + ' · 未标 ' + (items.length - marks.size)), make('pre', '', text));
       list.append(sum);
-      o.foot.append(btn('fb-btn pri', '复制结果', async () => { try { await navigator.clipboard.writeText(text); flash('已复制'); } catch { flash('复制失败，请手动选中文字复制', true); } }),
+      const status = make('span', 'fb-meta', owner === 'preview' ? '已保存本机' : '已保存本机 · 正在备份');
+      backupListeners.set(snapshotKey, value => { if (status.isConnected) status.textContent = value; });
+      o.foot.append(status, btn('fb-btn pri', '复制结果', async () => { try { await navigator.clipboard.writeText(text); flash('已复制'); } catch { flash('复制失败，请手动选中文字复制', true); } }),
         btn('fb-btn', '错的再抽一遍', () => { if (!wrong.length) return; o.close(); startQuiz(student, phase, wrong, done); }),
         btn('fb-btn', '完成', () => { o.close(); done(); }));
     }
@@ -1543,6 +1640,9 @@
     mount();
     document.addEventListener('click', e => { const nav = e.target.closest?.('#tabs button'); if (open && nav && nav.id !== 'nav-feedback') close(); }, true);
     new MutationObserver(mount).observe(document.body, {childList: true, subtree: true});
+    window.addEventListener('online', () => void flushVocabBackups(activeOwner));
+    window.addEventListener('wayon-refresh-ready', () => { mode = 'pending'; void ready(); });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) void flushVocabBackups(activeOwner); });
     let tries = 0; const wait = setInterval(() => { if (client() || ++tries > 60) { clearInterval(wait); mode = 'pending'; if (open) renderPanel(); document.querySelectorAll('.vq').forEach(v => fillLists(v, v.dataset.student)); } }, 1000);
   }
   globalThis.wayonVocab = {parseFeedback, lessonNo, subjectOf, learnersFor};
