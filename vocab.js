@@ -677,6 +677,10 @@
     .qgroup.vq-card>.qrow{display:none!important}
     .qgroup.vq-card>.qhead{display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap;margin:0 0 8px;font-size:16px}
     .vq-meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;font-weight:400;color:var(--muted);margin-left:auto}
+    .qgroup.vq-card{position:relative}.qgroup.vq-card>.qhead{padding-right:40px}
+    .vq-fold{position:absolute;top:10px;right:10px;width:30px;height:30px;border:0;border-radius:8px;background:transparent;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;color:var(--muted)}
+    .vq-fold:hover{background:var(--code-bg);color:var(--fg)}.vq-fold svg{width:16px;height:16px;transition:transform .2s}.vq-collapsed .vq-fold svg{transform:rotate(-90deg)}
+    .qgroup.vq-card.vq-collapsed>:not(.qhead){display:none!important}.qgroup.vq-card.vq-collapsed>.qhead{margin:0}
     .vq-session{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
     .vq-check{min-height:28px;padding:0 10px;border:1px solid var(--line-strong);border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer}
     .vq-check.on{background:var(--done-bg);border-color:var(--done-border);color:var(--done-dark);font-weight:600}
@@ -1314,6 +1318,7 @@
   const curDay = () => { try { return cur; } catch { return today(); } };
   // One compact card per student: name · course · time and the existing 课前/课后 checks as text pills,
   // then the three lists as tabs with their actions, then the chosen words.
+  const readFolds = () => { try { return JSON.parse(localStorage.getItem('wayon-vq-folds') || '{}') || {}; } catch { return {}; } };
   function decorateQuiz() {
     const box = document.querySelector('#list .quiz'); if (!box) return;
     box.querySelectorAll('.qgroup').forEach(g => {
@@ -1333,7 +1338,12 @@
         });
         meta.append(line);
       });
-      head.append(meta);
+      // Any card can be folded to its one header line, quizzed or not; remembered per day on this device.
+      const foldKey = curDay() + '|' + student, folded = readFolds();
+      const fold = make('button', 'vq-fold'); fold.type = 'button'; fold.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+      const setFold = on => { g.classList.toggle('vq-collapsed', on); fold.setAttribute('aria-expanded', String(!on)); fold.title = on ? '展开' : '收起'; fold.setAttribute('aria-label', (on ? '展开 ' : '收起 ') + student); };
+      fold.onclick = e => { e.stopPropagation(); const on = !g.classList.contains('vq-collapsed'); setFold(on); const f = readFolds(); if (on) f[foldKey] = 1; else delete f[foldKey]; try { localStorage.setItem('wayon-vq-folds', JSON.stringify(f)); } catch {} };
+      head.append(meta, fold); setFold(!!folded[foldKey]);
       const vq = make('div', 'vq'); vq.dataset.student = student; head.after(vq);
       void fillLists(vq, student);
     });
