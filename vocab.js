@@ -120,6 +120,33 @@
   // A lesson's words: the list you edited by hand if there is one, otherwise what the parser finds in its text.
   const customWords = new Map();
   async function lessonWords(id) { const body = await lessonBody(id); return customWords.get(id) || parseFeedback(body); }
+  const wordKey = word => String(word || '').trim().toLowerCase();
+  // Database rows have no word-position field. Recover each lesson's order from
+  // its feedback (or edited word list), keeping other lessons and free words in place.
+  async function feedbackOrder(items) {
+    const groups = new Map();
+    for (const item of items) {
+      if (!item.lesson_id || !(index || []).some(l => l.id === item.lesson_id)) continue;
+      if (!groups.has(item.lesson_id)) groups.set(item.lesson_id, []);
+      groups.get(item.lesson_id).push(item);
+    }
+    const ordered = new Map(await Promise.all([...groups].map(async ([id, rows]) => {
+      const ranks = new Map();
+      (await lessonWords(id)).forEach((w, i) => { if (!ranks.has(wordKey(w.word))) ranks.set(wordKey(w.word), i); });
+      return [id, rows.slice().sort((a, b) => (ranks.get(wordKey(a.word)) ?? Infinity) - (ranks.get(wordKey(b.word)) ?? Infinity))];
+    })));
+    const offsets = new Map();
+    return items.map(item => {
+      if (!ordered.has(item.lesson_id)) return item;
+      const offset = offsets.get(item.lesson_id) || 0;
+      offsets.set(item.lesson_id, offset + 1);
+      return ordered.get(item.lesson_id)[offset];
+    });
+  }
+  async function rowsForLesson(lesson, lib) {
+    const ownWords = new Map(lib.filter(r => r.learner === lesson.learner).map(r => [wordKey(r.word), r]));
+    return (await lessonWords(lesson.id)).map(w => ownWords.get(wordKey(w.word))).filter(Boolean);
+  }
   const slimWords = ws => ws.map(w => ({word: w.word, pos: w.pos || '', meaning: w.meaning || ''}));
   async function vocabFor(learners) {
     const key = [...learners].sort().join('|');
@@ -1082,6 +1109,12 @@
     try { await lessonIndex(); lists = await getLists(day, student); learners = learnersFor(student, allLearners()); }
     catch (e) { vq.textContent = ''; vq.append(make('div', 'vq-empty', '读取失败：' + (e.message || e))); return; }
     const phase = vqTab.get(student) || '课前', items = lists[phase];
+    // Repair the display of lists saved by older clients without a cloud write.
+    // Supplemental pasted words keep the user's own input order.
+    if (phase !== '补充') {
+      try { const ordered = await feedbackOrder(items); items.splice(0, items.length, ...ordered); }
+      catch (e) { vq.textContent = ''; vq.append(make('div', 'vq-empty', '读取反馈词序失败：' + (e.message || e))); return; }
+    }
     const redraw = () => fillLists(vq, student), keep = () => { saveList(day, student, phase); redraw(); };
     vq.textContent = '';
     const bar = make('div', 'vq-bar'), tabs = make('div', 'vq-tabs');
@@ -1090,7 +1123,24 @@
     const actions = make('div', 'vq-actions');
     actions.append(btn('', '选词', () => openPicker(student, learners, items, keep)));
     if (phase === '课前') actions.append(btn('', '推荐', async () => { const lib = await vocabFor(learners); (await recommend(lib, learners, day, todaysCourse(student))).forEach(r => { if (!items.some(x => x.word.toLowerCase() === r.word.toLowerCase())) items.push(fromRow(r, r._from)); }); keep(); }, '推荐：今天这门课上一节的全部生词，再补错过的和到期复习的'));
-    if (phase === '课后') actions.append(btn('', '本节新词', async () => { const lib = await vocabFor(learners); const fresh = lib.filter(r => r.lesson_date === day); if (!fresh.length) flash('今天这节的反馈还没收集，先到「课堂反馈 › 今日收集」粘贴'); fresh.forEach(r => { if (!items.some(x => x.word.toLowerCase() === r.word.toLowerCase())) items.push(fromRow(r)); }); keep(); }));
+    if (phase === '课后') actions.append(btn('', '本节新词', async () => {
+      try {
+        const lib = await vocabFor(learners);
+        const lessons = (index || []).filter(l => learners.includes(l.learner) && l.lesson_date === day);
+        let count = 0;
+        for (const lesson of lessons) {
+          // A word first learned in an earlier lesson still belongs to today's feedback.
+          const rows = await rowsForLesson(lesson, lib); count += rows.length;
+          rows.forEach(r => {
+            const existing = items.find(x => wordKey(x.word) === wordKey(r.word));
+            if (!existing) items.push(fromRow(r, lesson.id));
+            else if (existing.vocab_id === r.id) existing.lesson_id = lesson.id;
+          });
+        }
+        if (!count) { flash('今天这节的反馈还没收集，先到「课堂反馈 › 今日收集」粘贴'); return; }
+        const ordered = await feedbackOrder(items); items.splice(0, items.length, ...ordered); keep();
+      } catch (e) { flash('读取本节生词失败：' + (e.message || e), true); }
+    }));
     bar.append(tabs, actions); vq.append(bar);
     if (phase === '补充') {
       const add = make('div', 'vq-paste'), ta = make('textarea'); ta.rows = 2; ta.placeholder = '粘贴单词，一行一个（可带中文），例如：resilient 有韧性的';
@@ -1134,8 +1184,7 @@
     const before = (index || []).filter(l => learners.includes(l.learner) && l.lesson_date && l.lesson_date < day).sort((a, b) => b.lesson_date.localeCompare(a.lesson_date));
     const want = course ? subjectOf(course) : '';
     const prev = (want && before.find(l => subjectOf(l.subject) === want)) || before[0];   // the last lesson of today's subject first
-    const byWord = new Map(lib.map(r => [r.word.trim().toLowerCase(), r]));
-    const last = prev ? (await lessonWords(prev.id)).map(w => byWord.get(w.word.toLowerCase())).filter(Boolean) : [];
+    const last = prev ? await rowsForLesson(prev, lib) : [];
     const seen = new Set(last.map(r => r.id));
     const rest = lib.filter(r => !seen.has(r.id) && (r.last_result === 'wrong' || (r.due_date && r.due_date <= day)))
       .sort((a, b) => (a.last_result === 'wrong' ? 0 : 1) - (b.last_result === 'wrong' ? 0 : 1) || (b.wrong_count || 0) - (a.wrong_count || 0));
@@ -1163,7 +1212,6 @@
     o.body.textContent = '';
     if (!lib.length) { o.body.append(make('div', 'vq-empty', '这个学生还没有单词库。到「课堂反馈」收集反馈后会自动生成。')); return; }
     const chosen = new Set(items.filter(x => x.vocab_id).map(x => x.vocab_id)), chosenFrom = new Map();
-    const byWord = new Map(lib.map(r => [r.word.trim().toLowerCase(), r]));
     const count = make('span', 'fb-meta'), recount = () => { count.textContent = '已选 ' + chosen.size; };
     let mode = 'lesson', filter = 'all', subject = '';
     const modes = make('div', 'fb-tabs'); modes.style.marginBottom = '10px';
@@ -1180,14 +1228,13 @@
       return row;
     };
     // One lesson = the words written in that lesson's feedback (parsed from its text), matched to the library.
-    const lessonWords = new Map();
+    const lessonWordCache = new Map();
     async function wordsOf(l) {
       if (l.pseudo) return l.rows;
-      if (lessonWords.has(l.id)) return lessonWords.get(l.id);
-      const parsed = await lessonWords(l.id);
-      const rows = parsed.map(w => byWord.get(w.word.toLowerCase())).filter(Boolean);
+      if (lessonWordCache.has(l.id)) return lessonWordCache.get(l.id);
+      const rows = await rowsForLesson(l, lib);
       const firstSeen = lib.filter(r => r.lesson_id === l.id && !rows.includes(r));
-      const all = [...rows, ...firstSeen]; lessonWords.set(l.id, all); return all;
+      const all = [...rows, ...firstSeen]; lessonWordCache.set(l.id, all); return all;
     }
     function lessonBlock(l) {
       const d = make('details', 'fb-lesson'), sum = make('summary'), cb = make('input'); cb.type = 'checkbox';
@@ -1206,7 +1253,7 @@
       const body = make('div'); body.style.padding = '0 12px 10px'; d.append(body);
       if (l.pseudo) d.classList.add('fb-orphan');
       const sync = ws => { const k = ws.filter(r => chosen.has(r.id)).length; cb.checked = ws.length > 0 && k === ws.length; cb.indeterminate = k > 0 && k < ws.length; n.textContent = ws.length + ' 词' + (k ? ' · 已选 ' + k : ''); };
-      const known = l.pseudo ? l.rows : lessonWords.get(l.id); if (known) sync(known); else { const first = lib.filter(r => r.lesson_id === l.id).length; n.textContent = first ? first + ' 个新词' : '展开查看'; }
+      const known = l.pseudo ? l.rows : lessonWordCache.get(l.id); if (known) sync(known); else { const first = lib.filter(r => r.lesson_id === l.id).length; n.textContent = first ? first + ' 个新词' : '展开查看'; }
       cb.addEventListener('click', e => e.stopPropagation());
       cb.onchange = async () => { const ws = await wordsOf(l); ws.forEach(r => { if (cb.checked) { chosen.add(r.id); if (!l.pseudo) chosenFrom.set(r.id, l.id); } else chosen.delete(r.id); }); recount(); sync(ws); body.querySelectorAll('input[data-id]').forEach(i => { i.checked = chosen.has(i.dataset.id); }); };
       d.addEventListener('toggle', async () => {
@@ -1215,7 +1262,7 @@
         try { const ws = await wordsOf(l); body.textContent = ''; body.dataset.loaded = '1'; if (!ws.length) body.append(make('div', 'vq-empty', '这节课的反馈里没有识别到生词')); ws.forEach(r => body.append(wordRow(r, l.pseudo ? null : l.id))); sync(ws); }
         catch (e) { body.textContent = '读取失败：' + (e.message || e); }
       });
-      body.addEventListener('wordchange', () => sync(lessonWords.get(l.id) || []));
+      body.addEventListener('wordchange', () => sync(lessonWordCache.get(l.id) || []));
       return d;
     }
     const paint = () => {
@@ -1253,10 +1300,13 @@
       if (!rows.length) list.append(make('div', 'vq-empty', '没有符合的单词'));
     };
     search.oninput = paint; paint(); recount();
-    o.foot.append(count, btn('fb-btn pri', '加入清单', () => {
+    o.foot.append(count, btn('fb-btn pri', '加入清单', async () => {
       const keep = items.filter(x => !x.vocab_id || chosen.has(x.vocab_id));
       const have = new Set(keep.map(x => x.vocab_id).filter(Boolean));
-      lib.filter(r => chosen.has(r.id) && !have.has(r.id)).forEach(r => keep.push(fromRow(r, chosenFrom.get(r.id))));
+      const byId = new Map(lib.map(r => [r.id, r]));
+      const added = [...chosen].filter(id => !have.has(id) && byId.has(id)).map(id => fromRow(byId.get(id), chosenFrom.get(id)));
+      try { keep.push(...await feedbackOrder(added)); }
+      catch (e) { flash('读取反馈词序失败：' + (e.message || e), true); return; }
       items.splice(0, items.length, ...keep); o.close(); done();
     }), btn('fb-btn', '取消', () => o.close()));
   }
