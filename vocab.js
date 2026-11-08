@@ -273,11 +273,16 @@
     const fresh = words.filter(w => !have.has(w.word.toLowerCase())).map(w => ({id: uuid(), learner: lesson.learner, word: w.word, pos: w.pos || null, meaning: w.meaning, extra: w.extra || null,
       subject: lesson.subject, lesson_date: lesson.lesson_date, lesson_id: row.id, wrong_count: w.wrong ? 1 : 0, last_result: w.wrong ? 'wrong' : null, box: 0, due_date: null, right_count: 0, archived: false}));
     if (mode === 'preview') {
-      if (preview.lessons.some(l => l.learner === row.learner && l.body_sha256 === sha)) return {duplicate: true, added: 0};
+      const same = preview.lessons.find(l => l.learner === row.learner && l.body_sha256 === sha);
+      if (same) return {duplicate: true, added: 0, existing: same};
       preview.lessons.push(row); preview.words.push(...fresh);
     } else {
       const {error} = await client().from('wayon_lessons').insert(row);
-      if (error) { if (/duplicate|unique/i.test(error.message)) return {duplicate: true, added: 0}; throw error; }
+      if (error) {
+        if (!/duplicate|unique/i.test(error.message)) throw error;
+        const {data} = await client().from('wayon_lessons').select('id,subject,lesson_date,title,archived_at').eq('learner', row.learner).eq('body_sha256', sha).limit(1);
+        return {duplicate: true, added: 0, existing: data && data[0]};
+      }
       for (let i = 0; i < fresh.length; i += 500) { const {error: e} = await client().from('wayon_vocab').insert(fresh.slice(i, i + 500)); if (e) throw e; }
     }
     index = null; dropVocabCache(lesson.learner);
@@ -351,6 +356,8 @@
     else { const {error} = await client().from('wayon_lessons').update({archived_at: at}).eq('id', id); if (error) throw error; }
     index = null; bodies.delete(id);
   }
+  // "和 10/31 听力 L16 那节内容完全一样" — so a wrong clipboard is obvious instead of a silent "already saved".
+  const dupText = e => !e ? '这段内容之前已经保存过' : '这段内容和已保存的「' + [md(e.lesson_date) + weekday(e.lesson_date), subjectOf(e.subject), lessonNo(e.title) ? 'L' + lessonNo(e.title) : ''].filter(Boolean).join(' ') + '」完全一样' + (e.archived_at ? '（那节已删除）' : '') + '，没有重复保存。请检查剪贴板里是不是这节课的反馈。';
   async function updateVocab(id, patch) {
     if (mode === 'preview') { const w = preview.words.find(x => x.id === id); if (w) Object.assign(w, patch); return; }
     const {error} = await client().from('wayon_vocab').update(patch).eq('id', id); if (error) throw error;
@@ -527,7 +534,7 @@
     .fb-wedit{position:relative;user-select:none;-webkit-user-select:none}.fb-wedit:focus{outline:none}.fb-wedit input{user-select:text;-webkit-user-select:text}
     .fb-wrow{transition:background .12s}.fb-wrow.picked{background:color-mix(in srgb,var(--accent,#0a63d8) 12%,transparent);border-radius:8px;box-shadow:0 0 0 4px color-mix(in srgb,var(--accent,#0a63d8) 12%,transparent)}
     .fb-marquee{position:absolute;z-index:3;border:1px solid var(--accent,#0a63d8);background:color-mix(in srgb,var(--accent,#0a63d8) 10%,transparent);border-radius:3px;pointer-events:none}
-    .fb-link.danger{color:#d93036}
+    .fb-link.danger{color:#d93036}.fb-meta.fb-warn{color:#b42318;font-weight:550;flex-basis:100%;order:-1}
     .fb-wadd{margin-top:6px}.fb-wedit-batch{width:100%;box-sizing:border-box;font:13px/1.8 var(--mono,ui-monospace,monospace);padding:8px 10px;border:1px solid var(--accent,#0a63d8);border-radius:8px;background:var(--card);color:var(--fg);resize:vertical}
     .fb-collect{border:0.5px solid var(--line);border-radius:14px;background:var(--card);margin-bottom:10px;overflow:hidden;transition:border-color .2s}
     .fb-collect.editing{border-color:var(--accent,#0a63d8)}
@@ -910,7 +917,7 @@
       const first = (ta.value.split('\n').find(x => x.trim()) || ''), no = lessonNo(first), d = collectDay || today();
       return ta.value.trim() ? [no ? 'L' + no : '', md(d) + weekday(d), ed.words().length + ' 词'].filter(Boolean).join(' · ') : '';
     };
-    let timer; ta.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => { ed.refresh(); onInfo && onInfo(info()); }, 150); });
+    let timer; ta.addEventListener('input', () => { status.classList.remove('fb-warn'); if (status.textContent.includes('完全一样')) status.textContent = ''; clearTimeout(timer); timer = setTimeout(() => { ed.refresh(); onInfo && onInfo(info()); }, 150); });
     words.addEventListener('input', () => onInfo && onInfo(info()));
     const save = btn('fb-btn pri', '保存', async () => {
       const body = ta.value.trim(), who = keyOf(learner.value), subj = subjectOf(subject.value || s.course);
@@ -922,7 +929,8 @@
       try {
         // The teacher's own first line (e.g. "26-11-01 雅思听力 L3") is the title, so the lesson number is the teacher's.
         const r = await busy('正在保存…', () => saveLesson({learner: who, subject: subj, lesson_date: d, title: firstLine || (s.course || subj), body}, ws, ed.edited));
-        flash(r.duplicate ? '这段反馈之前已保存过' : '已保存，新增 ' + r.added + ' 个生词'); renderPanel();
+        if (r.duplicate) { status.textContent = dupText(r.existing); status.classList.add('fb-warn'); save.disabled = false; ta.focus(); return; }   // keep the box open to paste the right text
+        flash('已保存，新增 ' + r.added + ' 个生词'); renderPanel();
       } catch (e) { status.textContent = '保存失败：' + (e.message || e); save.disabled = false; }
     });
     if (s.manual) bar.append(learner, subject);
@@ -1071,7 +1079,7 @@
     const num = make('input'); num.type = 'number'; num.min = '1'; num.max = '999'; num.className = 'fb-search fb-no-input'; num.placeholder = '课次'; if (no) { num.value = no; num.disabled = true; }
     const status = make('span', 'fb-meta');
     let timer;
-    ta.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => {
+    ta.addEventListener('input', () => { status.classList.remove('fb-warn'); if (status.textContent.includes('完全一样')) status.textContent = ''; clearTimeout(timer); timer = setTimeout(() => {
       ed.refresh();
       const first = (ta.value.split('\n').find(x => x.trim()) || ''); const d = findDate(first, Number(today().slice(0, 4)));
       if (d && !date.dataset.touched) date.value = d > today() ? (Number(d.slice(0, 4)) - 1) + d.slice(4) : d;
@@ -1087,7 +1095,8 @@
         let title = (body.split('\n').find(x => x.trim()) || '').trim().slice(0, 120);
         if (n && lessonNo(title) !== n) title = (title ? title + ' ' : subject + ' ') + 'L' + n;   // the list sorts by this number
         const r = await busy('正在保存 ' + (n ? 'L' + n : '这节') + '…', () => saveLesson({learner, subject, lesson_date: date.value || null, title, body}, ws, ed.edited));
-        flash(r.duplicate ? '这段反馈之前已保存过' : '已保存，新增 ' + r.added + ' 个生词'); await lessonIndex(true); onDone && onDone();
+        if (r.duplicate) { status.textContent = dupText(r.existing); status.classList.add('fb-warn'); save.disabled = false; ta.focus(); return; }
+        flash('已保存，新增 ' + r.added + ' 个生词'); await lessonIndex(true); onDone && onDone();
       } catch (e) { status.textContent = '保存失败：' + (e.message || e); save.disabled = false; }
     });
     bar.append(make('span', 'fb-meta', '课次'), num, make('span', 'fb-meta', '日期'), date, save, btn('fb-btn', '取消', () => onCancel && onCancel()), status);
