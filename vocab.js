@@ -42,8 +42,13 @@
     if ('/=(（'.includes(rest[0] || 'x')) return {word: m[1].trim(), pos, meaning, extra: rest};
     return {word: m[1].trim(), pos, meaning: (rest ? rest + ' ' : '') + meaning, extra: ''};
   }
+  function feedbackHeading(line) {
+    return line.trim().replace(/^[^\w\u4e00-\u9fff【\[]+/u, '')
+      .replace(/^(?:\d\uFE0F?\u20E3|\d+[.、)）])\s*/u, '')
+      .replace(/^[^\w\u4e00-\u9fff【\[]+/u, '');
+  }
   function feedbackSection(line) {
-    const title = line.trim().replace(/^[^\w\u4e00-\u9fff【\[]+/u, '');
+    const title = feedbackHeading(line);
     const m = /^(?:【|\[)?(词汇句子补充|词汇补充|词汇|生词|单词|用法|固定搭配|同义替换|同意替换|同义词|近义词|一词多义|熟词生义|多义词|句子背诵|背诵句子|句型背诵)(?:】|\])?\s*[:：]?$/.exec(title);
     if (!m) return '';
     if (/词汇|生词|单词/.test(m[1])) return '词汇';
@@ -92,6 +97,7 @@
       if (!line.trim()) continue;
       const header = feedbackSection(line);
       if (header) { section = header; heading = line.trim(); parent = null; numbered = false; inVocab = section === '词汇'; continue; }
+      if (/^课后(?:作业|练习|任务)\s*[:：]?$/.test(feedbackHeading(line))) { section = ''; parent = null; inVocab = numbered = false; continue; }
       if (/^\s*【[^】]+】\s*$/.test(line)) { section = ''; parent = null; inVocab = numbered = false; continue; }
       const entry = section ? line.replace(/^\s*(?:(?:\d\uFE0F?\u20E3|\d+[.、)）])\s*|[-–•·*]\s*)/u, '').trim() : line;
       if (SECTION_END.test(line) && !(section && /^[A-Za-z]/.test(entry))) { section = ''; parent = null; inVocab = false; continue; }
@@ -1233,7 +1239,7 @@
     const actions = make('div', 'vq-actions');
     actions.append(btn('', '选词', () => openPicker(student, learners, items, keep)));
     if (phase === '课前') actions.append(btn('', '推荐', async () => { try { const lib = await vocabFor(learners); (await recommend(lib, learners, day, todaysCourse(student))).forEach(r => { if (!items.some(x => x.word.toLowerCase() === r.word.toLowerCase())) items.push(fromRow(r, r._from)); }); await materializeItems(items); keep(); } catch (e) { flash('推荐未能保存：' + (e.message || e), true); } }, '推荐：今天这门课上一节的全部生词，再补错过的和到期复习的'));
-    if (phase === '课后') actions.append(btn('', '本节新词', async () => {
+    if (phase === '课后') actions.append(btn('', '本节全部内容', async () => {
       try {
         const lib = await vocabFor(learners);
         const lessons = (index || []).filter(l => learners.includes(l.learner) && l.lesson_date === day);
