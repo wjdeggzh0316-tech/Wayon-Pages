@@ -534,6 +534,9 @@
     .vq-ready{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px;padding:8px 10px 8px 12px;border-radius:10px;background:var(--code-bg)}
     .vq-label{font-weight:650;font-size:14px;font-variant-numeric:tabular-nums}.vq-n{font-size:13px;color:var(--muted)}
     .vq-ready .vq-start{margin-left:auto;min-height:34px}
+    .vq-done{background:color-mix(in srgb,var(--done-bg,#e8f5ec) 70%,transparent)}.vq-done-mark{font-weight:650;font-size:13.5px;color:var(--done-dark,#1f7a3a)}
+    .vq-tally{display:inline-flex;gap:10px;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}.vq-tally .ok{color:var(--done-dark,#1f7a3a);font-weight:600}.vq-tally .bad{color:#b42318;font-weight:600}
+    .vq-done .vq-again{margin-left:auto;font-size:12.5px;color:var(--muted)}.vq-done .fb-btn{min-height:34px}
     .fb-back{margin-bottom:12px}
     .fb-orphan{border-style:dashed}
     .fb-learner-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}.fb-learner-head h3{font-size:26px;letter-spacing:-.02em;margin:4px 0 4px}
@@ -1349,8 +1352,22 @@
     const bar = make('div', 'vq-bar'), tabs = make('div', 'vq-tabs');
     tabs.title = learners.length ? '单词库：' + learners.map(l => l.replace(/\//g, '、')).join('，') : '还没有单词库（收集反馈后自动生成）';
     ['课前', '课后', '补充'].forEach(p => tabs.append(btn(p === phase ? 'on' : '', p + ' ' + lists[p].length, () => { vqTab.set(student, p); redraw(); })));
+    let finished = previousResult?.value?.state === 'completed' ? previousResult.value : null;
+    if (!finished && mode === 'cloud') {
+      try {
+        const {data} = await client().from('wayon_vocab_sessions').select('state,payload,created_at').eq('day', day).eq('student', student).eq('phase', phase).eq('state', 'completed').order('created_at', {ascending: false}).limit(1);
+        if (data && data[0]) finished = data[0];
+      } catch {}
+    }
+    const wordsOf = list => JSON.stringify((list || []).map(x => String(x.word || '').trim().toLowerCase()));
+    // Finished today and the list is unchanged since: the card shows the result instead of 「开始抽背」.
+    const doneNow = !!(finished && items.length && wordsOf(finished.payload?.items) === wordsOf(items));
+    const showResult = res => {
+      const last = overlay('抽背结果'); last.body.append(make('pre', 'fb-body', res.payload.text));
+      last.foot.append(btn('fb-btn pri', '复制结果', async () => { try { await navigator.clipboard.writeText(res.payload.text); flash('已复制'); } catch { flash('复制失败，请手动选中文字复制', true); } }), btn('fb-btn', '关闭', last.close));
+    };
     const actions = make('div', 'vq-actions');
-    if (previousResult) actions.append(btn('', '上次结果', () => {
+    if (previousResult && !doneNow) actions.append(btn('', '上次结果', () => {
       const last = overlay('上次抽背结果'); last.body.append(make('pre', 'fb-body', previousResult.value.payload.text));
       last.foot.append(btn('fb-btn pri', '复制结果', async () => { try { await navigator.clipboard.writeText(previousResult.value.payload.text); flash('已复制'); } catch { flash('复制失败，请手动选中文字复制', true); } }), btn('fb-btn', '关闭', last.close));
     }));
@@ -1395,7 +1412,16 @@
       add.append(ta, go); vq.append(add);
     }
     const draft = localDraft?.value?.state === 'draft' ? localDraft.value : null;
-    if (items.length || draft) {   // no word chips: one line naming the lesson, and the start button
+    if (doneNow && !draft) {
+      const marks = finished.payload.marks || [], right = marks.filter(m => m.result === 'right').length, wrong = marks.filter(m => m.result === 'wrong').length, unmarked = items.length - marks.length;
+      const row = make('div', 'vq-ready vq-done');
+      const tally = make('span', 'vq-tally'); tally.append(make('span', 'ok', '对 ' + right), make('span', 'bad', '错 ' + wrong)); if (unmarked > 0) tally.append(make('span', '', '未标 ' + unmarked));
+      row.append(make('span', 'vq-done-mark', '✓ 已完成'), make('span', 'vq-label', listLabel(items, phase)), tally,
+        btn('fb-link vq-again', '再抽一次', () => startQuiz(student, phase, items, redraw)),
+        btn('fb-btn', '查看', () => showResult(finished)),
+        btn('fb-btn pri', '复制结果', async () => { try { await navigator.clipboard.writeText(finished.payload.text); flash('已复制'); } catch { showResult(finished); } }));
+      vq.append(row);
+    } else if (items.length || draft) {   // no word chips: one line naming the lesson, and the start button
       const ready = make('div', 'vq-ready');
       ready.append(make('span', 'vq-label', draft ? '已暂存 · ' + (draft.payload.course || phase) + (draft.payload.course_no ? 'L' + draft.payload.course_no : '') : listLabel(items, phase)), make('span', 'vq-n', (draft ? draft.payload.items.length : items.length) + ' 项'),
         btn('vq-clear', '清空', () => { if (confirm('清空这个清单？（单词库里的词不受影响）')) { items.splice(0); keep(); } }),
