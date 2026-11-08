@@ -1387,7 +1387,7 @@
     const no = lessonNo(l.title), many = counts.size > 1;
     return (l.lesson_date || '').replace(/-/g, '') + '-' + subjectOf(l.subject) + (no ? 'L' + no : '') + (many ? ' 等 ' + counts.size + ' 节' : '');
   }
-  const fromRow = (r, from) => ({vocab_id: r._pending ? null : r.id, learner: r.learner, word: r.word, meaning: String(r.meaning || '').replace(/\s*[⭕◯○]\uFE0F?\s*$/u, ''),   // a teacher's ⭕ is a mark, not meaning pos: r.pos || '', extra: r.extra || '', wrong: (r.wrong_count || 0) > 0, lesson_id: from || r.lesson_id || null, lesson_date: r.lesson_date || null, subject: r.subject || '', ...(r._pending ? {_pending: true} : {})});
+  const fromRow = (r, from) => ({vocab_id: r._pending ? null : r.id, learner: r.learner, word: r.word, meaning: String(r.meaning || '').replace(/\s*[⭕◯○]\uFE0F?\s*$/u, '') /* a teacher's ⭕ is a mark, not meaning */, pos: r.pos || '', extra: r.extra || '', wrong: (r.wrong_count || 0) > 0, lesson_id: from || r.lesson_id || null, lesson_date: r.lesson_date || null, subject: r.subject || '', ...(r._pending ? {_pending: true} : {})});
   // Today's course for this student, from the published schedule (e.g. "阅读").
   const todaysCourse = student => { try { const r = quizRows([]).find(x => plainName(x[0]) === student); return r ? r[2] || '' : ''; } catch { return ''; } };
   // The previous lesson's own word list first, then words answered wrong, then words due for review.
