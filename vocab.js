@@ -47,14 +47,17 @@
       .replace(/^(?:\d\uFE0F?\u20E3|\d+[.、)）])\s*/u, '')
       .replace(/^[^\w\u4e00-\u9fff【\[]+/u, '');
   }
-  function feedbackSection(line) {
+  const PHRASE_SECTION = /搭配|短语|词组|句型|句式|表达|结构|介词|动词用法|固定/;
+  function feedbackSection(line) {   // same rules as feedback_section in Manager/vocab_import.py
     const title = feedbackHeading(line);
     const m = /^(?:【|\[)?(词汇句子补充|词汇补充|词汇|生词|单词|用法|固定搭配|同义替换|同意替换|同义词|近义词|一词多义|熟词生义|多义词|句子背诵|背诵句子|句型背诵)(?:】|\])?\s*[:：]?$/.exec(title);
-    if (!m) return '';
-    if (/词汇|生词|单词/.test(m[1])) return '词汇';
-    if (/同[义意]|近义/.test(m[1])) return '同义替换';
-    if (/多义|熟词/.test(m[1])) return '一词多义';
-    if (/句/.test(m[1])) return '句子背诵';
+    const label = m ? m[1] : title.replace(/^[【\[]|[】\]]?\s*[:：]?$/g, '');
+    if (!m && !(/^[【\[][^】\]]{1,12}[】\]]\s*[:：]?$/.test(title) && PHRASE_SECTION.test(label))) return '';
+    if (PHRASE_SECTION.test(label) && !/词汇|生词|单词/.test(label)) return '搭配';   // every English line is an item, with or without a Chinese meaning
+    if (/词汇|生词|单词/.test(label)) return '词汇';
+    if (/同[义意]|近义/.test(label)) return '同义替换';
+    if (/多义|熟词/.test(label)) return '一词多义';
+    if (/句/.test(label)) return '句子背诵';
     return '用法';
   }
   const META_PREFIX = 'wayon-feedback-v1:';
@@ -92,7 +95,7 @@
       if (section) item.extra = META_PREFIX + JSON.stringify({section, heading, line: raw.trim().replace(WRONG, '').replace(/✅|✔️|✔|⭕️?|◯|○/g, '').trimEnd(), word: item.word, pos: item.pos || '', meaning: item.meaning || '', notes: item.extra ? [item.extra] : []});
       words.push(item); return item;
     };
-    for (const raw of String(body || '').split('\n')) {
+    for (const raw of String(body || '').replace(/[\x00-\x08\x0b-\x1f\x7f]/g, ' ').split('\n')) {   // control characters count as spaces, as in Python
       let line = raw.replace(/\s+$/, '');
       if (!line.trim()) continue;
       const header = feedbackSection(line);
@@ -103,9 +106,12 @@
       if (SECTION_END.test(line) && !(section && /^[A-Za-z]/.test(entry))) { section = ''; parent = null; inVocab = false; continue; }
       if (section && /^[A-Za-z]/.test(entry) && !entry.includes('http')) {
         if (section === '用法' && !WORD_LINE.test(entry)) { if (parent) appendEntryNote(parent, entry); continue; }
-        if (section === '同义替换' || section === '句子背诵') {
+        if (section === '同义替换' || section === '句子背诵' || section === '搭配') {
           const clean = entry.replace(WRONG, '').replace(/✅|✔️|✔|⭕️?|◯|○/g, '').replace(/\s+/g, ' ').trim(), cut = clean.search(/[\u4e00-\u9fff]/);
-          parent = add({word: cut >= 0 ? clean.slice(0, cut).trim() : clean, pos: '', meaning: cut >= 0 ? clean.slice(cut) : '', extra: '', wrong: /❌/.test(entry)}, raw);
+          let word = cut >= 0 ? clean.slice(0, cut).trim() : clean, meaning = cut >= 0 ? clean.slice(cut) : '', pos = '';
+          if (section === '搭配' && /^(?:或者?|和|及|\+)\s*[A-Za-z+]/.test(meaning)) { word = clean; meaning = ''; }   // "inform sb. of sth.或者that + 句子" is one pattern
+          if (section !== '句子背诵') { word = word.replace(/[\s.…]+$/, ''); const sp = splitPos(word, '', meaning); word = sp.word; pos = sp.pos || ''; meaning = sp.meaning; }   // whole sentences keep their full stop
+          parent = add({word, pos, meaning, extra: '', wrong: /❌/.test(entry)}, raw);
           continue;
         }
         line = entry;
@@ -131,6 +137,8 @@
       if (NUMBERED.test(line)) numbered = true;
       if (SUB_LINE.test(line) && numbered && parent) { appendEntryNote(parent, word + ' ' + meaning); continue; }
       const split = splitPos(word, (m.groups.pos || '').replace(/[\s.]+$/, ''), meaning);
+      const second = split.pos && /^(.*?[\u4e00-\u9fff].*?)[\s；;，,]*\b(n|v|vt|vi|adj|j|adv|prep)\.\s*(\S.*)$/.exec(split.meaning || '');   // "特点 v.以…为特点"
+      if (second) { const p2 = second[2] === 'j' ? 'adj' : second[2]; split.pos = split.pos + '/' + p2; split.meaning = second[1].trim() + '；' + p2 + '. ' + second[3].trim(); }
       const item = {...split, wrong};
       parent = add(item, raw);
     }
@@ -504,7 +512,7 @@
     .fb-learner-head .fb-meta{display:flex;gap:8px;align-items:center}
     .fb-link{border:0;background:none;padding:0;font:inherit;font-size:13px;color:var(--accent,#0a63d8);cursor:pointer}
     .fb-subject-tabs{margin:2px 0 12px}
-    .fb-wedit .fb-words-head{position:sticky;top:0;background:var(--card);z-index:1;padding-bottom:4px}.fb-wedit .fb-link{font-size:12.5px}
+    .fb-wedit .fb-words-head+.fb-wrow{border-top:0}.fb-wedit .fb-words-head{position:sticky;top:-10px;margin:-10px -12px 0;padding:10px 12px 6px;background:var(--card);z-index:2;border-bottom:1px solid var(--line)}.fb-wedit .fb-link{font-size:12.5px}
     .fb-wrow{border-top:1px solid var(--line);padding:8px 0 7px}.fb-wtop{display:flex;align-items:center;gap:8px;min-width:0}
     .fb-wrow input{border:0;border-bottom:1px solid transparent;border-radius:0;background:transparent;font:inherit;color:var(--fg);padding:1px 0;min-width:0;transition:border-color .15s}
     .fb-wrow input:focus{outline:none;border-bottom-color:var(--accent,#0a63d8)}.fb-wrow input::placeholder{color:var(--muted);opacity:.6}
