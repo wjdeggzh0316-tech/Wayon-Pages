@@ -52,7 +52,8 @@
     const title = feedbackHeading(line);
     const m = /^(?:【|\[)?(词汇句子补充|词汇补充|词汇|生词|单词|用法|固定搭配|同义替换|同意替换|同义词|近义词|一词多义|熟词生义|多义词|句子背诵|背诵句子|句型背诵)(?:】|\])?\s*[:：]?$/.exec(title);
     const label = m ? m[1] : title.replace(/^[【\[]|[】\]]?\s*[:：]?$/g, '');
-    if (!m && !(/^[【\[][^】\]]{1,12}[】\]]\s*[:：]?$/.test(title) && PHRASE_SECTION.test(label))) return '';
+    const plainHeading = /^[\u4e00-\u9fff0-9]{2,12}\s*[:：]?$/.test(title);   // 「五大类邮件句型库」 without brackets
+    if (!m && !((/^[【\[][^】\]]{1,12}[】\]]\s*[:：]?$/.test(title) || plainHeading) && PHRASE_SECTION.test(label))) return '';
     if (PHRASE_SECTION.test(label) && !/词汇|生词|单词/.test(label)) return '搭配';   // every English line is an item, with or without a Chinese meaning
     if (/词汇|生词|单词/.test(label)) return '词汇';
     if (/同[义意]|近义/.test(label)) return '同义替换';
@@ -124,6 +125,8 @@
       if (/^课后(?:作业|练习|任务)\s*[:：]?$/.test(feedbackHeading(line))) { section = ''; parent = null; inVocab = numbered = false; continue; }
       if (/^\s*【[^】]+】\s*$/.test(line)) { section = ''; parent = null; inVocab = numbered = false; continue; }
       const entry = section ? line.replace(/^\s*(?:(?:\d\uFE0F?\u20E3|\d+[.、)）])\s*|[-–•·*]\s*)/u, '').trim() : line;
+      const labelled = section === '搭配' && /^([\u4e00-\u9fff][^:：A-Za-z]{0,10})[:：]\s*([A-Za-z].*)$/u.exec(entry);
+      if (labelled) { parent = add({word: labelled[2].trim().replace(/[\s.…；;]+$/, '') || labelled[2].trim(), pos: '', meaning: labelled[1].trim(), extra: '', wrong: /❌/.test(entry)}, raw); continue; }   // 「感谢信：I am writing…」
       if (SECTION_END.test(line) && !(section && /^[A-Za-z]/.test(entry))) { section = ''; parent = null; inVocab = false; continue; }
       if (section && /^[A-Za-z]/.test(entry) && !entry.includes('http')) {
         if (section === '用法' && !WORD_LINE.test(entry)) { if (parent) appendEntryNote(parent, entry); continue; }
@@ -131,7 +134,7 @@
           const clean = entry.replace(WRONG, '').replace(/✅|✔️|✔|⭕️?|◯|○/g, '').replace(/\s+/g, ' ').trim(), cut = clean.search(/[\u4e00-\u9fff]/);
           let word = cut >= 0 ? clean.slice(0, cut).trim() : clean, meaning = cut >= 0 ? clean.slice(cut) : '', pos = '';
           if (section === '搭配' && /^(?:或者?|和|及|\+)\s*[A-Za-z+]/.test(meaning)) { word = clean; meaning = ''; }   // "inform sb. of sth.或者that + 句子" is one pattern
-          if (section !== '句子背诵') { word = word.replace(/[\s.…]+$/, ''); const sp = splitPos(word, '', meaning); word = sp.word; pos = sp.pos || ''; meaning = sp.meaning; }   // whole sentences keep their full stop
+          if (section !== '句子背诵') { word = word.replace(/[\s.…:：]+$/, ''); const sp = splitPos(word, '', meaning); word = sp.word; pos = sp.pos || ''; meaning = sp.meaning; }   // whole sentences keep their full stop
           parent = add({word, pos, meaning, extra: '', wrong: /❌/.test(entry)}, raw);
           continue;
         }
@@ -286,17 +289,34 @@
     vocabCache.set(key, rows); return rows;
   }
   const dropVocabCache = learner => { for (const k of [...vocabCache.keys()]) if (k.split('|').includes(learner)) vocabCache.delete(k); };
+  // New words for a learner's library: one row per word (the database key is lower(trim(word)) per learner, archived
+  // rows included). Duplicates inside the list or against existing rows are skipped, never a reason to fail the save.
+  async function insertNewWords(learner, words, base) {
+    const existing = await vocabFor([learner]), have = new Set(existing.map(w => wordKey(w.word)));
+    if (mode === 'cloud') { try { const all = await pageAll(() => client().from('wayon_vocab').select('word').eq('learner', learner)); all.forEach(w => have.add(wordKey(w.word))); } catch {} }
+    const fresh = [];
+    for (const w of words) {
+      const k = wordKey(w.word); if (!k || have.has(k)) continue; have.add(k);
+      fresh.push({id: uuid(), learner, word: String(w.word).trim(), pos: w.pos || null, meaning: w.meaning || '', extra: w.extra || null, ...base,
+        wrong_count: w.wrong ? 1 : 0, last_result: w.wrong ? 'wrong' : null, box: 0, due_date: null, right_count: 0, archived: false});
+    }
+    if (mode === 'preview') { preview.words.push(...fresh); return fresh.length; }
+    let added = 0;
+    for (let i = 0; i < fresh.length; i += 500) {
+      const chunk = fresh.slice(i, i + 500), {error} = await client().from('wayon_vocab').insert(chunk);
+      if (!error) { added += chunk.length; continue; }
+      if (!/duplicate|unique/i.test(error.message)) throw error;
+      for (const one of chunk) { const {error: e} = await client().from('wayon_vocab').insert(one); if (!e) added++; else if (!/duplicate|unique/i.test(e.message)) throw e; }   // someone else added it meanwhile
+    }
+    return added;
+  }
   async function saveLesson(lesson, words, custom) {
     const body = lesson.body, sha = await sha256(body);
     const row = {id: uuid(), learner: lesson.learner, subject: lesson.subject, lesson_date: lesson.lesson_date, title: lesson.title, body, body_sha256: sha, origin: 'paste', words: custom ? slimWords(words) : null};
-    const existing = await vocabFor([lesson.learner]);
-    const have = new Set(existing.map(w => w.word.trim().toLowerCase()));
-    const fresh = words.filter(w => !have.has(w.word.toLowerCase())).map(w => ({id: uuid(), learner: lesson.learner, word: w.word, pos: w.pos || null, meaning: w.meaning, extra: w.extra || null,
-      subject: lesson.subject, lesson_date: lesson.lesson_date, lesson_id: row.id, wrong_count: w.wrong ? 1 : 0, last_result: w.wrong ? 'wrong' : null, box: 0, due_date: null, right_count: 0, archived: false}));
     if (mode === 'preview') {
       const same = preview.lessons.find(l => l.learner === row.learner && l.body_sha256 === sha);
       if (same) return {duplicate: true, added: 0, existing: same};
-      preview.lessons.push(row); preview.words.push(...fresh);
+      preview.lessons.push(row);
     } else {
       const {error} = await client().from('wayon_lessons').insert(row);
       if (error) {
@@ -304,10 +324,10 @@
         const {data} = await client().from('wayon_lessons').select('id,subject,lesson_date,title,archived_at').eq('learner', row.learner).eq('body_sha256', sha).limit(1);
         return {duplicate: true, added: 0, existing: data && data[0]};
       }
-      for (let i = 0; i < fresh.length; i += 500) { const {error: e} = await client().from('wayon_vocab').insert(fresh.slice(i, i + 500)); if (e) throw e; }
     }
+    const added = await insertNewWords(lesson.learner, words, {subject: lesson.subject, lesson_date: lesson.lesson_date, lesson_id: row.id});
     index = null; dropVocabCache(lesson.learner);
-    return {added: fresh.length, total: words.length};
+    return {added, total: words.length};
   }
   // Edit a saved lesson: new text (and date/subject); words new to this student's library are added, nothing is removed.
   // notion_synced_at is cleared so the evening backup replaces the Notion copy.
@@ -318,19 +338,16 @@
     let title = (body.split('\n').find(x => x.trim()) || '').trim().slice(0, 120) || old.title;
     const oldNo = lessonNo(old.title); if (oldNo && !lessonNo(title)) title += ' L' + oldNo;   // the first line may not carry the lesson number; keep it
     const row = {body, body_sha256: sha, title, subject, lesson_date, notion_synced_at: null, words: patch.custom ? slimWords(words) : null};
-    const existing = await vocabFor([learner]), have = new Set(existing.map(w => w.word.trim().toLowerCase()));
-    const fresh = words.filter(w => !have.has(w.word.toLowerCase())).map(w => ({id: uuid(), learner, word: w.word, pos: w.pos || null, meaning: w.meaning, extra: w.extra || null,
-      subject, lesson_date, lesson_id: id, wrong_count: w.wrong ? 1 : 0, last_result: w.wrong ? 'wrong' : null, box: 0, due_date: null, right_count: 0, archived: false}));
     if (mode === 'preview') {
       if (preview.lessons.some(l => l.id !== id && l.learner === learner && l.body_sha256 === sha)) throw new Error('这段内容和另一节完全相同');
-      Object.assign(preview.lessons.find(l => l.id === id), row); preview.words.push(...fresh);
+      Object.assign(preview.lessons.find(l => l.id === id), row);
     } else {
       const {error} = await client().from('wayon_lessons').update(row).eq('id', id);
       if (error) throw /duplicate|unique/i.test(error.message) ? new Error('这段内容和另一节完全相同') : error;
-      for (let i = 0; i < fresh.length; i += 500) { const {error: e} = await client().from('wayon_vocab').insert(fresh.slice(i, i + 500)); if (e) throw e; }
     }
+    const added = await insertNewWords(learner, words, {subject, lesson_date, lesson_id: id});
     bodies.set(id, body); customWords.set(id, row.words); Object.assign(old, {title, subject, lesson_date}); dropVocabCache(learner);
-    return {total: words.length, added: fresh.length};
+    return {total: words.length, added};
   }
   // 「不算缺课」：老师可能本来就跳过了某些课次编号；用户确认后记下，不再显示虚线缺课行。
   let ignored = null;
@@ -547,7 +564,7 @@
     .fb-wrow{border-top:1px solid var(--line);padding:8px 0 7px}.fb-wtop{display:flex;align-items:center;gap:8px;min-width:0}
     .fb-wrow input{border:0;border-bottom:1px solid transparent;border-radius:0;background:transparent;font:inherit;color:var(--fg);padding:1px 0;min-width:0;transition:border-color .15s}
     .fb-wrow input:focus{outline:none;border-bottom-color:var(--accent,#0a63d8)}.fb-wrow input::placeholder{color:var(--muted);opacity:.6}
-    .fb-wrow input.w{flex:none;max-width:calc(100% - 150px);font-size:16px;font-weight:600;letter-spacing:-.01em}
+    .fb-wtop{align-items:flex-start}.fb-wtop select.p{margin-top:2px}.fb-wrow textarea.w{border:0;border-bottom:1px solid transparent;border-radius:0;background:transparent;color:var(--fg);padding:1px 0;resize:none;overflow:hidden;line-height:1.35;font-family:inherit;white-space:pre-wrap;overflow-wrap:anywhere}.fb-wrow textarea.w:focus{outline:none;border-bottom-color:var(--accent,#0a63d8)}.fb-wrow input.w,.fb-wrow textarea.w{flex:none;max-width:calc(100% - 110px);font-size:16px;font-weight:600;letter-spacing:-.01em}
     .fb-wrow input.m{display:block;width:100%;margin-top:2px;font-size:13px;color:var(--fg-secondary,var(--muted))}
     .fb-wrow select.p{flex:none;margin-left:auto;appearance:none;-webkit-appearance:none;border:0;border-radius:999px;background:var(--code-bg) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%238e8e93'/%3E%3C/svg%3E") no-repeat right 7px center;padding:2px 18px 2px 9px;font:inherit;font-size:12px;font-weight:550;color:var(--fg-secondary,var(--muted));cursor:pointer;line-height:18px}
     .fb-wrow select.p.empty{color:var(--muted);font-weight:400;background-color:transparent;box-shadow:inset 0 0 0 1px var(--line)}
@@ -1009,7 +1026,9 @@
     let list = initial ? slimWords(initial) : slimWords(parseFeedback(getText())), edited = !!initial, batch = false;
     let picked = new Set(), undo = null;   // marquee selection (row indices) and the last bulk removal
     const line = w => [w.word, w.pos ? w.pos + '.' : '', w.meaning].filter(Boolean).join(' ');
-    const fromLine = t => { const p = parseFeedback(t)[0]; if (p) return {...p, extra: list.find(w => wordKey(w.word) === wordKey(p.word))?.extra || p.extra || ''}; const cut = t.search(/[一-鿿]/), word = (cut >= 0 ? t.slice(0, cut) : t).trim(); return {word, pos: '', meaning: cut >= 0 ? t.slice(cut).trim() : '', extra: list.find(w => wordKey(w.word) === wordKey(word))?.extra || ''}; };
+    const fromLine = raw => { let t = raw.replace(/^\s*(?:\d{1,3}[.、)）]|[①-⑳]|[-–•·*])\s*/u, '');
+      const lab = /^([\u4e00-\u9fff][^:：A-Za-z]{0,10})[:：]\s*([A-Za-z].*)$/u.exec(t); if (lab) return {word: lab[2].trim(), pos: '', meaning: lab[1].trim(), extra: ''};
+      const p = parseFeedback(t)[0]; if (p) return {...p, extra: list.find(w => wordKey(w.word) === wordKey(p.word))?.extra || p.extra || ''}; const cut = t.search(/[一-鿿]/), word = (cut >= 0 ? t.slice(0, cut) : t).trim(); return {word, pos: '', meaning: cut >= 0 ? t.slice(cut).trim() : '', extra: list.find(w => wordKey(w.word) === wordKey(word))?.extra || ''}; };
     const touch = () => { edited = true; };
     const draw = () => {
       box.textContent = ''; box.classList.add('fb-wedit');
@@ -1032,7 +1051,8 @@
       list.forEach((w, i) => {
         const heading = entryHeading(w); if (heading && heading !== previous) box.append(make('h4', 'vx-section', heading)); previous = heading;
         const row = make('div', 'fb-wrow');
-        const word = make('input', 'w'); word.value = w.word; word.placeholder = '单词'; word.spellcheck = false;
+        const word = make('textarea', 'w'); word.rows = 1; word.value = w.word; word.placeholder = '单词'; word.spellcheck = false;
+        word.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });   // one item per row
         const pos = make('select', 'p'); pos.title = '词性'; pos.setAttribute('aria-label', '词性');
         const cur = normPos(w.pos);
         [['', '词性'], ...POS_OPTIONS.map(x => [x, x + '.'])].concat(cur && !POS_OPTIONS.includes(cur) ? [[cur, cur + '.']] : []).forEach(([v, t]) => { const o = make('option', '', t); o.value = v; pos.append(o); });
@@ -1047,7 +1067,7 @@
         const top = make('div', 'fb-wtop'); top.append(word, pos, del);
         row.append(top, mean); entryNotes(w).forEach(t => row.append(make('div', 'fb-meta fb-entry-notes', t))); row.dataset.i = i; row.classList.toggle('picked', picked.has(i)); box.append(row);
         row.addEventListener('mousedown', e => { if ((e.metaKey || e.ctrlKey) && !e.target.closest('input,select,button')) { e.preventDefault(); picked.has(i) ? picked.delete(i) : picked.add(i); box.focus({preventScroll: true}); draw(); } });
-        const fit = () => { const ctx = (fitCanvas.c ||= document.createElement('canvas').getContext('2d')); ctx.font = getComputedStyle(word).font; word.style.width = Math.ceil(Math.max(ctx.measureText(word.value || word.placeholder).width + 6, 40)) + 'px'; };
+        const fit = () => { const ctx = (fitCanvas.c ||= document.createElement('canvas').getContext('2d')); ctx.font = getComputedStyle(word).font; word.style.width = Math.ceil(Math.max(ctx.measureText(word.value || word.placeholder).width + 8, 40)) + 'px'; word.style.height = 'auto'; word.style.height = word.scrollHeight + 'px'; };
         requestAnimationFrame(fit); word.addEventListener('input', fit);
       });
       box.append(btn('fb-link fb-wadd', '＋ 加一个词', () => { list.push({word: '', pos: '', meaning: ''}); touch(); draw(); const ins = box.querySelectorAll('.fb-wrow input.w'); ins[ins.length - 1]?.focus(); }));
