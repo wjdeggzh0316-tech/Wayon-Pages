@@ -77,18 +77,18 @@
   function appendEntryNote(w, note) { const m = entryMeta(w); if (m) { m.notes.push(note); w.extra = META_PREFIX + JSON.stringify(m); } else w.extra = [w.extra, note].filter(Boolean).join('\n'); }
   function quizCopyText(student, course, no, day, items, marks) {
     const name = student.replace(/^([A-Za-z][A-Za-z0-9 .’'-]*?)[\u4e00-\u9fff]+$/, '$1').trim();
-    const lines = [name + '_' + course + (no ? 'L' + no : '') + '_' + day.slice(5).replace('-', '') + '抽背情况👇'];
+    const lines = [name + '_' + course + (no ? 'L' + no : '') + '_' + day.slice(5).replace('-', '') + '抽背情况👇', ''];
     let previous = '';
     items.forEach((it, i) => {
       const heading = entryHeading(it), meta = entryMeta(it);
-      if (heading && heading !== previous) lines.push(heading);
+      if (heading && heading !== previous) { if (lines[lines.length - 1] !== '') lines.push(''); lines.push(heading); }
       previous = heading;
       const original = meta && meta.word === it.word && meta.pos === (it.pos || '') && meta.meaning === (it.meaning || '');
       const line = original ? meta.line : it.word + (it.pos ? ' ' + it.pos + '.' : '') + (it.meaning ? (it.pos ? '' : ' ') + it.meaning : '');
       const mark = marks.get(i), short = {拼写: '拼', 意思: '意', 发音: '音'};
       lines.push(line + (mark?.result === 'wrong' ? '❌' + (short[mark.reason] || '') : mark?.result === 'right' ? '✅' : ''), ...entryNotes(it));
     });
-    return lines.join('\n\n');
+    return lines.join('\n').trim();
   }
   // Teachers sometimes list words with no heading and no Chinese (e.g. after 「课后：…背诵词汇」). A run of 3+ short
   // English-only lines outside any section, introduced as words or 6+ lines long, is read as a 词汇 section
@@ -722,6 +722,25 @@
     .vx-why button{min-height:28px;padding:0 10px;border:1px solid var(--bad-border);border-radius:999px;background:var(--card);color:var(--bad-dark);font:inherit;font-size:12px;cursor:pointer}
     .vx-why button.on{background:var(--bad);color:#fff;border-color:var(--bad)}
     .vx-list[data-hide="en"] .vx-q:not(.peek) .vx-en,.vx-list[data-hide="zh"] .vx-q:not(.peek) .vx-zh{filter:blur(7px);user-select:none}
+    .vx-quizov .vx-box{width:min(1120px,100%)}
+    .vx-quizov .vx-head{padding:12px 16px;gap:12px}.vx-quizov .vx-head h3{font-size:16px;font-weight:650;margin-right:auto}
+    .vx-quizov .vx-head .vx-allright{margin-left:0}.vx-quizov .vx-head .vx-close{margin-left:12px}
+    .vx-quizov .vx-body{padding:6px 16px 14px}
+    .vx-quizov .vx-list{display:block;columns:2 420px;column-gap:28px}
+    .vx-quizov .vx-section{column-span:all;margin:14px 0 4px;padding:0 4px 6px}
+    .vx-quizov .vx-q{break-inside:avoid;grid-template-columns:22px minmax(0,1fr) 34px 34px;gap:2px 8px;padding:7px 6px;border-radius:0;border-bottom:0;border-top:1px solid var(--line)}
+    .vx-quizov :is(.vx-section,.vx-list>:first-child)+.vx-q,.vx-quizov .vx-list>.vx-q:first-child{border-top-color:transparent}
+    .vx-quizov .vx-q:is(.right,.wrong){border-radius:9px;border-top-color:transparent}.vx-quizov .vx-q:is(.right,.wrong)+.vx-q{border-top-color:transparent}
+    .vx-quizov .vx-text{display:flex;flex-wrap:wrap;align-items:baseline;column-gap:12px;row-gap:1px}
+    .vx-quizov .vx-text .vx-en{margin:0}.vx-quizov .vx-en b{font-size:16.5px;font-weight:620}.vx-quizov .vx-en small{font-size:11.5px}
+    .vx-quizov .vx-zh{font-size:13.5px}.vx-quizov .vx-note{flex-basis:100%;margin-top:3px}
+    .vx-quizov .vx-q[data-kind="sentence"] .vx-en b{font-size:15px}
+    .vx-quizov :is(.vx-ok,.vx-x){width:34px;height:34px;border-radius:9px;font-size:15px}
+    .vx-quizov .vx-why{grid-column:2/-1;margin-top:3px}.vx-quizov .vx-why button{min-height:24px;padding:0 9px}
+    .vx-quizov .vx-no{font-size:11.5px}
+    .vx-quizov .vx-foot{align-items:center;padding:10px 16px;gap:10px}.vx-quizov .vx-foot .fb-meta{margin-right:auto}
+    .vx-quizov .vx-foot .fb-btn{min-width:92px}
+    @media (pointer:coarse){.vx-quizov :is(.vx-ok,.vx-x){width:42px;height:42px}.vx-quizov .vx-q{grid-template-columns:22px minmax(0,1fr) 42px 42px}}
     .vx-score{font-size:40px;font-weight:700;text-align:center;margin:10px 0}
     @media(max-width:599px){.vx-q{grid-template-columns:20px minmax(0,1fr) 44px 44px}.vx-why{grid-column:2/-1}.vq-meta{margin-left:0}.vq-bar .vq-actions{margin-left:0}}
     .vx-card{text-align:center;padding:30px 10px}
@@ -1633,12 +1652,14 @@
     let revision = resume?.revision || 0;
     let finishing = false;
     let hide = resume?.payload?.hide || localStorage.getItem('wayon-vocab-hide') || 'none';
-    const o = overlay(student + ' · ' + phase + '抽背 · ' + items.length + ' 项');
+    const o = overlay(student + ' · ' + phase + '抽背 · ' + items.length + ' 项'); o.ov.classList.add('vx-quizov');
     const tools = make('div', 'fb-tabs vx-hide');
     const paintTools = () => { tools.textContent = ''; [['none', '都显示'], ['en', '遮英文'], ['zh', '遮中文']].forEach(([k, t]) => tools.append(btn(hide === k ? 'on' : '', t, () => { hide = k; try { localStorage.setItem('wayon-vocab-hide', k); } catch {} paintTools(); list.dataset.hide = k; }))); };
     o.head.insertBefore(tools, o.head.querySelector('.vx-close'));
     const allRight = btn('fb-btn vx-allright', '✅ 全对', () => { items.forEach((_, i) => { if (!marks.has(i)) marks.set(i, {result: 'right'}); }); painters.forEach(p => p()); recount(); }, '没标的全部标为答对');
-    o.head.insertBefore(allRight, tools);
+    o.head.insertBefore(allRight, o.head.querySelector('.vx-close'));
+    const quit = () => { if (!marks.size || confirm('不保存这次抽背结果？')) o.close(); };
+    o.head.querySelector('.vx-close').onclick = quit;
     const list = make('div', 'vx-list'); list.dataset.hide = hide; o.body.append(list);
     const tally = make('span', 'fb-meta'), painters = [];
     const recount = () => {
@@ -1670,7 +1691,7 @@
       row.append(no, text, ok, x, reasons); list.append(row); paintRow();
     });
     paintTools(); recount();
-    o.foot.append(tally, btn('fb-btn', '暂存', () => finish('draft')), btn('fb-btn pri', '完成并保存', () => finish('completed')), btn('fb-btn', '取消', () => { if (!marks.size || confirm('不保存这次抽背结果？')) o.close(); }));
+    o.foot.append(tally, btn('fb-btn', '暂存', () => finish('draft')), btn('fb-btn pri', '完成并保存', () => finish('completed')));
     if (resume) { requestAnimationFrame(() => { o.body.scrollTop = resume.payload.scroll_top || 0; }); flash('已恢复暂存，可继续抽背'); }
     async function finish(state) {
       if (finishing) return;
@@ -1698,7 +1719,7 @@
       } catch (e) { finishing = false; o.ov.querySelectorAll('button').forEach(b => { b.disabled = false; }); flash('本机未能保存，请保留当前窗口重试', true); return; }
       setTimeout(() => void flushVocabBackups(owner), 0);
       if (state === 'draft') { o.close(); flash('已暂存本机，下次可继续'); done(); return; }
-      allRight.remove(); tools.remove(); o.head.querySelector('.vx-close').disabled = false;
+      allRight.remove(); tools.remove(); Object.assign(o.head.querySelector('.vx-close'), {disabled: false, onclick: () => { o.close(); done(); }});
       marks.forEach((m, i) => { items[i].wrong = m.result === 'wrong'; });
       if (listDay === curDay() && marks.size === items.length && items.length) markChecked(student, phase);
       list.textContent = ''; o.foot.textContent = '';
