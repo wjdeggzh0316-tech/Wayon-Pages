@@ -262,7 +262,7 @@ export function syncStatusKind(text) {
   return /请登录|没有工作台权限/.test(text)?'login':/失败|不可用|不可读|冲突|未配置|尚未配置|超时/.test(text)?'error':/已保存云端|已读取云端/.test(text)?'saved':'pending';
 }
 export async function loadCloudSDK() {
-  for(const url of ['https://esm.sh/@supabase/supabase-js@2.49.4','https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm']) {
+  for(const url of ['./supabase-js-2.49.4.mjs','https://esm.sh/@supabase/supabase-js@2.49.4','https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm']) {
     try{return await withCloudTimeout(import(url));}catch{}
   }
   throw Error('CLOUD_SDK_UNAVAILABLE');
@@ -318,7 +318,7 @@ export async function boot({config,capture,apply,status:report,currentDay,hydrat
       const {data,error}=await client.functions.invoke('wayon-refresh',{body:{action,...(request_id?{request_id}:{})}});
       if(error||!data)throw Error('BACKEND_UNAVAILABLE');return data;
     };
-    const api={enabled:false,start:id=>invoke('start',id),status:id=>invoke('status',id),reloadPublished:async()=>{if(!refreshPublished)throw Error('PAGE_UNAVAILABLE');return refreshPublished();}};
+    const api={enabled:false,start:id=>invoke('start',id),status:id=>invoke('status',id),reloadPublished:async()=>{if(!refreshPublished)throw Error('PAGE_UNAVAILABLE');return refreshPublished({fresh:true});}};
     globalThis.wayonRefreshAPI=api;
     try{api.enabled=(await invoke('capabilities')).enabled===true;}catch{}
     window.dispatchEvent(new Event('wayon-refresh-ready'));

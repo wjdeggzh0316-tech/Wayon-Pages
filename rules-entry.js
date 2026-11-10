@@ -142,6 +142,9 @@
         if (!client) {
           let sdk;
           try {
+            // Same origin first: no third-party CDN between the workspace and its own cloud data.
+            sdk = await within(import('./supabase-js-2.49.4.mjs'), 15000);
+          } catch { try {
             sdk = await within(import('https://esm.sh/@supabase/supabase-js@2.49.4'), 15000);
           } catch {
             try {
@@ -149,7 +152,7 @@
             } catch {
               sdk = await within(import('https://unpkg.com/@supabase/supabase-js@2.49.4/dist/module/index.js'), 15000);
             }
-          }
+          } }
           client = sdk.createClient(config.url, config.key);
         }
         const { mountRules } = await import('./rules-editor.mjs?v=' + Date.now());

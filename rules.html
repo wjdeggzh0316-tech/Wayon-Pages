@@ -73,6 +73,7 @@
     const within = (promise, ms) => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), ms))]);
     const loadSdk = async () => {
       const sources = [
+        './supabase-js-2.49.4.mjs',
         'https://esm.sh/@supabase/supabase-js@2.49.4',
         'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm',
         'https://unpkg.com/@supabase/supabase-js@2.49.4/dist/module/index.js'
