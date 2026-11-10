@@ -715,6 +715,26 @@
     .vq-bar .vq-tabs button.on{background:var(--card);color:var(--fg);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
     .vq-bar .vq-actions{margin-left:auto}
     .vq-bar .vq-actions button{min-height:32px}
+    .vq-result-info{display:flex;align-items:center;gap:8px 14px;flex-wrap:wrap;min-width:0}
+    .vq-result-info .vq-label{overflow-wrap:anywhere}
+    .vq-done{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;padding:12px}
+    .vq-result-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:nowrap}
+    .vq-done .vq-again{margin:0;color:var(--fg-secondary);font-size:13px}
+    .vq-result-actions .fb-btn,.vq-bar .vq-actions button{height:34px;min-height:34px;white-space:nowrap;padding:0 12px;border-radius:8px}
+    .qgroup.vq-card>.qhead{display:grid;grid-template-columns:minmax(100px,1fr) auto;align-items:center;gap:10px 16px}
+    .qgroup.vq-card.vq-collapsed>.qhead{display:flex}
+    .vq-collapsed .vq-student-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .vq-meta{margin:0;justify-content:flex-end}
+    .vq-session{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:8px;align-items:center}
+    .vq-session>span:first-child{min-width:0;overflow-wrap:anywhere;margin-right:4px}
+    .vq-check{height:30px;min-height:30px;white-space:nowrap}
+    @media(max-width:699px){
+      .qgroup.vq-card>.qhead{grid-template-columns:minmax(0,1fr);gap:8px}
+      .vq-meta{width:100%;justify-content:flex-start}.vq-session{width:100%}
+      .vq-bar{align-items:stretch;gap:10px}.vq-bar .vq-actions{margin-left:auto}
+      .vq-done{grid-template-columns:minmax(0,1fr);gap:10px}.vq-result-actions{justify-content:flex-end}
+      .vq-result-info{gap:6px 10px}.vq-result-info .vq-tally{flex-basis:100%}
+    }
     .vq-items{margin:10px 0 0}
     .vq-clear{border:0!important;background:transparent!important;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;min-height:28px;padding:0 6px}
     .vq-paste{display:flex;gap:8px;margin-top:8px}.vq-paste textarea{flex:1;min-height:0!important;margin:0!important}
@@ -1390,6 +1410,10 @@
       const student = plainName(head.childNodes[0]?.textContent || head.textContent).split(/\s/)[0];
       if (!student) return;
       g.classList.add('vq-card');
+      const title = make('span', 'vq-student-name');
+      while (head.firstChild) title.append(head.firstChild);
+      title.childNodes.forEach(node => { if (node.nodeType === 3) node.textContent = plainName(globalThis.wayonDisplayName?.(node.textContent) || node.textContent); });
+      head.append(title);
       const meta = make('div', 'vq-meta');
       rows.forEach(r => {
         const line = make('span', 'vq-session');
@@ -1447,16 +1471,17 @@
     const bar = make('div', 'vq-bar'), tabs = make('div', 'vq-tabs');
     tabs.title = learners.length ? '单词库：' + learners.map(l => l.replace(/\//g, '、')).join('，') : '还没有单词库（收集反馈后自动生成）';
     ['课前', '课后', '补充'].forEach(p => tabs.append(btn(p === phase ? 'on' : '', p + ' ' + lists[p].length, () => { vqTab.set(student, p); redraw(); })));
-    let finished = previousResult?.value?.state === 'completed' ? previousResult.value : null;
+    let finished = previousResult?.value?.state === 'completed' && previousResult.value.payload?.day === day ? previousResult.value : null;
     if (!finished && mode === 'cloud') {
       try {
-        const {data} = await client().from('wayon_vocab_sessions').select('state,payload,created_at').eq('day', day).eq('student', student).eq('phase', phase).eq('state', 'completed').order('created_at', {ascending: false}).limit(1);
+        const {data} = await client().from('wayon_vocab_sessions').select('id,state,payload,created_at').eq('day', day).eq('student', student).eq('phase', phase).eq('state', 'completed').order('created_at', {ascending: false}).limit(1);
         if (data && data[0]) finished = data[0];
       } catch {}
     }
     const wordsOf = list => JSON.stringify((list || []).map(x => String(x.word || '').trim().toLowerCase()));
     // Finished today and the list is unchanged since: the card shows the result instead of 「开始抽背」.
-    const doneNow = !!(finished && items.length && wordsOf(finished.payload?.items) === wordsOf(items));
+    const doneNow = !!(finished?.state === 'completed' && finished.payload?.day === day && items.length && wordsOf(finished.payload?.items) === wordsOf(items));
+    if (doneNow && localDraft?.value?.state !== 'draft' && markChecked(student, phase, finished)) return;
     const showResult = res => {
       const last = overlay('抽背结果'); last.body.append(make('pre', 'fb-body', resultText(res.payload)));
       last.foot.append(btn('fb-btn pri', '复制结果', async () => { try { await navigator.clipboard.writeText(resultText(res.payload)); flash('已复制'); } catch { flash('复制失败，请手动选中文字复制', true); } }), btn('fb-btn', '关闭', last.close));
@@ -1511,10 +1536,12 @@
       const marks = finished.payload.marks || [], right = marks.filter(m => m.result === 'right').length, wrong = marks.filter(m => m.result === 'wrong').length, unmarked = items.length - marks.length;
       const row = make('div', 'vq-ready vq-done');
       const tally = make('span', 'vq-tally'); tally.append(make('span', 'ok', '对 ' + right), make('span', 'bad', '错 ' + wrong)); if (unmarked > 0) tally.append(make('span', '', '未标 ' + unmarked));
-      row.append(make('span', 'vq-done-mark', '✓ 已完成'), make('span', 'vq-label', listLabel(items, phase)), tally,
-        btn('fb-link vq-again', '再抽一次', () => startQuiz(student, phase, items, redraw)),
+      const info = make('div', 'vq-result-info'), actions = make('div', 'vq-result-actions');
+      info.append(make('span', 'vq-done-mark', '✓ 已完成'), make('span', 'vq-label', listLabel(items, phase)), tally);
+      actions.append(btn('fb-btn vq-again', '再抽一次', () => startQuiz(student, phase, items, redraw)),
         btn('fb-btn', '查看', () => showResult(finished)),
         btn('fb-btn pri', '复制结果', async () => { try { await navigator.clipboard.writeText(resultText(finished.payload)); flash('已复制'); } catch { showResult(finished); } }));
+      row.append(info, actions);
       vq.append(row);
     } else if (items.length || draft) {   // no word chips: one line naming the lesson, and the start button
       const ready = make('div', 'vq-ready');
@@ -1761,7 +1788,7 @@
       allRight.remove(); tools.remove(); Object.assign(o.head.querySelector('.vx-close'), {disabled: false, onclick: () => { o.close(); done(); }});
       marks.forEach((m, i) => { items[i].wrong = m.result === 'wrong'; });
       // 完成并保存 means the check happened, whether or not every word got a mark; an empty session ticks nothing.
-      if (listDay === curDay() && items.length && marks.size) markChecked(student, phase);
+      markChecked(student, phase, snapshot);
       list.textContent = ''; o.foot.textContent = '';
       const sum = make('div', 'vx-summary'); sum.append(make('div', 'fb-meta', '✅ ' + right + ' · ❌ ' + wrong.length + ' · 未标 ' + (items.length - marks.size)), make('pre', '', text));
       list.append(sum);
@@ -1773,13 +1800,27 @@
     }
   }
   // Tick the existing 课前/课后 check for this student once a quiz is finished.
-  function markChecked(student, phase) {
+  function matchingQuizRows(student) {
+    const display = value => plainName(globalThis.wayonDisplayName?.(value) || value);
+    return quizRows([]).filter(row => display(row[0]) === display(student));
+  }
+  function markChecked(student, phase, snapshot) {
     const k = phase === '课前' ? 'pre' : phase === '课后' ? 'post' : '';
-    if (!k || typeof quizRows !== 'function' || typeof qget !== 'function' || typeof qk !== 'function') return;
+    const payload = snapshot?.payload, token = snapshot?.id;
+    if (!k || snapshot?.state !== 'completed' || !token || payload?.day !== curDay() || payload?.list_day !== curDay()
+        || payload.student !== student || payload.phase !== phase || !payload.items?.length || !payload.marks?.length
+        || typeof quizRows !== 'function' || typeof qget !== 'function' || typeof qk !== 'function') return false;
     try {
-      const row = quizRows([]).find(r => plainName(r[0]) === student); if (!row) return;
-      const q = qget(qk(row)); if (!q[k]) { q[k] = true; qsave(); render(); }
-    } catch {}
+      const rows = matchingQuizRows(student); if (rows.length !== 1) return false;
+      const row = rows[0], q = qget(qk(row));
+      // Persist the applied result with the existing private quiz fields. A later
+      // manual untick, including on another device, must stay unticked.
+      if (q.vocabEvidence?.[k] === token) return false;
+      (q.vocabEvidence ||= {})[k] = token;
+      const changed = !q[k]; q[k] = true; qsave();
+      if (changed) render();
+      return changed;
+    } catch { return false; }
   }
 
   // ---------- Sidebar button and mounting ----------

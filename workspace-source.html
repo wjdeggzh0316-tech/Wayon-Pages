@@ -218,7 +218,7 @@ body.wayon-workbench{font-family:var(--sans);font-size:14px;font-weight:400;lett
 </style>
 <script src="./aircon.js?v=20261025-02"></script>
 <script src="./memo.js?v=20261107-01"></script>
-<script defer src="./vocab.js?v=20261110-03"></script>
+<script defer src="./vocab.js?v=20261110-04"></script>
 <script defer src="./ux.js?v=20261110-02"></script>
 </head>
 <body class="wayon-workbench">
@@ -1600,8 +1600,10 @@ function captureChecks(day) {
   }
   for(const [name,t] of Object.entries(plan)) if(t) out[JSON.stringify(['plan-copy',name])]=t;
   for(const [name,t] of Object.entries(previousPlan)) if(typeof t==='string' && t) out[JSON.stringify(['plan-copy-previous',name])]=t;
-  for(const [name,q] of Object.entries(quiz)) for(const part of ['pre','post'])
+  for(const [name,q] of Object.entries(quiz)) for(const part of ['pre','post']) {
     if(q[part]===true) out[JSON.stringify(['quiz',name,part])]=true;
+    if(typeof q.vocabEvidence?.[part]==='string') out[JSON.stringify(['quiz-vocab-evidence',name,part])]=q.vocabEvidence[part];
+  }
   for(const [name,val] of Object.entries(day===today ? cstops : {})) {
     if(val && (Array.isArray(val) || Array.isArray(val.stopped_ids)))
       out[JSON.stringify(['chasing-stop',name])]=val;
@@ -1633,6 +1635,8 @@ function applyChecks(day, fields) {
       const d=done[match.name] ||= {m:{},n:{},c:''};
       if(part==='mark' && ['', 'ok','no'].includes(value))d.m[match.i]=value;
       if(part==='note' && typeof value==='string')d.n[match.i]=value;
+    } else if(k[0]==='quiz-vocab-evidence' && k.length===3 && ['pre','post'].includes(k[2]) && typeof value==='string') {
+      const q=quiz[k[1]] ||= {pre:false,post:false}; (q.vocabEvidence ||= {})[k[2]]=value;
     } else if(k[0]==='quiz' && ['pre','post'].includes(k[2]) && value===true) {
       (quiz[k[1]] ||= {pre:false,post:false})[k[2]]=true;
     } else if(k[0]==='plan-copy' && (typeof value==='string' || (value && typeof value==='object' && typeof value.copied_at==='string' && typeof value.signature==='string')))plan[k[1]]=value;
