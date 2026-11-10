@@ -310,7 +310,10 @@ export async function mountRules({ document, client, container, onClose }) {
     const submitted = clone(state.draft), errors = validateDraft(submitted, state.base.payload);
     if (errors.length) { setMessage('规则尚未保存，请核对提示。', true); showDrawer('请先完善规则', `<div class="error-copy">${errors.map(error => '<p>' + escape(error) + '</p>').join('')}</div>`); return; }
     setBusy(true); setMessage('正在保存规则…');
-    try { const result = await saveCatalog(client, state.owner, state.base, submitted); state.base = clone(result); state.draft = clone(result.payload); state.known = entities(); setMessage('规则已保存，下一次例行读取生效。'); renderContent(); }
+    try { const result = await saveCatalog(client, state.owner, state.base, submitted); state.base = clone(result); state.draft = clone(result.payload); state.known = entities(); const refreshing = globalThis.wayonRefreshAPI?.enabled === true;
+      setMessage(refreshing ? '规则已保存，正在重编今天和明天的计划。保存不等于已布置：今天已发的作业不变；今天需要补发的，用「指定学员补布置」。'
+        : '规则已保存。保存不等于已布置：今天的计划要在工作台点「刷新」后才更新；今天需要补发的，用「指定学员补布置」。');
+      try { globalThis.dispatchEvent?.(new Event('wayon-rules-saved')); } catch {} renderContent(); }
     catch (error) { setMessage(error.message === 'CONFLICT' ? '版本冲突，修改已保留。请核对最新规则后再保存。' : error.message === 'READBACK_FAILED' ? '保存结果尚未核实，修改已保留。请重新读取核对。' : '保存未成功，修改已保留，请稍后重试。', true); }
     finally { setBusy(false); }
   }
