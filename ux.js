@@ -104,6 +104,60 @@
       .wayon-workbench .main-content #study-slot{order:-4;flex:0 0 auto;margin:0 0 10px}
       .wayon-workbench .main-content #workflow-tools{order:-3;flex:0 0 auto;margin:0 0 10px!important}
     }
+    /* ---- 完成记录: one calm row style for class cards and self-study cards ---- */
+    body.wayon-workbench[data-mode=done] #list .item{padding:18px 22px 14px}
+    body.wayon-workbench[data-mode=done] #list .item .head{margin-bottom:6px}
+    body.wayon-workbench[data-mode=done] #list .item .ux-assign{margin:0 0 6px}
+    body.wayon-workbench[data-mode=done] #list .item .head button.small,
+    body.wayon-workbench[data-mode=done] #list .item .head button.copy{width:36px!important;height:36px!important;min-width:36px!important;min-height:36px!important;border-radius:10px!important;box-shadow:none!important}
+    body.wayon-workbench[data-mode=done] #list .item .head button.small{background:transparent!important;border:1px solid var(--line,#d2d2d7)!important}
+    body.wayon-workbench[data-mode=done] #list .item .head button.small:hover{background:var(--code-bg,rgba(0,0,0,.04))!important}
+    body.wayon-workbench[data-mode=done] #list .item .head .study-actions{display:inline-flex;gap:8px;margin:0;padding:0}
+    /* emoji marks become plain glyphs in the page's own colours */
+    body.wayon-workbench[data-mode=done] #list .wayon-emoji,body.wayon-workbench[data-mode=done] #list .study-mark{font-size:0!important;line-height:0!important}
+    body.wayon-workbench[data-mode=done] #list .wayon-emoji:before,body.wayon-workbench[data-mode=done] #list .study-mark:before{font:600 15px/1 -apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;display:block}
+    body.wayon-workbench[data-mode=done] #list .head [data-icon-action="All Done"] .wayon-emoji:before{content:'✓✓';letter-spacing:-5px;margin-left:-5px;color:#1a7f37}
+    body.wayon-workbench[data-mode=done] #list .head [data-icon-action="All Not Done"] .wayon-emoji:before{content:'✕✕';letter-spacing:-5px;margin-left:-5px;color:var(--bad,#d93025);font-size:13px}
+    body.wayon-workbench[data-mode=done] #list .tasks{margin-top:2px}
+    body.wayon-workbench[data-mode=done] #list .task{background:transparent!important;border:0!important;border-bottom:1px solid var(--line,#e5e5ea)!important;border-radius:0!important;margin:0!important;padding:3px 0!important;min-height:46px;box-shadow:none!important}
+    body.wayon-workbench[data-mode=done] #list .task:last-of-type{border-bottom-color:transparent!important}
+    /* text takes the room; the note opens on its own line under the task instead of squeezing it */
+    body.wayon-workbench[data-mode=done] #list .task{grid-template-columns:minmax(0,1fr) auto auto auto!important;column-gap:8px!important;align-items:center}
+    body.wayon-workbench[data-mode=done] #list .task .note-disclosure{width:auto!important;min-width:0!important;justify-self:end}
+    body.wayon-workbench[data-mode=done] #list .task .note-disclosure[open]{grid-column:1/-1;grid-row:2;justify-self:stretch;display:flex;gap:8px;align-items:center;padding:0 0 8px 2px}
+    body.wayon-workbench[data-mode=done] #list .task .note-disclosure[open] .note{flex:1;min-width:0}
+    body.wayon-workbench[data-mode=done] #list .task.ok .txt{color:var(--muted,#8a8a8e)}
+    body.wayon-workbench[data-mode=done] #list .task.no .txt{color:var(--bad,#d93025)}
+    body.wayon-workbench[data-mode=done] #list .task .task-num{display:none}
+    body.wayon-workbench[data-mode=done] #list .task .txt{padding-left:2px!important;background:transparent!important}
+    /* the mark: hollow ring → green tick / red cross; same look whether it is one cycling button or a pair */
+    body.wayon-workbench[data-mode=done] #list .task button.mark,body.wayon-workbench[data-mode=done] #list .study-mark{width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important;padding:0!important;border-radius:50%!important;border:1.5px solid #b4b4ba!important;background:transparent!important;box-shadow:none!important;display:inline-flex!important;align-items:center;justify-content:center;opacity:1!important;cursor:pointer;transition:background .15s,border-color .15s,transform .1s}
+    body.wayon-workbench[data-mode=done] #list .task button.mark:active,body.wayon-workbench[data-mode=done] #list .study-mark:active{transform:scale(.9)}
+    body.wayon-workbench[data-mode=done] #list .task button.mark[data-icon-action="Unmarked"]>span{display:none}
+    body.wayon-workbench[data-mode=done] #list .task button.mark[data-icon-action="Done"],body.wayon-workbench[data-mode=done] #list .study-mark.on[aria-label$="完成"]:not([aria-label$="未完成"]){background:#1f9d48!important;border-color:#1f9d48!important}
+    body.wayon-workbench[data-mode=done] #list .task button.mark[data-icon-action="Not Done"],body.wayon-workbench[data-mode=done] #list .study-mark.on[aria-label$="未完成"]{background:var(--bad,#d93025)!important;border-color:var(--bad,#d93025)!important}
+    body.wayon-workbench[data-mode=done] #list .task button.mark[data-icon-action="Done"] .wayon-emoji:before{content:'✓';color:#fff}
+    body.wayon-workbench[data-mode=done] #list .task button.mark[data-icon-action="Not Done"] .wayon-emoji:before{content:'✕';color:#fff;font-size:13px}
+    body.wayon-workbench[data-mode=done] #list .study-marks{display:inline-flex;gap:8px;align-items:center}
+    body.wayon-workbench[data-mode=done] #list .study-mark:before{content:'✓';color:var(--muted,#aeaeb2)}
+    body.wayon-workbench[data-mode=done] #list .study-mark[aria-label$="未完成"]:before{content:'✕';font-size:13px}
+    body.wayon-workbench[data-mode=done] #list .study-mark.on:before{color:#fff}
+    body.wayon-workbench[data-mode=done] #list .task .del-btn{font-size:17px;color:var(--muted,#aeaeb2);background:transparent;border:0}
+    @media(hover:hover) and (pointer:fine){
+      body.wayon-workbench[data-mode=done] #list .task .del-btn,body.wayon-workbench[data-mode=done] #list .task .note-disclosure:not([open])>summary[data-icon-action="Add Note"]{opacity:0;transition:opacity .15s}
+      body.wayon-workbench[data-mode=done] #list .task:hover .del-btn,body.wayon-workbench[data-mode=done] #list .task:focus-within .del-btn{opacity:.7}
+      body.wayon-workbench[data-mode=done] #list .task:hover .note-disclosure>summary,body.wayon-workbench[data-mode=done] #list .task:focus-within .note-disclosure>summary{opacity:.75}
+      body.wayon-workbench[data-mode=done] #list .task:hover{background:var(--code-bg,rgba(0,0,0,.025))!important}
+    }
+    body.wayon-workbench[data-mode=done] #list .item .tasks~button,body.wayon-workbench[data-mode=done] #list .item .add-task-btn,body.wayon-workbench[data-mode=done] #list .item .add-btn{border:0!important;background:transparent!important;box-shadow:none!important;min-height:32px!important;height:32px!important;margin-top:4px!important;opacity:.75}
+    body.wayon-workbench[data-mode=done] #list .item .tasks~button:hover{opacity:1;background:var(--code-bg,rgba(0,0,0,.04))!important}
+    /* ---- 抽背: one card per student instead of a card inside a card ---- */
+    body.wayon-workbench[data-mode=quiz] #list .quiz{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
+    body.wayon-workbench[data-mode=quiz] #list .quiz>.head{padding:2px 4px 10px;margin:0;border:0;align-items:baseline}
+    body.wayon-workbench[data-mode=quiz] #list .quiz>.head h2{font-size:17px;letter-spacing:-.01em}
+    body.wayon-workbench[data-mode=quiz] #list .quiz>.head .meta{font-size:12px;color:var(--muted,#8a8a8e)}
+    body.wayon-workbench[data-mode=quiz] #list .quiz .qgroup{background:var(--card,#fff);border:1px solid var(--line,#e5e5ea)!important;border-radius:16px!important;padding:16px 20px!important;margin:0 0 12px!important;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+    body.wayon-workbench[data-mode=quiz] #list .quiz .qgroup .qhead{font-size:18px;font-weight:600;letter-spacing:-.01em}
     @media(prefers-color-scheme:dark){.ux-chip[data-kind=ok],.ux-aircon[data-copied] b:after,.ux-st-row em[data-kind=ok]{color:#4ac26b}.ux-chip[data-kind=todo],.ux-st-row em[data-kind=todo]{color:#f0883e}.ux-chip[data-kind=wait],.ux-st-row em[data-kind=wait]{color:#d4a72c}}
   `;
   document.head.append(style);
@@ -180,7 +234,8 @@
     const m = page.mode, day = page.cur;
     if (!['plan', 'done'].includes(m)) return;
     for (const card of $$('#list > .item, #list .item:not(.aircon-card)')) {
-      const nameEl = $('.head .name', card); if (!nameEl || card.classList.contains('folded')) continue;
+      // A self-study card lists the teacher's own items; the system-homework word belongs on the class card only.
+      const nameEl = $('.head .name', card); if (!nameEl || card.classList.contains('folded') || card.classList.contains('study-card')) continue;
       const names = members(nameEl.textContent), sig = day + '|' + names.join(',');
       const lines = assignLines(names, day), existing = $(':scope > .ux-assign', card);
       const summary = JSON.stringify(lines);

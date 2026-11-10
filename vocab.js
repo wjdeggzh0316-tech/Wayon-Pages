@@ -662,6 +662,9 @@
     :is(.fb-lesson>summary,.fb-bulk-sum) .vx-no.vx-quiz{font-size:13px;background:var(--warning-bg,#fff8e8);color:var(--warning-fg,#805300)}:is(.fb-lesson>summary,.fb-bulk-sum) .vx-no.none{color:var(--muted)}
     .vx-info{display:flex;flex-direction:column;gap:1px;min-width:0}:is(.fb-lesson>summary,.fb-bulk-sum) .vx-when{font-size:15px;font-weight:600;color:var(--fg)}:is(.fb-lesson>summary,.fb-bulk-sum) .vx-when small{font-weight:400;color:var(--muted);font-size:12px}
     :is(.fb-lesson>summary,.fb-bulk-sum) .vx-sub{font-size:12px}.vx-tags{margin-left:auto;display:flex;gap:6px}
+    .vx-copy{margin-left:auto;flex:none;width:36px;height:36px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--fg-secondary,var(--muted));display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s,color .15s}
+    .vx-copy svg{width:17px;height:17px}.vx-copy:hover{background:var(--code-bg);color:var(--accent,#0a63d8)}.vx-copy:active{transform:scale(.94)}.vx-copy+.vx-tags{margin-left:10px}
+    @media (hover:hover) and (pointer:fine){.fb-swipe:hover summary:has(.vx-tags:empty) .vx-copy{margin-right:80px}}
     .vq{margin:6px 0 10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--code-bg)}
     .vq-tabs{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
     .vq-tabs button{min-height:32px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg-secondary);font:inherit;font-size:13px;cursor:pointer}
@@ -1208,7 +1211,20 @@
       if (l.lesson_date) when.append(make('small', '', weekday(l.lesson_date)));
       info.append(when, make('small', 'vx-sub', l.title || ''));
       const tags = make('span', 'vx-tags'); if (l.origin && l.origin !== 'notes-import') tags.append(make('span', 'fb-pill ok', '网页收集'));
-      s.append(badge, info, tags);
+      const copy = btn('vx-copy', '', async e => {
+        e.preventDefault(); e.stopPropagation();   // inside <summary>: do not open or close the lesson
+        const cached = bodies.has(l.id);
+        try {
+          const raw = await lessonBody(l.id), ws = customWords.get(l.id) || parseFeedback(raw);
+          if (!ws.length) { flash('这节没有识别到生词', true); return; }
+          const ok = await copyPlain(wordsCopyText(subjectOf(l.subject) + (lessonNo(l.title) ? 'L' + lessonNo(l.title) : ''), ws));
+          // A browser may refuse the clipboard once the tap is followed by a network read; the words are cached now.
+          flash(ok ? '已复制 ' + ws.length + ' 个单词' : cached ? '复制失败，请展开这节手动复制' : '生词已读取，请再点一次复制', !ok);
+        } catch (err) { flash('读取本节生词失败：' + (err.message || err), true); }
+      }, '复制本节生词');
+      copy.title = '复制本节生词';
+      copy.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 8h12v12H8z M16 8V4H4v12h4"/></svg>';
+      s.append(badge, info, copy, tags);
     };
     drawHead();
     const body = make('div', 'fb-entry-body'), text = make('pre', 'fb-body', '读取中…'), words = make('div', 'fb-words');
@@ -1744,7 +1760,8 @@
       if (state === 'draft') { o.close(); flash('已暂存本机，下次可继续'); done(); return; }
       allRight.remove(); tools.remove(); Object.assign(o.head.querySelector('.vx-close'), {disabled: false, onclick: () => { o.close(); done(); }});
       marks.forEach((m, i) => { items[i].wrong = m.result === 'wrong'; });
-      if (listDay === curDay() && marks.size === items.length && items.length) markChecked(student, phase);
+      // 完成并保存 means the check happened, whether or not every word got a mark; an empty session ticks nothing.
+      if (listDay === curDay() && items.length && marks.size) markChecked(student, phase);
       list.textContent = ''; o.foot.textContent = '';
       const sum = make('div', 'vx-summary'); sum.append(make('div', 'fb-meta', '✅ ' + right + ' · ❌ ' + wrong.length + ' · 未标 ' + (items.length - marks.size)), make('pre', '', text));
       list.append(sum);
