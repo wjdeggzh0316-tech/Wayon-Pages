@@ -95,11 +95,18 @@
     if (!p || !Array.isArray(p.items) || !Array.isArray(p.marks) || !p.student || !p.day) return p?.text || '';
     try { return quizCopyText(p.student, p.course || '', p.course_no, p.day, p.items, new Map(p.marks.map(m => [m.index, {result: m.result, reason: m.reason || ''}]))); } catch { return p.text || ''; }
   }
-  // "听力L4", a blank line, then one word per line (the teacher's original line when the word is unchanged).
+  // "听力L4", a blank line, then the headings and one word per line (the teacher's original line when the word is unchanged).
   function wordsCopyText(title, ws) {
     const line = w => { const m = entryMeta(w); return m && m.word === w.word && m.pos === (w.pos || '') && m.meaning === (w.meaning || '') ? m.line : [w.word, (w.pos ? normPos(w.pos) + '.' : '') + (w.meaning || '')].filter(Boolean).join(' '); };
-    return [title, '', ...ws.map(line)].join('\n');
+    const lines = [title, '']; let previous = '';
+    ws.forEach(w => {   // the teacher's headings (🖊词汇句子补充, 【一词多义】…) stay, with a blank line before each
+      const heading = entryHeading(w);
+      if (heading && heading !== previous) { if (lines[lines.length - 1] !== '') lines.push(''); lines.push(heading); }
+      previous = heading; lines.push(line(w), ...entryNotes(w));
+    });
+    return lines.join('\n').trim();
   }
+
   // Teachers sometimes list words with no heading and no Chinese (e.g. after 「课后：…背诵词汇」). A run of 3+ short
   // English-only lines outside any section, introduced as words or 6+ lines long, is read as a 词汇 section
   // (same rule as mark_bare_lists in Manager/vocab_import.py).
