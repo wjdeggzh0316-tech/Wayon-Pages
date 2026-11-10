@@ -300,7 +300,8 @@ const md = () => { const p = cur.split("-"); return Number(p[1]) + "月" + Numbe
 const ICON = {ok:"✅", no:"❌"};
 const openEditors = new Set();
 // Visibility only: do not rename cloud keys or shift stored task indices.
-const taskVisible = (name, task) => {
+const taskVisible = (name, task, index) => {
+  if (index !== undefined && globalThis.wayonGeneratedTaskVisible?.(name, index) === false) return false;
   const label = typeof task === "string" ? task : task[0];
   if (label !== "课堂生词抽背") return true;
   const clean = value => String(value || "").replace(/[【】「」\s]/g, "").toLowerCase();
@@ -338,7 +339,7 @@ const mk = (s, t, i) => s.m[i] === undefined ? (t[1] || "") : s.m[i];   // 没�
 const nt = (s, t, i) => s.n[i] === undefined ? (t[2] || "") : s.n[i];
 const text = r => { const s = get(r[0]);
   const tasks = getTasks(r[0], r[3]);
-  return (globalThis.wayonOwnTaskText || (x => x))("【" + (globalThis.wayonDisplayName?.(r[2]) || r[2]).replace(/[「」]/g, "").trim() + "】 " + md() + "任务完成情况 👇\n\n" + tasks.map((t,i) => ({t,i})).filter(x => taskVisible(r[0],x.t)).map(({t,i},n) => (n+1) + "、" + t[0] + (ICON[mk(s,t,i)] || "") + (nt(s,t,i) ? (" " + nt(s,t,i)) : "")).join("\n")); };
+  return (globalThis.wayonOwnTaskText || (x => x))("【" + (globalThis.wayonDisplayName?.(r[2]) || r[2]).replace(/[「」]/g, "").trim() + "】 " + md() + "任务完成情况 👇\n\n" + tasks.map((t,i) => ({t,i})).filter(x => taskVisible(r[0],x.t,x.i)).map(({t,i},n) => (n+1) + "、" + t[0] + (ICON[mk(s,t,i)] || "") + (nt(s,t,i) ? (" " + nt(s,t,i)) : "")).join("\n")); };
 const list = document.getElementById("list");
 let mode = bjHour < 13 ? "plan" : "done";   // 上午默认「任务安排」，下午默认「完成情况」
 let ps = {}, psPrevious = {};
@@ -1071,8 +1072,8 @@ function render(){
     const el = document.createElement("div"); el.className = "item" + (s.c ? " copied" : "");
     const head = document.createElement("div"); head.className = "head";
     const name = document.createElement("div"); name.className = "name"; name.textContent = (ri+1) + ". " + r[0].replace(/[【】「」]/g, "");
-    const okn = currentTasks.filter((t,i) => taskVisible(r[0],t) && mk(s,t,i) === "ok").length;
-    const meta = document.createElement("div"); meta.className = "meta"; meta.textContent = r[1] + " · 完成 " + okn + "/" + currentTasks.filter(t => taskVisible(r[0],t)).length;
+    const okn = currentTasks.filter((t,i) => taskVisible(r[0],t,i) && mk(s,t,i) === "ok").length;
+    const meta = document.createElement("div"); meta.className = "meta"; meta.textContent = r[1] + " · 完成 " + okn + "/" + currentTasks.filter((t,i) => taskVisible(r[0],t,i)).length;
     head.append(name, meta);
     if (s.c){ const x = document.createElement("div"); x.className = "state"; x.textContent = "✓ 已复制 " + s.c; head.append(x); }
     const pre = document.createElement("pre"); pre.hidden = true; pre.textContent = text(r);
@@ -1085,10 +1086,10 @@ function render(){
     };
     head.append(b);
     const all = document.createElement("button"); all.type = "button"; all.className = "small"; all.textContent = "全部✅";
-    all.onclick = () => { currentTasks.forEach((t,i) => { if(taskVisible(r[0],t)) s.m[i] = "ok"; }); s.c = ""; save(); render(); };
+    all.onclick = () => { currentTasks.forEach((t,i) => { if(taskVisible(r[0],t,i)) s.m[i] = "ok"; }); s.c = ""; save(); render(); };
     head.append(all);
     const none=document.createElement('button');none.type='button';none.className='small';none.textContent='全部未完成';
-    none.onclick=()=>{currentTasks.forEach((t,i)=>{if(taskVisible(r[0],t))s.m[i]='no';});s.c='';save();render();};head.append(none);
+    none.onclick=()=>{currentTasks.forEach((t,i)=>{if(taskVisible(r[0],t,i))s.m[i]='no';});s.c='';save();render();};head.append(none);
     const editBtn = document.createElement("button"); editBtn.type = "button"; editBtn.className = "small edit-btn";
     editBtn.textContent = openEditors.has(r[0]) ? "收起编辑" : "✎ 编辑/粘贴任务";
     editBtn.onclick = () => {
@@ -1133,7 +1134,7 @@ function render(){
     }
     const tasks = document.createElement("div"); tasks.className = "tasks";
     currentTasks.forEach((t, i) => {
-      if (!taskVisible(r[0], t)) return;
+      if (!taskVisible(r[0], t, i)) return;
       const v = mk(s, t, i);
       const row = document.createElement("div"); row.className = "task " + v;
       const m = document.createElement("button"); m.type = "button"; m.className = "mark"; m.id = "m-" + ri + "-" + i;
@@ -2166,6 +2167,6 @@ import('./checks-sync-20261028-01.mjs?v=20261028-01').then(m=>m.boot({config: {"
   window.addEventListener('load', mountButtons);
 })();
 </script>
-<script type="module" src="./plan-presentation.mjs?v=20261028-01"></script>
+<script type="module" src="./plan-presentation.mjs?v=20261110-task-dedup"></script>
 </body>
 </html>

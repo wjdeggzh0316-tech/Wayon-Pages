@@ -64,10 +64,36 @@ export function ownTaskText(value) {
   const own=new RegExp('^(\\s*\\d+[、.．]\\s*)[「【]'+person.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'[」】]\\s*');
   return lines.map((line,index)=>index?line.replace(own,'$1'):line).join('\n');
 }
+export function taskMatchKey(value) {
+  const text=String(value||'').trim();
+  return text.includes('口语') ? text.replace(/(?<![A-Za-z0-9])p(?:art)?\s*([123])(?![A-Za-z0-9])/gi,(_,part)=>'p'+part) : text;
+}
+// Select original indices only. Never rewrite saved marks or task definitions.
+export function generatedTaskIndices(tasks,state={}) {
+  const groups=new Map(), keep=new Set();
+  tasks.forEach((task,index)=>{
+    const key=taskMatchKey(typeof task==='string'?task:task[0]);
+    if(!groups.has(key))groups.set(key,[]);
+    groups.get(key).push(index);
+  });
+  for(const indices of groups.values()){
+    const evidence=indices.map(i=>({i,mark:state.m?.[i]??(Array.isArray(tasks[i])?tasks[i][1]:'')??'',note:state.n?.[i]??(Array.isArray(tasks[i])?tasks[i][2]:'')??''}));
+    const marks=new Set(evidence.map(x=>x.mark).filter(Boolean)),notes=new Set(evidence.map(x=>x.note).filter(Boolean));
+    if(marks.size>1||notes.size>1){indices.forEach(i=>keep.add(i));continue;}
+    // A mark and a note on different rows must both remain accessible.
+    const selected=evidence.find(x=>(!marks.size||x.mark)&&(!notes.size||x.note));
+    if(selected)keep.add(selected.i);else indices.forEach(i=>keep.add(i));
+  }
+  return [...keep].sort((a,b)=>a-b);
+}
 export function planDisplayTasks(values) {
   const tasks=values.map(x=>String(x).trim()).filter(Boolean);
   const specific=tasks.some(x=>x!=='打印课后单词带回去背'&&/打印.*(?:单词|词汇|词表)/.test(x));
-  return [...new Set(tasks.filter(x=>!(specific&&x==='打印课后单词带回去背')))];
+  const seen=new Set();
+  return tasks.filter(x=>{
+    if(specific&&x==='打印课后单词带回去背')return false;
+    const key=taskMatchKey(x);if(seen.has(key))return false;seen.add(key);return true;
+  });
 }
 export function planDisplayText(value) {
   const lines=String(value||'').split('\n');
@@ -86,6 +112,12 @@ export function planDisplayText(value) {
    if(typeof planCard!=='function'||typeof foldRow!=='function'||document.documentElement.dataset.wayonStudentNames==='1')return;
    document.documentElement.dataset.wayonPlanDisplay='1';
    document.documentElement.dataset.wayonStudentNames='1';
+   const taskMatchKey=${taskMatchKey.toString()},generatedTaskIndices=${generatedTaskIndices.toString()};
+   globalThis.wayonGeneratedTaskVisible=(name,index)=>{
+     const state=get(name);if(Array.isArray(state.tk))return true;
+     const rows=(DATA[cur]||[]).filter(row=>row[0]===name);
+     return rows.length!==1||generatedTaskIndices(rows[0][3],state).includes(index);
+   };
    const base=${planDisplayName.toString()},tasks=${planDisplayTasks.toString()};
    const planDisplayName=base,planDisplayTasks=tasks,baseCopyText=${planDisplayText.toString()};
    const people=${rosterPeople.toString()},resolve=${rosterDisplayName.toString()},header=${rosterHeaderText.toString()},studentText=${studentDisplayText.toString()},own=${ownTaskText.toString()};
