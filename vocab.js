@@ -29,14 +29,19 @@
   const normPos = p => { const x = String(p || '').trim().replace(/\.$/, '').replace(/\s+/g, '').replace(/\./g, ''); return ({j: 'adj', a: 'adj', ad: 'adv', pp: 'phr'})[x] || x; };
 
   // ---------- Feedback parser (keep in step with Manager/vocab_import.py) ----------
-  const POS = '(?:n|v|vt|vi|adj|adv|j|prep|pp|conj|pron|phr|num|int|aux|art|abbr)(?:\\s*/\\s*(?:n|v|vt|vi|adj|adv|j|prep|pp|conj|pron))*\\.?';
+  const POS = '(?:n|v|vt|vi|adj|adv|j|prep|pp|conj|pron|phr|num|int|aux|art|abbr)(?:\\.?\\s*/\\s*(?:n|v|vt|vi|adj|adv|j|prep|pp|conj|pron))*\\.?';
   const WORD_LINE = new RegExp("^\\s*(?:[-–•·*]\\s*|\\d{1,3}[.、)）]\\s*|[‘'’]\\s*)?(?<word>[A-Za-z][A-Za-z'‘’\\-/().=,…&?!\\s]{0,60}?)\\s*(?<pos>\\b" + POS +
-    "(?=[\\s\\u4e00-\\u9fff,，;；(（]|$))?\\s*[,，:：]?\\s*(?<meaning>[\\u4e00-\\u9fff（(“\"…].*)$");
+    "(?=[\\s\\u4e00-\\u9fff,，;；(（《〈「『]|$))?\\s*[,，:：]?\\s*(?<meaning>[\\u4e00-\\u9fff（(“\"…《〈「『].*)$");
   const SUB_LINE = /^\s*[-–•·]\s+/, NUMBERED = /^\s*\d{1,3}[.、)）]\s*/;
   const WRONG = /❌\s*(拼写?|意思|发音|音)?/g;
   const SECTION_END = /^\s*(?:📌|📚|🙋|👨|【用法】|【纠错】|【发音】|【句子|课后作业|\d️⃣|作业[:：]|📝课后)/u;
   const TRAILING_POS = /^(.*?[A-Za-z].*?)\s+(n|v|vt|vi|adj|adv|j|prep|pp|conj|pron|phr|ad)\.?(?:\s+(.*))?$/;
+  const DANGLING_POS = /^(.*?[A-Za-z].*?\s(?:n|v|vt|vi|adj|adv|j|prep|pp|conj|pron|phr|ad))\.?\s*\/$/;   // "repair v/" — a slash with nothing after it
+  const PLUS_TAIL = /^([\u4e00-\u9fff]{1,6})(?:\s+(?![\/／])(.*))?$/;   // "it's a shame that+" + "句子 ...很可惜": 句子 belongs to the pattern
   function splitPos(word, pos, meaning) {   // same rule as split_pos in Manager/vocab_import.py
+    word = word.replace(DANGLING_POS, '$1');
+    const plus = /[+＋]$/.test(word) && PLUS_TAIL.exec(meaning || '');
+    if (plus) { word += plus[1]; meaning = plus[2] || ''; }
     const m = TRAILING_POS.exec(word); if (!m) return {word, pos, meaning, extra: ''};
     const rest = (m[3] || '').trim(); pos = pos || m[2];
     if ('/=(（'.includes(rest[0] || 'x')) return {word: m[1].trim(), pos, meaning, extra: rest};
@@ -129,7 +134,7 @@
     return out;
   }
   function parseFeedback(body) {
-    const words = []; let parent = null, numbered = false, inVocab = false, section = '', heading = '';
+    const words = []; let parent = null, numbered = false, inVocab = false, section = '', heading = '', plain = 0, dashed = false;
     const add = (item, raw) => {
       if (section) item.extra = META_PREFIX + JSON.stringify({section, heading, line: raw.trim().replace(WRONG, '').replace(/✅|✔️|✔|⭕️?|◯|○/g, '').trimEnd(), word: item.word, pos: item.pos || '', meaning: item.meaning || '', notes: item.extra ? [item.extra] : []});
       words.push(item); return item;
@@ -138,9 +143,12 @@
       let line = raw.replace(/\s+$/, '');
       if (!line.trim()) continue;
       const header = feedbackSection(line);
-      if (header) { section = header; heading = line.trim(); parent = null; numbered = false; inVocab = section === '词汇'; continue; }
+      if (header) { section = header; heading = line.trim(); parent = null; numbered = false; inVocab = section === '词汇'; plain = 0; dashed = false; continue; }
       if (/^课后(?:作业|练习|任务)\s*[:：]?$/.test(feedbackHeading(line))) { section = ''; parent = null; inVocab = numbered = false; continue; }
       if (/^\s*【[^】]+】\s*$/.test(line)) { section = ''; parent = null; inVocab = numbered = false; continue; }
+      // "-looking j.看上去…样的" in a list without dash bullets is a suffix, not a bullet: keep its hyphen.
+      const suffix = section === '词汇' && plain > 0 && !dashed && /^\s*-[a-z]{2,}/.test(line);
+      if (section) { if (/^\s*[-–•·*]/.test(line) && !suffix) dashed = true; else plain++; }
       const entry = section ? line.replace(/^\s*(?:(?:\d\uFE0F?\u20E3|\d+[.、)）])\s*|[-–•·*]\s*)/u, '').trim() : line;
       const labelled = section === '搭配' && /^([\u4e00-\u9fff][^:：A-Za-z]{0,10})[:：]\s*([A-Za-z].*)$/u.exec(entry);
       if (labelled) { parent = add({word: labelled[2].trim().replace(/[\s.…；;]+$/, '') || labelled[2].trim(), pos: '', meaning: labelled[1].trim(), extra: '', wrong: /❌/.test(entry)}, raw); continue; }   // 「感谢信：I am writing…」
@@ -148,7 +156,7 @@
       if (section && /^[A-Za-z]/.test(entry) && !entry.includes('http')) {
         if (section === '用法' && !WORD_LINE.test(entry)) { if (parent) appendEntryNote(parent, entry); continue; }
         if (section === '同义替换' || section === '句子背诵' || section === '搭配') {
-          const clean = entry.replace(WRONG, '').replace(/✅|✔️|✔|⭕️?|◯|○/g, '').replace(/\s+/g, ' ').trim(), cut = clean.search(/[\u4e00-\u9fff]/);
+          const clean = entry.replace(WRONG, '').replace(/✅|✔️|✔|⭕️?|◯|○/g, '').replace(/\s+/g, ' ').trim(), cut = clean.search(/[《〈「『【]*[\u4e00-\u9fff]/);
           let word = cut >= 0 ? clean.slice(0, cut).trim() : clean, meaning = cut >= 0 ? clean.slice(cut) : '', pos = '';
           if (section === '搭配' && /^(?:或者?|和|及|\+)\s*[A-Za-z+]/.test(meaning)) { word = clean; meaning = ''; }   // "inform sb. of sth.或者that + 句子" is one pattern
           if (section !== '句子背诵') { word = word.replace(/[\s.…:：]+$/, ''); const sp = splitPos(word, '', meaning); word = sp.word; pos = sp.pos || ''; meaning = sp.meaning; }   // whole sentences keep their full stop
@@ -162,10 +170,10 @@
       const loose = inVocab && /^\s*(?:[-–•·*]\s*|\d{1,3}[.、)）]\s*)?([A-Za-z].*)$/.exec(line);
       if (loose && !(WORD_LINE.test(line) && /[\u4e00-\u9fff]/.test(line))) {
         // Inside a vocabulary section every English line is a word (same rule as vocab_import.py).
-        const text = loose[1].replace(/❌\s*(?:拼写?|意思|发音|音)?|✅|✔️|✔|⭕️?|◯|○/g, ' ').trim(), cut = text.search(/[\u4e00-\u9fff]/);
+        const text = loose[1].replace(/❌\s*(?:拼写?|意思|发音|音)?|✅|✔️|✔|⭕️?|◯|○/g, ' ').trim(), cut = text.search(/[《〈「『【]*[\u4e00-\u9fff]/);
         let word = cut >= 0 ? text.slice(0, cut) : text.split('=')[0], meaning = cut >= 0 ? text.slice(cut) : (text.includes('=') ? '= ' + text.split('=').slice(1).join('=').trim() : '');
         word = word.replace(/\s+/g, ' ').replace(/^[\s\-–,.，:：]+|[\s\-–,.，:：]+$/g, '');
-        if (word && word.split(' ').length <= 8 && /[A-Za-z]{2}/.test(word) && !/^(?:[A-Z]\d+|C\d+T\d+)/.test(word)) { const sp = splitPos(word, '', meaning.replace(WRONG, '').replace(/✅|✔️|✔|⭕️?|◯|○/g, '').trim()); parent = add({word: sp.word, pos: sp.pos || '', meaning: sp.meaning, extra: sp.extra || '', wrong: /❌/.test(line)}, raw); }
+        if (word && word.split(' ').length <= 8 && /[A-Za-z]{2}/.test(word) && !/^(?:[A-Z]\d+|C\d+T\d+)/.test(word)) { const sp = splitPos(word, '', meaning.replace(WRONG, '').replace(/✅|✔️|✔|⭕️?|◯|○/g, '').trim()); parent = add({word: (suffix ? '-' : '') + sp.word, pos: sp.pos || '', meaning: sp.meaning, extra: sp.extra || '', wrong: /❌/.test(line)}, raw); }
         continue;
       }
       const m = WORD_LINE.exec(line);
@@ -177,9 +185,10 @@
       const wrong = [...line.matchAll(WRONG)].length > 0;
       if (NUMBERED.test(line)) numbered = true;
       if (SUB_LINE.test(line) && numbered && parent) { appendEntryNote(parent, word + ' ' + meaning); continue; }
-      const split = splitPos(word, (m.groups.pos || '').replace(/[\s.]+$/, ''), meaning);
+      const split = splitPos(word, (m.groups.pos || '').replace(/[\s.]+/g, ''), meaning);
       const second = split.pos && /^(.*?[\u4e00-\u9fff].*?)[\s；;，,]*\b(n|v|vt|vi|adj|j|adv|prep)\.\s*(\S.*)$/.exec(split.meaning || '');   // "特点 v.以…为特点"
       if (second) { const p2 = second[2] === 'j' ? 'adj' : second[2]; split.pos = split.pos + '/' + p2; split.meaning = second[1].trim() + '；' + p2 + '. ' + second[3].trim(); }
+      if (suffix) split.word = '-' + split.word;
       const item = {...split, wrong};
       parent = add(item, raw);
     }
@@ -534,7 +543,7 @@
 
   // ---------- Styles ----------
   const style = make('style'); style.id = 'wayon-vocab-style'; style.textContent = `
-    #nav-feedback:before{display:none!important}#nav-feedback svg{width:19px;height:19px;flex:none}
+    #nav-feedback:before{display:none!important}#nav-feedback{position:relative}#nav-feedback[data-todo]:after{content:attr(data-todo);position:absolute;top:-3px;right:-5px;min-width:16px;height:16px;padding:0 4px;box-sizing:border-box;border-radius:8px;background:var(--bad,#d93025);color:#fff;font:600 10px/16px -apple-system,BlinkMacSystemFont,sans-serif;text-align:center;pointer-events:none}#nav-feedback svg{width:19px;height:19px;flex:none}
     body[data-feedback-open] #tabs button:not(#nav-feedback){background:transparent!important;color:var(--fg-secondary)!important}
     body[data-feedback-open] #list,body[data-feedback-open] .workspace-top-bar,body[data-feedback-open] .workspace-sub-bar,body[data-feedback-open] #aircon-panel,body[data-feedback-open] #memo-panel,body[data-feedback-open] .sidebar-footer .bar{display:none!important}
     #feedback-panel{width:100%}#feedback-panel[hidden]{display:none!important}
@@ -654,7 +663,7 @@
     .fb-entry-body .fb-body{margin:0;padding:12px 14px;border-radius:10px;background:var(--code-bg);max-height:520px;overflow:auto}
     .fb-words{border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-height:520px;overflow:auto;background:var(--card)}
     .fb-words-head{display:flex;gap:8px;align-items:center;margin-bottom:6px}.fb-words-head .fb-words-copy{margin-left:auto;min-height:28px;padding:0 12px;font-size:12.5px}
-    .fb-word{display:flex;flex-direction:column;padding:5px 0;border-top:1px solid var(--line)}.fb-word b{font-size:15px}.fb-word b small{font-weight:400;color:var(--muted)}.fb-word span{font-size:12.5px;color:var(--muted)}
+    .fb-word{display:flex;flex-direction:column;padding:5px 0;border-top:1px solid var(--line)}.fb-word[title]{cursor:text}.fb-word-edit .fb-row{gap:6px;flex-wrap:wrap;align-items:center}.fb-word-edit input{flex:1 1 120px;min-width:0;width:auto}.fb-word-edit input.p{flex:0 0 64px}.fb-word b{font-size:15px}.fb-word b small{font-weight:400;color:var(--muted)}.fb-word span{font-size:12.5px;color:var(--muted)}
     .fb-bulk-text{width:100%;min-height:180px;margin:10px 0 6px;box-sizing:border-box;font:inherit;font-size:13px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--code-bg);color:var(--fg)}
     .fb-bulk-sum{display:flex;gap:10px;align-items:center;padding:10px 14px}.fb-bulk-sum .fb-pill{white-space:nowrap}.fb-bulk-row{display:block;cursor:pointer}
     .fb-bulk-date{font:inherit;font-size:14px;font-weight:600;border:0;background:transparent;color:var(--fg);padding:0}
@@ -938,6 +947,29 @@
     if (mode !== 'cloud' && mode !== 'preview') { root.append(make('div', 'fb-card', '课堂反馈存在你本人的云端，登录工作台后才能查看和保存。')); return; }
     try { await lessonIndex(); } catch (e) { root.append(make('div', 'fb-card', '读取失败：' + (e.message || e))); return; }
     if (view === 'today') renderToday(); else if (learnerOpen) renderLearner(learnerOpen); else renderLearners();
+    void updateBadge();
+  }
+  function collected(s, got, learners) {
+    const learner = learners.find(l => keyOf(l) === keyOf(s.who)) || learners.find(l => sameGroup(l, s.who)) || keyOf(s.who);   // only a folder with exactly these students; never a look-alike class
+    const subject = subjectOf(s.course);
+    return {learner, subject, done: got.filter(l => l.learner === learner && (String(l.title || '').startsWith(s.time) || l.subject === subject))};
+  }
+  // Red count on the sidebar button: today's lessons that have already ended and still have no feedback.
+  let badgeBusy = false;
+  async function updateBadge() {
+    const b = document.getElementById('nav-feedback'); if (!b || badgeBusy) return;
+    badgeBusy = true;
+    let n = 0;
+    try {
+      await ready();
+      if (mode === 'cloud' || mode === 'preview') {
+        const day = today(), now = new Date().toLocaleTimeString('en-GB', {timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit'});
+        const got = (await lessonIndex()).filter(l => l.lesson_date === day), learners = allLearners();
+        n = sessionsFor(day).filter(s => { const end = /^\d{1,2}:\d{2}$/.test(String(s.time).split('-')[1] || '') ? String(s.time).split('-')[1].padStart(5, '0') : ''; return (!end || end <= now) && !collected(s, got, learners).done.length; }).length;
+      }
+    } catch { n = 0; } finally { badgeBusy = false; }
+    const text = n ? String(n) : '';
+    if ((b.dataset.todo || '') !== text) { if (text) b.dataset.todo = text; else delete b.dataset.todo; }
   }
   function renderToday() {
     collectDay = collectDay || today();
@@ -950,9 +982,7 @@
     let missing = 0;
     if (!sess.length) root.append(make('div', 'fb-card fb-meta', '这天的课表没有记录（只能收集已发布课表里的课）。下面仍可手动添加。'));
     sess.forEach(s => {
-      const learner = learners.find(l => keyOf(l) === keyOf(s.who)) || learners.find(l => sameGroup(l, s.who)) || keyOf(s.who);   // only a folder with exactly these students; never a look-alike class
-      const subject = subjectOf(s.course);
-      const done = got.filter(l => l.learner === learner && (String(l.title || '').startsWith(s.time) || l.subject === subject));
+      const {learner, subject, done} = collected(s, got, learners);
       if (!done.length) missing++;
       root.append(collectCard({learner, subject, time: s.time, course: s.course, teacher: s.teacher, done}));
     });
@@ -1084,14 +1114,43 @@
     const t = make('textarea'); t.value = text; t.style.cssText = 'position:fixed;opacity:0;top:0;left:0'; document.body.append(t); t.select();
     let ok = false; try { ok = document.execCommand('copy'); } catch {} t.remove(); return ok;
   }
-  function paintWords(box, ws, note, copyTitle) {
+  function paintWords(box, ws, note, copyTitle, onEdit) {
     box.textContent = '';
     const head = make('div', 'fb-words-head'); head.append(make('b', '', note || '本节生词'), make('span', 'fb-pill', ws.length + ' 个'));
     if (copyTitle && ws.length) { const c = btn('fb-btn fb-words-copy', '复制', async () => { const ok = await copyPlain(wordsCopyText(copyTitle, ws)); flash(ok ? '已复制 ' + ws.length + ' 个单词' : '复制失败，请手动选中文字复制', !ok); }, '复制本节生词'); head.append(c); }
     box.append(head);
     if (!ws.length) box.append(make('div', 'fb-meta', '没有识别到生词'));
     let previous = '';
-    ws.forEach(w => { const heading = entryHeading(w); if (heading && heading !== previous) box.append(make('h4', 'vx-section', heading)); previous = heading; const r = make('div', 'fb-word'), en = make('b', '', w.word); if (w.pos) en.append(make('small', '', ' ' + normPos(w.pos) + '.')); r.append(en, make('span', '', w.meaning || '')); entryNotes(w).forEach(t => r.append(make('div', 'fb-meta fb-entry-notes', t))); box.append(r); });
+    ws.forEach(w => { const heading = entryHeading(w); if (heading && heading !== previous) box.append(make('h4', 'vx-section', heading)); previous = heading; const r = make('div', 'fb-word'), en = make('b', '', w.word); if (w.pos) en.append(make('small', '', ' ' + normPos(w.pos) + '.')); r.append(en, make('span', '', w.meaning || '')); entryNotes(w).forEach(t => r.append(make('div', 'fb-meta fb-entry-notes', t))); box.append(r);
+      if (onEdit) { r.title = '双击修改'; r.ondblclick = e => { e.preventDefault(); getSelection()?.removeAllRanges(); editWordRow(r, w, patch => onEdit(ws.indexOf(w), patch)); }; } });
+  }
+  // Double-click one word in a saved lesson: fix its spelling, part of speech or meaning in place (Enter saves, Esc cancels).
+  function editWordRow(row, w, save) {
+    if (row.classList.contains('editing')) return;
+    const form = make('div', 'fb-word fb-word-edit editing'), word = make('input'), pos = make('input'), mean = make('input'), status = make('span', 'fb-meta');
+    [[word, w.word, '单词'], [pos, normPos(w.pos), '词性'], [mean, w.meaning || '', '中文']].forEach(([i, v, label]) => { i.type = 'text'; i.value = v; i.placeholder = label; i.setAttribute('aria-label', label); i.className = 'fb-search'; });
+    pos.classList.add('p');
+    const cancel = () => form.replaceWith(row);
+    const ok = btn('fb-btn pri', '保存', async () => {
+      const patch = {word: word.value.trim(), pos: normPos(pos.value), meaning: mean.value.trim()};
+      if (!patch.word) { status.textContent = '单词不能为空'; return; }
+      if (patch.word === w.word && patch.pos === normPos(w.pos) && patch.meaning === (w.meaning || '')) { cancel(); return; }
+      ok.disabled = true; status.textContent = '保存中…';
+      try { await save(patch); } catch (e) { status.textContent = '保存失败：' + (e.message || e); ok.disabled = false; }
+    });
+    form.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); ok.click(); } else if (e.key === 'Escape') { e.preventDefault(); cancel(); } };
+    const line = make('div', 'fb-row'); line.append(word, pos, mean, ok, btn('fb-btn', '取消', cancel), status);
+    form.append(line); row.replaceWith(form); word.focus();
+  }
+  // One word of a saved lesson changed by hand: the lesson keeps its own word list, and this student's library row is
+  // corrected in place (no second row for the fixed spelling) unless the new spelling is already there.
+  async function editLessonWord(l, i, patch) {
+    const raw = await lessonBody(l.id), list = (customWords.get(l.id) || parseFeedback(raw)).map(w => ({...w})), before = list[i];
+    if (!before) throw new Error('这个词已经变了，请重新展开这节');
+    const lib = await vocabFor([l.learner]), row = lib.find(r => wordKey(r.word) === wordKey(before.word)), taken = lib.find(r => wordKey(r.word) === wordKey(patch.word));
+    if (row && (!taken || taken.id === row.id)) { await updateVocab(row.id, {word: patch.word, pos: patch.pos || null, meaning: patch.meaning}); dropVocabCache(l.learner); }
+    list[i] = {...before, ...patch};
+    return editLesson(l.id, {body: raw, words: list, custom: true});
   }
   // Editable word list beside a feedback text. It follows the text until you change a word; then your list is kept
   // (「按原文重新识别」 goes back). 「批量编辑」 turns it into one word per line: "word pos. 意思".
@@ -1252,7 +1311,8 @@
     body.append(text, words); d.append(s, body, tools);
     const view = raw => {
       body.textContent = ''; tools.textContent = '';
-      text.textContent = raw; body.append(text, words); paintWords(words, customWords.get(l.id) || parseFeedback(raw), customWords.get(l.id) ? '本节生词（手动修改过）' : '本节生词', subjectOf(l.subject) + (lessonNo(l.title) ? 'L' + lessonNo(l.title) : ''));
+      text.textContent = raw; body.append(text, words); paintWords(words, customWords.get(l.id) || parseFeedback(raw), customWords.get(l.id) ? '本节生词（手动修改过）' : '本节生词', subjectOf(l.subject) + (lessonNo(l.title) ? 'L' + lessonNo(l.title) : ''),
+        async (i, patch) => { await editLessonWord(l, i, patch); flash('已保存'); view(raw); });
       tools.append(btn('fb-btn', '编辑', () => edit(raw)));
     };
     const edit = (raw, fresh) => {
@@ -1845,9 +1905,10 @@
     document.addEventListener('click', e => { const nav = e.target.closest?.('#tabs button'); if (open && nav && nav.id !== 'nav-feedback') close(); }, true);
     new MutationObserver(mount).observe(document.body, {childList: true, subtree: true});
     window.addEventListener('online', () => void flushVocabBackups(activeOwner));
-    window.addEventListener('wayon-refresh-ready', () => { mode = 'pending'; void ready(); });
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) void flushVocabBackups(activeOwner); });
-    let tries = 0; const wait = setInterval(() => { if (client() || ++tries > 60) { clearInterval(wait); mode = 'pending'; if (open) renderPanel(); document.querySelectorAll('.vq').forEach(v => fillLists(v, v.dataset.student)); } }, 1000);
+    window.addEventListener('wayon-refresh-ready', () => { mode = 'pending'; void ready().then(updateBadge); });
+    setInterval(() => { if (!document.hidden) void updateBadge(); }, 300000);   // a lesson ending turns into a reminder without a reload
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) { void flushVocabBackups(activeOwner); void updateBadge(); } });
+    let tries = 0; const wait = setInterval(() => { if (client() || ++tries > 60) { clearInterval(wait); mode = 'pending'; if (open) renderPanel(); else void updateBadge(); document.querySelectorAll('.vq').forEach(v => fillLists(v, v.dataset.student)); } }, 1000);
   }
   globalThis.wayonVocab = {parseFeedback, lessonNo, subjectOf, learnersFor};
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once: true}); else start();

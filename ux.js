@@ -362,7 +362,18 @@
   }
   const schedule = () => { if (!queued && !probing) { queued = true; requestAnimationFrame(apply); } };
   function start() {
-    new MutationObserver(schedule).observe(document.body, {childList: true, subtree: true, characterData: true});
+    // A count read for a view you are not on goes stale when marks change underneath it — the cloud copy arriving
+    // after the first count, or another device. When the list redraws on its own (not right after a tap or a key),
+    // count every view again once it has settled.
+    let lastUser = 0, recount = 0;
+    ['pointerdown', 'keydown', 'input'].forEach(t => document.addEventListener(t, () => { lastUser = Date.now(); }, true));
+    const inList = n => (n.nodeType === 1 ? n : n.parentElement)?.closest?.('#list');
+    new MutationObserver(records => {
+      schedule();
+      if (probing || Date.now() - probed < 1000 || Date.now() - lastUser < 800 || !records.some(r => inList(r.target))) return;
+      clearTimeout(recount);
+      recount = setTimeout(() => { if (Date.now() - lastUser >= 800) { probe(); apply(); } }, 1200);
+    }).observe(document.body, {childList: true, subtree: true, characterData: true});
     apply();
     setTimeout(() => { probe(); apply(); }, 1200);
     // Local marks may have changed elsewhere (another tab, a cloud sync): recount when the page is looked at again.

@@ -32,8 +32,10 @@
   checksToggle.innerHTML=svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>');
   const checksPanel=document.createElement('div');checksPanel.id='workflow-checks-panel';checksPanel.setAttribute('role','group');checksPanel.setAttribute('aria-label','核对时间与刷新进度');
   checks.append(checksToggle,checksPanel);tools.prepend(checks);
-  let closeChecks=0;
-  checks.addEventListener('mouseenter',()=>{clearTimeout(closeChecks);if(matchMedia('(hover:hover)').matches)checks.open=true;});
+  let closeChecks=0,hoverOpenedAt=0;
+  checks.addEventListener('mouseenter',()=>{clearTimeout(closeChecks);if(matchMedia('(hover:hover)').matches&&!checks.open){checks.open=true;hoverOpenedAt=Date.now();}});
+  // A click right after hover opened the panel must keep it open instead of toggling it shut.
+  checksToggle.addEventListener('click',event=>{if(checks.open&&Date.now()-hoverOpenedAt<800){event.preventDefault();hoverOpenedAt=0;}});
   checks.addEventListener('mouseleave',()=>{clearTimeout(closeChecks);closeChecks=setTimeout(()=>{if(!checks.contains(document.activeElement))checks.open=false;},150);});
   checks.addEventListener('focusout',()=>queueMicrotask(()=>{if(!checks.contains(document.activeElement))checks.open=false;}));
   document.addEventListener('pointerdown',event=>{if(!checks.contains(event.target))checks.open=false;});
@@ -56,22 +58,36 @@
         if(result.request_id)pending=result.request_id;
         if(result.state==='failed'){pending=null;message('后台未能启动刷新，请检查部署权限。');return;}
       }
+      let terminalAt=0;
+      const applyResult=async()=>{
+        const response=await fetch('completion-refresh-status.json?v='+Date.now(),{cache:'no-store',credentials:'omit'});
+        const value=response.ok?await response.json():null;
+        if(value?.request_id!==pending)return 'waiting';
+        const full=value.status==='verified',scheduleOnly=!full&&value.schedule_status==='verified';
+        if(value.page_rebuilt!==true || !full&&!scheduleOnly)return 'failed';
+        const date=new Date(full?value.checked_at:value.schedule_checked_at);
+        if(!Number.isFinite(date.valueOf()))throw Error('RESULT_UNKNOWN');
+        const applied=Date.parse(await api.reloadPublished());
+        if(!Number.isFinite(applied)||applied<date.valueOf())return 'waiting';
+        const time=date.toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false});
+        message(full?'课表与作业状态已更新 · '+time:
+          '课表及课程通知已更新 · '+time+'；部分作业未能核实，待催清单保留上次结果。',full?'verified':'unknown');
+        pending=null;return 'updated';
+      };
       while(Date.now()<deadline){
         const result=await api.status(pending);
-        if(result.state==='failed'){pending=null;message('刷新未全部完成；请以最近核对时间为准。');return;}
-        if(result.state==='succeeded'){
-          message('核对已完成，正在更新页面…');
-          const response=await fetch('completion-refresh-status.json?v='+Date.now(),{cache:'no-store',credentials:'omit'});
-          const value=response.ok?await response.json():null;
-          if(value?.request_id===pending){
-            if(value.status!=='verified'||value.page_rebuilt!==true){pending=null;message('本次核对未完整完成，保留上次结果。');return;}
-            const date=new Date(value.checked_at);
-            if(!Number.isFinite(date.valueOf()))throw Error('RESULT_UNKNOWN');
-            const applied=Date.parse(await api.reloadPublished());
-            if(!Number.isFinite(applied)||applied<date.valueOf()){await pause(4000);continue;}
-            message('作业状态已更新 · '+date.toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false}),'verified');pending=null;return;
+        if(result.state==='failed'||result.state==='succeeded'){
+          const applied=await applyResult();
+          if(applied==='updated')return;
+          if(applied==='failed'){
+            pending=null;message('本次核对未完整完成，未将未知作业标为完成；请查看最近核对时间。');return;
           }
-        }else message(result.state==='running'?'正在核对作业完成情况…':result.state==='unknown'?'启动结果待确认，正在查询；不会重复启动。':'刷新正在排队…');
+          terminalAt ||= Date.now();
+          if(Date.now()-terminalAt>60000){pending=null;message('后台已结束，网页更新暂未确认，请稍后重新打开页面。');return;}
+          message('后台已结束，正在等待网页发布…');
+        }else message(result.phase==='queued'?'后台正在排队，启动后会自动更新进度…':
+          result.state==='running'?'正在刷新课表并核对作业…':
+          result.state==='unknown'?'启动结果待确认，正在查询；不会重复启动。':'请求已接收，等待后台启动…');
         await pause(document.visibilityState==='hidden'?10000:4000);
       }
       message('刷新仍未结束；稍后再点此按钮会继续查询进度。');
@@ -87,11 +103,14 @@
     const enabled=globalThis.wayonRefreshAPI?.enabled===true;
     if((refresh.tagName==='BUTTON')===enabled)return;
     const next=document.createElement(enabled?'button':'a');next.id='completion-refresh';next.className='workflow-icon';next.innerHTML=refreshIcon;
-    if(enabled){next.type='button';next.title='Refresh homework status';next.setAttribute('aria-label','Refresh homework status');next.onclick=runRefresh;refreshNote.textContent='点刷新即可重新核对已登记作业；排队、进度和结果会在工作台显示，不布置新作业、不发微信。';}
+    if(enabled){next.type='button';next.title='刷新课表与作业状态';next.setAttribute('aria-label','刷新课表与作业状态');next.onclick=runRefresh;refreshNote.textContent='点刷新更新课表和课程通知，并核对已登记作业；两项结果分别显示。';}
     else {next.href=workflowUrl;next.target='_blank';next.rel='noopener noreferrer';next.title='Refresh homework status · 在 GitHub 点击 Run workflow';next.setAttribute('aria-label','Refresh homework status: open GitHub, then Run workflow');}
     refresh.replaceWith(next);refresh=next;
   };
   window.addEventListener('wayon-refresh-ready',configureRefresh);configureRefresh();
+  // A saved rule only changes the catalog. Recompile today's and tomorrow's plan through the
+  // same owner-only, read-only refresh the button uses; it never assigns work or sends WeChat.
+  window.addEventListener('wayon-rules-saved',()=>{if(globalThis.wayonRefreshAPI?.enabled===true)void runRefresh();});
   const mount=()=>{
     const bar=document.querySelector('.workspace-sub-bar')||document.querySelector('.workspace-top-bar');
     const rooms=document.body.dataset.mode==='classroom';
