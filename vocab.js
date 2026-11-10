@@ -95,6 +95,11 @@
     if (!p || !Array.isArray(p.items) || !Array.isArray(p.marks) || !p.student || !p.day) return p?.text || '';
     try { return quizCopyText(p.student, p.course || '', p.course_no, p.day, p.items, new Map(p.marks.map(m => [m.index, {result: m.result, reason: m.reason || ''}]))); } catch { return p.text || ''; }
   }
+  // "听力L4", a blank line, then one word per line (the teacher's original line when the word is unchanged).
+  function wordsCopyText(title, ws) {
+    const line = w => { const m = entryMeta(w); return m && m.word === w.word && m.pos === (w.pos || '') && m.meaning === (w.meaning || '') ? m.line : [w.word, (w.pos ? normPos(w.pos) + '.' : '') + (w.meaning || '')].filter(Boolean).join(' '); };
+    return [title, '', ...ws.map(line)].join('\n');
+  }
   // Teachers sometimes list words with no heading and no Chinese (e.g. after 「课后：…背诵词汇」). A run of 3+ short
   // English-only lines outside any section, introduced as words or 6+ lines long, is read as a 词汇 section
   // (same rule as mark_bare_lists in Manager/vocab_import.py).
@@ -641,7 +646,7 @@
     @media (max-width:760px){.fb-entry-body{grid-template-columns:1fr}}
     .fb-entry-body .fb-body{margin:0;padding:12px 14px;border-radius:10px;background:var(--code-bg);max-height:520px;overflow:auto}
     .fb-words{border:1px solid var(--line);border-radius:10px;padding:10px 12px;max-height:520px;overflow:auto;background:var(--card)}
-    .fb-words-head{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+    .fb-words-head{display:flex;gap:8px;align-items:center;margin-bottom:6px}.fb-words-head .fb-words-copy{margin-left:auto;min-height:28px;padding:0 12px;font-size:12.5px}
     .fb-word{display:flex;flex-direction:column;padding:5px 0;border-top:1px solid var(--line)}.fb-word b{font-size:15px}.fb-word b small{font-weight:400;color:var(--muted)}.fb-word span{font-size:12.5px;color:var(--muted)}
     .fb-bulk-text{width:100%;min-height:180px;margin:10px 0 6px;box-sizing:border-box;font:inherit;font-size:13px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--code-bg);color:var(--fg)}
     .fb-bulk-sum{display:flex;gap:10px;align-items:center;padding:10px 14px}.fb-bulk-sum .fb-pill{white-space:nowrap}.fb-bulk-row{display:block;cursor:pointer}
@@ -1044,9 +1049,15 @@
   }
   const weekday = d => d ? ' 周' + '日一二三四五六'[new Date(d + 'T12:00:00').getDay()] : '';
   // Words panel shared by view, edit and add: recognised live from the text.
-  function paintWords(box, ws, note) {
+  async function copyPlain(text) {
+    try { await navigator.clipboard.writeText(text); return true; } catch {}
+    const t = make('textarea'); t.value = text; t.style.cssText = 'position:fixed;opacity:0;top:0;left:0'; document.body.append(t); t.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch {} t.remove(); return ok;
+  }
+  function paintWords(box, ws, note, copyTitle) {
     box.textContent = '';
     const head = make('div', 'fb-words-head'); head.append(make('b', '', note || '本节生词'), make('span', 'fb-pill', ws.length + ' 个'));
+    if (copyTitle && ws.length) { const c = btn('fb-btn fb-words-copy', '复制', async () => { const ok = await copyPlain(wordsCopyText(copyTitle, ws)); flash(ok ? '已复制 ' + ws.length + ' 个单词' : '复制失败，请手动选中文字复制', !ok); }, '复制本节生词'); head.append(c); }
     box.append(head);
     if (!ws.length) box.append(make('div', 'fb-meta', '没有识别到生词'));
     let previous = '';
@@ -1198,7 +1209,7 @@
     body.append(text, words); d.append(s, body, tools);
     const view = raw => {
       body.textContent = ''; tools.textContent = '';
-      text.textContent = raw; body.append(text, words); paintWords(words, customWords.get(l.id) || parseFeedback(raw), customWords.get(l.id) ? '本节生词（手动修改过）' : '本节生词');
+      text.textContent = raw; body.append(text, words); paintWords(words, customWords.get(l.id) || parseFeedback(raw), customWords.get(l.id) ? '本节生词（手动修改过）' : '本节生词', subjectOf(l.subject) + (lessonNo(l.title) ? 'L' + lessonNo(l.title) : ''));
       tools.append(btn('fb-btn', '编辑', () => edit(raw)));
     };
     const edit = (raw, fresh) => {
