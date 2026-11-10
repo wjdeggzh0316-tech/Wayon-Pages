@@ -255,6 +255,17 @@
   const wordKey = word => String(word || '').trim().toLowerCase();
   // Database rows have no word-position field. Recover each lesson's order from
   // its feedback (or edited word list), keeping other lessons and free words in place.
+  // A word saved under an older reading of the same feedback line ("repair v/" from "repair v/ 修复") is the same word.
+  // Only rows nobody has edited by hand follow the new reading; the library row keeps its id and review history.
+  const sourceLine = r => { const m = entryMeta(r); return m && m.line && m.word === r.word ? m.line : null; };
+  const reread = w => ({word: w.word, pos: w.pos || '', meaning: w.meaning || '', extra: w.extra || ''});
+  const healed = new Set();
+  function healVocab(id, w) {
+    if (!id || healed.has(id)) return;
+    healed.add(id);
+    updateVocab(id, {word: w.word, pos: w.pos || null, meaning: w.meaning || '', extra: w.extra || null}).catch(() => {});   // the new spelling may already be another row: then leave both
+  }
+  const linesOf = words => { const m = new Map(); words.forEach(w => { const line = entryMeta(w)?.line; if (line && !m.has(line)) m.set(line, w); }); return m; };
   async function feedbackOrder(items) {
     const groups = new Map();
     for (const item of items) {
@@ -263,8 +274,14 @@
       groups.get(item.lesson_id).push(item);
     }
     const ordered = new Map(await Promise.all([...groups].map(async ([id, rows]) => {
-      const ranks = new Map();
-      (await lessonWords(id)).forEach((w, i) => { if (!ranks.has(wordKey(w.word))) ranks.set(wordKey(w.word), i); });
+      const ranks = new Map(), words = await lessonWords(id), byLine = linesOf(words);
+      words.forEach((w, i) => { if (!ranks.has(wordKey(w.word))) ranks.set(wordKey(w.word), i); });
+      rows.forEach(it => {
+        if (ranks.has(wordKey(it.word))) return;
+        const line = sourceLine(it), w = line && byLine.get(line);
+        if (!w || rows.some(o => o !== it && wordKey(o.word) === wordKey(w.word))) return;
+        Object.assign(it, reread(w)); healVocab(it.vocab_id, w);
+      });
       return [id, rows.slice().sort((a, b) => (ranks.get(wordKey(a.word)) ?? Infinity) - (ranks.get(wordKey(b.word)) ?? Infinity))];
     })));
     const offsets = new Map();
@@ -277,8 +294,12 @@
   }
   async function rowsForLesson(lesson, lib) {
     const ownWords = new Map(lib.filter(r => r.learner === lesson.learner).map(r => [wordKey(r.word), r]));
-    return (await lessonWords(lesson.id)).map(w => {
-      const stored = ownWords.get(wordKey(w.word));
+    const words = await lessonWords(lesson.id), keys = new Set(words.map(w => wordKey(w.word)));
+    const stale = linesOf(lib.filter(r => r.learner === lesson.learner && !keys.has(wordKey(r.word)) && sourceLine(r)));
+    return words.map(w => {
+      let stored = ownWords.get(wordKey(w.word));
+      const line = !stored && entryMeta(w)?.line, old = line && stale.get(line);
+      if (old) { stale.delete(line); Object.assign(old, reread(w), {pos: w.pos || null}); healVocab(old.id, w); stored = old; }
       return {...stored, ...w, id: stored?.id || 'pending:' + lesson.id + ':' + wordKey(w.word), learner: lesson.learner,
         lesson_id: lesson.id, lesson_date: lesson.lesson_date, subject: lesson.subject, _pending: !stored};
     });
@@ -1640,17 +1661,24 @@
     return [...last.map(r => ({...r, _from: prev.id})), ...rest].slice(0, Math.max(limit, last.length));
   }
   function editItem(it, done) {
-    const o = overlay('修改单词'), word = make('input'), meaning = make('input');
-    [word, meaning].forEach(i => { i.type = 'text'; i.className = 'fb-search'; i.style.width = '100%'; i.style.marginBottom = '8px'; });
-    word.value = it.word; meaning.value = it.meaning || '';
-    o.body.append(make('div', 'fb-meta', '单词'), word, make('div', 'fb-meta', '中文'), meaning,
-      make('div', 'fb-meta', it.vocab_id ? '保存后单词库里这个词也会一起改。' : '这个词不在单词库里，只改这份清单。'));
-    o.foot.append(btn('fb-btn pri', '保存', async () => {
-      const patch = {word: word.value.trim() || it.word, meaning: meaning.value.trim()};
-      Object.assign(it, patch);
-      if (it.vocab_id) { try { await updateVocab(it.vocab_id, patch); if (it.learner) dropVocabCache(it.learner); } catch (e) { flash('单词库未能更新：' + (e.message || e), true); } }
-      o.close(); done();
-    }), btn('fb-btn', '取消', () => o.close()));
+    const o = overlay('修改单词'), word = make('input'), pos = make('input'), meaning = make('input');
+    [word, pos, meaning].forEach(i => { i.type = 'text'; i.className = 'fb-search'; i.style.width = '100%'; i.style.marginBottom = '8px'; });
+    word.value = it.word; pos.value = normPos(it.pos); meaning.value = it.meaning || '';
+    const lesson = it.lesson_id && (index || []).find(l => l.id === it.lesson_id);
+    o.body.append(make('div', 'fb-meta', '单词'), word, make('div', 'fb-meta', '词性'), pos, make('div', 'fb-meta', '中文'), meaning,
+      make('div', 'fb-meta', lesson || it.vocab_id ? '保存后这节课的生词和单词库里这个词也会一起改。' : '这个词不在单词库里，只改这份清单。'));
+    const save = btn('fb-btn pri', '保存', async () => {
+      const patch = {word: word.value.trim() || it.word, pos: normPos(pos.value), meaning: meaning.value.trim()};
+      save.disabled = true;
+      try {
+        let saved = false;
+        if (lesson) { const i = (await lessonWords(lesson.id)).findIndex(w => wordKey(w.word) === wordKey(it.word)); if (i >= 0) { await editLessonWord(lesson, i, patch); saved = true; } }
+        if (!saved && it.vocab_id) { await updateVocab(it.vocab_id, {...patch, pos: patch.pos || null}); if (it.learner) dropVocabCache(it.learner); }
+      } catch (e) { flash('单词库未能更新：' + (e.message || e), true); }
+      Object.assign(it, patch); o.close(); done();
+    }), close = btn('fb-btn', '取消', () => o.close());
+    o.foot.append(save, close);
+    o.body.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); save.click(); } };
     word.focus();
   }
   async function openPicker(student, learners, items, done) {
@@ -1799,8 +1827,10 @@
       if (entrySection(it) === '句子背诵') row.dataset.kind = 'sentence';
       const no = make('span', 'vx-no', String(i + 1));
       const text = make('div', 'vx-text');
-      const en = make('div', 'vx-en'); en.append(make('b', '', it.word)); if (it.pos) en.append(make('small', '', ' ' + it.pos));
-      const zh = make('div', 'vx-zh', it.meaning || ''); zh.hidden = !it.meaning;
+      const en = make('div', 'vx-en'), zh = make('div', 'vx-zh');
+      const paintText = () => { en.textContent = ''; en.append(make('b', '', it.word)); if (it.pos) en.append(make('small', '', ' ' + it.pos)); zh.textContent = it.meaning || ''; zh.hidden = !it.meaning; };
+      paintText(); text.title = '双击修改';
+      text.ondblclick = e => { e.preventDefault(); getSelection()?.removeAllRanges(); row.classList.remove('peek'); editItem(it, paintText); };
       text.append(en, zh); entryNotes(it).forEach(t => text.append(make('div', 'vx-note', t)));
       const ok = btn('vx-ok', '✓', () => { if (marks.get(i)?.result === 'right') marks.delete(i); else marks.set(i, {result: 'right'}); paintRow(); recount(); }, '答对：' + it.word);
       const x = btn('vx-x', '✗', () => { if (marks.get(i)?.result === 'wrong') marks.delete(i); else marks.set(i, {result: 'wrong', reason: ''}); paintRow(); recount(); }, '答错：' + it.word);
