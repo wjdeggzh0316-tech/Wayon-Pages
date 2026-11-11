@@ -392,6 +392,10 @@
       const {error} = await client().from('wayon_lessons').update(row).eq('id', id);
       if (error) throw /duplicate|unique/i.test(error.message) ? new Error('这段内容和另一节完全相同') : error;
     }
+    if (subject !== old.subject) {   // the lesson's own words follow it into the corrected category
+      if (mode === 'preview') preview.words.filter(w => w.lesson_id === id).forEach(w => { w.subject = subject; });
+      else { const {error} = await client().from('wayon_vocab').update({subject}).eq('lesson_id', id).eq('learner', learner); if (error) throw error; }
+    }
     const added = await insertNewWords(learner, words, {subject, lesson_date, lesson_id: id});
     bodies.set(id, body); customWords.set(id, row.words); Object.assign(old, {title, subject, lesson_date}); dropVocabCache(learner);
     return {total: words.length, added};
@@ -659,7 +663,7 @@
       .fb-swipe-tray{position:absolute;right:12px;top:var(--tray-top,13px);display:flex;gap:2px;opacity:0;transition:opacity .18s ease;pointer-events:none;z-index:2}
       .fb-swipe-tray .fb-swipe-act{background:transparent;color:var(--muted);width:34px;height:34px}.fb-swipe-tray .fb-swipe-act.blue:hover{background:var(--code-bg);color:var(--accent,#0a63d8);filter:none}.fb-swipe-tray .fb-swipe-act.red:hover{background:#fdecec;color:#d93036;filter:none}
       .fb-swipe:hover .fb-swipe-tray,.fb-swipe:focus-within .fb-swipe-tray{opacity:1;pointer-events:auto}
-      .fb-swipe:hover .vx-tags{visibility:hidden}
+      .fb-swipe:hover .vx-tags,.fb-swipe:focus-within .vx-tags{visibility:hidden}
       .fb-swipe.slim .fb-swipe-tray{top:50%;transform:translateY(-50%)}.fb-swipe.slim .fb-swipe-act{width:30px;height:30px}.fb-swipe.slim .fb-swipe-act svg{width:16px;height:16px}
     }
     /* touch: the row slides left over full-height buttons */
@@ -694,7 +698,7 @@
     :is(.fb-lesson>summary,.fb-bulk-sum) .vx-sub{font-size:12px}.vx-tags{margin-left:auto;display:flex;gap:6px}
     .vx-copy{margin-left:auto;flex:none;width:36px;height:36px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--fg-secondary,var(--muted));display:inline-flex;align-items:center;justify-content:center;cursor:pointer;transition:background .15s,color .15s}
     .vx-copy svg{width:17px;height:17px}.vx-copy:hover{background:var(--code-bg);color:var(--accent,#0a63d8)}.vx-copy:active{transform:scale(.94)}.vx-copy+.vx-tags{margin-left:10px}
-    @media (hover:hover) and (pointer:fine){.fb-swipe:hover summary:has(.vx-tags:empty) .vx-copy{margin-right:80px}}
+    @media (hover:hover) and (pointer:fine){.fb-swipe:hover summary:has(.vx-tags:empty) .vx-copy,.fb-swipe:focus-within summary:has(.vx-tags:empty) .vx-copy{margin-right:80px}}
     .vq{margin:6px 0 10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--code-bg)}
     .vq-tabs{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
     .vq-tabs button{min-height:32px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg-secondary);font:inherit;font-size:13px;cursor:pointer}
@@ -1342,17 +1346,23 @@
       body.append(ta, words); const ed = wordEditor(words, () => ta.value, fresh ? null : customWords.get(l.id));
       let timer; ta.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(() => ed.refresh(), 200); });
       const date = make('input'); date.type = 'date'; date.className = 'fb-search'; date.value = l.lesson_date || '';
+      // 课程类别：导入时认错了（如「读写」应为「新托福阅读」）可在这里改，下拉给出这个学生已用过的类别。
+      const kind = make('input'); kind.type = 'text'; kind.className = 'fb-search fb-kind'; kind.value = l.subject || ''; kind.size = 10; kind.maxLength = 40;
+      kind.placeholder = '课程类别'; kind.setAttribute('aria-label', '课程类别');
+      const kinds = make('datalist'); kinds.id = 'fb-kinds-' + l.id; kind.setAttribute('list', kinds.id);
+      [...new Set((index || []).filter(x => x.learner === l.learner && x.subject).map(x => x.subject))].sort().forEach(v => { const o = make('option'); o.value = v; kinds.append(o); });
       const status = make('span', 'fb-meta');
       const save = btn('fb-btn pri', '保存修改', async () => {
         const next = ta.value.trim(); if (!next) { status.textContent = '内容不能为空'; return; }
-        if (next === raw.trim() && (date.value || null) === (l.lesson_date || null) && !ed.edited) { view(raw); return; }
+        const subject = kind.value.trim() || l.subject, moved = subject !== l.subject;
+        if (next === raw.trim() && (date.value || null) === (l.lesson_date || null) && !ed.edited && !moved) { view(raw); return; }
         const ws = ed.words(), no = lessonNo(l.title);
-        if (!await askConfirm('保存修改？', [l.learner.replace(/\//g, '、'), subjectOf(l.subject), no ? 'L' + no : '', date.value ? md(date.value) + weekday(date.value) : '没有日期'].filter(Boolean).join(' · ') + '\n改后识别到 ' + ws.length + ' 个生词；新出现的词加进词库，已有的词不删。', '保存修改')) return;
+        if (!await askConfirm('保存修改？', [l.learner.replace(/\//g, '、'), moved ? subjectOf(l.subject) + ' → ' + subjectOf(subject) : subjectOf(l.subject), no ? 'L' + no : '', date.value ? md(date.value) + weekday(date.value) : '没有日期'].filter(Boolean).join(' · ') + '\n改后识别到 ' + ws.length + ' 个生词；新出现的词加进词库，已有的词不删。', '保存修改')) return;
         save.disabled = true; status.textContent = '保存中…';
-        try { const r = await busy('正在保存修改…', () => editLesson(l.id, {body: next, lesson_date: date.value || null, words: ws, custom: ed.edited})); flash('已保存，识别到 ' + r.total + ' 个生词' + (r.added ? '，新增 ' + r.added + ' 个进词库' : '')); drawHead(); view(next); refresh && refresh(); }
+        try { const r = await busy('正在保存修改…', () => editLesson(l.id, {body: next, lesson_date: date.value || null, words: ws, custom: ed.edited, subject})); flash('已保存，识别到 ' + r.total + ' 个生词' + (r.added ? '，新增 ' + r.added + ' 个进词库' : '') + (moved ? '，已移到「' + subjectOf(subject) + '」' : '')); drawHead(); view(next); refresh && refresh(); if (moved && open) renderPanel(); }
         catch (e) { status.textContent = '保存失败：' + (e.message || e); save.disabled = false; }
       });
-      tools.append(make('span', 'fb-meta', '日期'), date, save, btn('fb-btn', '取消', () => view(raw)), status);
+      tools.append(make('span', 'fb-meta', '类别'), kind, kinds, make('span', 'fb-meta', '日期'), date, save, btn('fb-btn', '取消', () => view(raw)), status);
       if (fresh) fillFromClipboard(ta, status); else ta.focus();
     };
     let raw0 = null;

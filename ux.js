@@ -146,7 +146,8 @@
     @media(hover:hover) and (pointer:fine){
       body.wayon-workbench[data-mode=done] #list .task .del-btn,body.wayon-workbench[data-mode=done] #list .task .note-disclosure:not([open])>summary[data-icon-action="Add Note"]{opacity:0;transition:opacity .15s}
       body.wayon-workbench[data-mode=done] #list .task:hover .del-btn,body.wayon-workbench[data-mode=done] #list .task:focus-within .del-btn{opacity:.7}
-      body.wayon-workbench[data-mode=done] #list .task:hover .note-disclosure>summary,body.wayon-workbench[data-mode=done] #list .task:focus-within .note-disclosure>summary{opacity:.75}
+      /* as specific as the rule that hides it, or hovering never shows the note button */
+      body.wayon-workbench[data-mode=done] #list .task:hover .note-disclosure:not([open])>summary[data-icon-action="Add Note"],body.wayon-workbench[data-mode=done] #list .task:focus-within .note-disclosure:not([open])>summary[data-icon-action="Add Note"],body.wayon-workbench[data-mode=done] #list .task .note-disclosure>summary:focus-visible{opacity:.75}
       body.wayon-workbench[data-mode=done] #list .task:hover{background:var(--code-bg,rgba(0,0,0,.025))!important}
     }
     body.wayon-workbench[data-mode=done] #list .item .tasks~button,body.wayon-workbench[data-mode=done] #list .item .add-task-btn,body.wayon-workbench[data-mode=done] #list .item .add-btn{border:0!important;background:transparent!important;box-shadow:none!important;min-height:32px!important;height:32px!important;margin-top:4px!important;opacity:.75}
