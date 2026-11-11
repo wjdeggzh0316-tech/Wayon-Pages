@@ -336,6 +336,55 @@
     $('summary', box).textContent = '考期已过 · ' + $$('.item', box).length + ' 人（展开查看；仍可复制催交或停止催交）';
   }
 
+  // ---- the wordmark (owner request 2026-11-11): hand-drawn "Wayon" (capital W) in the style of the owner's leo mark.
+  // The o is shared by both words. Tapping it turns "way…n" into "le…", the blob reshapes, the o stays put;
+  // tapping the o again turns it back. Nothing hints at it, and every page load starts as wayon.
+  const BLOB = {wayon: 'M400,110 C600,70 880,120 990,250 C1090,370 990,540 760,575 C540,610 330,540 300,380 C275,235 285,130 400,110 Z',
+                leo: 'M520,80 C680,60 900,170 980,290 C1050,400 960,560 770,575 C590,590 470,520 450,380 C430,240 400,100 520,80 Z'};
+  const MARK = '<svg class="ux-mark" viewBox="20 60 1180 560" role="img" aria-label="Wayon">'
+    + '<path class="ux-mark-blob" fill="#D87756" d="' + BLOB.wayon + '"/>'
+    + '<g fill="none" stroke="currentColor" stroke-width="42" stroke-linecap="round" stroke-linejoin="round">'
+    + '<g class="ux-mark-wayon">'
+    + '<path d="M45,438 C75,462 105,468 122,440 C138,410 124,240 116,150 C130,300 145,452 178,452 C210,452 222,320 232,240 C242,330 256,452 290,452 C325,452 345,300 348,160 C349,132 338,126 326,146"/>'
+    + '<path d="M512,318 C495,292 458,286 432,304 C397,330 397,438 440,452 C480,464 506,412 514,330 C512,382 516,440 545,452 C566,460 585,440 600,410"/>'
+    + '<path d="M600,410 C612,370 610,320 612,300 C618,380 625,450 660,452 C695,454 705,360 708,300 L700,520 C694,585 660,610 630,590 C600,570 625,520 690,480 C720,462 745,440 760,420"/>'
+    + '<path d="M948,318 C955,360 955,420 950,452 C962,360 985,300 1025,300 C1060,300 1060,350 1058,400 C1056,440 1070,456 1095,450 C1120,444 1140,420 1160,395"/></g>'
+    + '<g class="ux-mark-leo">'
+    + '<path d="M330,430 C365,455 395,470 430,458 C480,440 505,360 520,260 C530,190 540,130 568,128 C598,126 596,190 585,240 C570,310 530,370 515,410 C500,450 520,470 552,462 C585,454 610,420 625,395"/>'
+    + '<path d="M625,395 C640,350 660,290 690,290 C716,290 715,330 700,355 C685,380 655,405 640,415 C648,455 680,465 710,458 C735,452 752,440 766,420"/>'
+    + '<path d="M948,318 C975,335 990,360 1000,380"/></g>'
+    + '<path class="ux-mark-o" d="M845,300 C800,295 765,330 762,385 C760,435 790,458 822,455 C865,450 885,400 878,345 C873,315 858,300 845,300 Z M865,315 C890,300 925,300 948,318"/>'
+    + '</g><circle class="ux-mark-hit" cx="835" cy="378" r="105" fill="transparent" tabindex="0" role="button" aria-label="o"/></svg>';
+  function brandMark() {
+    const h = $('.app-brand .brand-title');
+    if (!h || h.dataset.uxMark || h.textContent.trim() !== 'Wayon') return;
+    h.dataset.uxMark = '1';
+    if (!$('#ux-brand-style')) {
+      const css = make('style'); css.id = 'ux-brand-style';
+      css.textContent = '.app-brand .brand-title .ux-mark{display:block;height:1.12em;width:auto;max-width:100%;overflow:visible;color:var(--fg,#1e1e1e)}'
+        + '.ux-mark .ux-mark-blob{transition:d .55s cubic-bezier(.32,.72,0,1)}'
+        + '.ux-mark .ux-mark-wayon,.ux-mark .ux-mark-leo{transition:opacity .35s ease,transform .55s cubic-bezier(.32,.72,0,1)}'
+        + '.ux-mark .ux-mark-leo{opacity:0;transform:translateX(60px)}'
+        + '.ux-mark[data-leo] .ux-mark-wayon{opacity:0;transform:translateX(-60px)}'
+        + '.ux-mark[data-leo] .ux-mark-leo{opacity:1;transform:none}'
+        + '.ux-mark .ux-mark-hit{cursor:default;outline:none;-webkit-tap-highlight-color:transparent}'
+        + '.ux-mark .ux-mark-hit:focus-visible{stroke:var(--accent,#0071e3);stroke-width:6}'
+        + '@media (prefers-reduced-motion:reduce){.ux-mark *{transition:none!important}}'
+        + '@media (prefers-color-scheme:dark){.ux-mark{color:#f5f5f7}}';
+      document.head.append(css);
+    }
+    h.innerHTML = MARK;   // fixed markup above, no data
+    const svg = $('.ux-mark', h), blob = $('.ux-mark-blob', svg), hit = $('.ux-mark-hit', svg);
+    const flip = () => {
+      const leo = !svg.hasAttribute('data-leo');
+      if (leo) svg.setAttribute('data-leo', ''); else svg.removeAttribute('data-leo');
+      blob.setAttribute('d', leo ? BLOB.leo : BLOB.wayon); blob.style.d = 'path("' + (leo ? BLOB.leo : BLOB.wayon) + '")';
+      svg.setAttribute('aria-label', leo ? 'leo' : 'Wayon');
+    };
+    hit.addEventListener('click', flip);
+    hit.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
+  }
+
   // ---- one page about one student --------------------------------------------------
   let dialog = null;
   function studentPage(raw) {
@@ -394,7 +443,7 @@
     queued = false;
     if (probing) return;
     if (page.mode && !document.body.dataset.airconOpen && !document.body.dataset.memoOpen) readCount(page.mode);
-    try { decorateNav(); decorateCards(); decorateNotice(); decorateChasing(); } catch (e) { console.warn('ux:', e); }
+    try { decorateNav(); decorateCards(); decorateNotice(); decorateChasing(); brandMark(); } catch (e) { console.warn('ux:', e); }
   }
   const schedule = () => { if (!queued && !probing) { queued = true; requestAnimationFrame(apply); } };
   function start() {
