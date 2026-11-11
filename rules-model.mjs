@@ -1,5 +1,5 @@
-import { RULE_SPEC } from "./rules-contract.mjs?v=20261029-weekend1";
-import { taskUnitTexts } from './rule-task-text.mjs?v=20261029-weekend1';
+import { RULE_SPEC } from "./rules-contract.mjs?v=20261111-studio2";
+import { taskUnitTexts } from './rule-task-text.mjs?v=20261111-studio2';
 export const clone = (x) => structuredClone(x);
 export const clean = (x) =>
   String(x || "")

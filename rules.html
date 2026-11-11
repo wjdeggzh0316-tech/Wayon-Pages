@@ -39,7 +39,7 @@
     }
     main {
       flex: 1;
-      max-width: 1100px;
+      max-width: 1480px;
       width: 100%;
       margin: 20px auto;
       padding: 0 16px 40px;
@@ -98,7 +98,7 @@
       showLoading();
       try {
         const [{ mountRules }, sdk, response] = await Promise.all([
-          within(import('./rules-editor.mjs?v=20261029-weekend1'), 15000),
+          within(import('./rules-editor.mjs?v=20261111-studio2'), 15000),
           loadSdk(),
           within(fetch('./checks-public-config.json', { cache: 'no-store' }), 15000)
         ]);
