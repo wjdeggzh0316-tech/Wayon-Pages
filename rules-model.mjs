@@ -1,5 +1,5 @@
-import { RULE_SPEC } from "./rules-contract.mjs?v=20261111-studio3";
-import { taskUnitTexts } from './rule-task-text.mjs?v=20261111-studio3';
+import { RULE_SPEC } from "./rules-contract.mjs?v=20261111-studio4";
+import { taskUnitTexts } from './rule-task-text.mjs?v=20261111-studio4';
 export const clone = (x) => structuredClone(x);
 export const clean = (x) =>
   String(x || "")

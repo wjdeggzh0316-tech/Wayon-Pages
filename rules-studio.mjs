@@ -1,8 +1,8 @@
-import { clone, clean, todayShanghai, inspectTask, taskLines, manualTask, setManual, validateDraft, publicData } from './rules-model.mjs?v=20261111-studio3';
-import { canonical, saveCatalog } from './rules-store.mjs?v=20261111-studio3';
-import { buildRuleEntities, entityStatus, setEntityStatus, ruleEntityDisplayName } from './rules-entities.mjs?v=20261111-studio3';
-import { STYLE } from './rules-studio-style.mjs?v=20261111-studio3';
-import { parseTaskUnits, replaceTaskUnit, removeTaskUnit } from './rule-task-text.mjs?v=20261111-studio3';
+import { clone, clean, todayShanghai, inspectTask, taskLines, manualTask, setManual, validateDraft, publicData } from './rules-model.mjs?v=20261111-studio4';
+import { canonical, saveCatalog } from './rules-store.mjs?v=20261111-studio4';
+import { buildRuleEntities, entityStatus, setEntityStatus, ruleEntityDisplayName } from './rules-entities.mjs?v=20261111-studio4';
+import { STYLE } from './rules-studio-style.mjs?v=20261111-studio4';
+import { parseTaskUnits, replaceTaskUnit, removeTaskUnit } from './rule-task-text.mjs?v=20261111-studio4';
 
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const same = (a, b) => canonical(a) === canonical(b);
@@ -10,6 +10,7 @@ const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '�
 const CLOSE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg>';
 const EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 3 5 5-12 12-6 1 1-6Z"/><path d="m14 5 5 5"/></svg>';
 const FILTERS = [['all', '全部'], ['on', '打卡中'], ['off', '打卡暂停']];
+const VIEWS = [['person', '按学员'], ['attendance', '全部随课'], ['checkin', '全部打卡']];
 const ONE_TASK = '一项任务只填一条；多项任务请分别添加。';
 
 // These are projections of the catalog, never replacement business records.
@@ -162,7 +163,7 @@ export async function mountRules({ document, client, container, onClose }) {
   const host = container || document.getElementById('rules') || document.body;
   const root = document.createElement('div'); root.className = 'rules-studio app'; host.replaceChildren(root);
   const q = selector => root.querySelector(selector);
-  const state = { owner: null, base: null, draft: null, selected: null, query: '', filter: 'all', busy: false, message: '正在读取规则…', error: false, editor: null, known: [], pending: null, settings: new Set(), rowErrors: new Map(), showDetail: false, plan: { status: 'idle', data: null, modified: null, rebuilding: false } };
+  const state = { owner: null, base: null, draft: null, selected: null, query: '', filter: 'all', busy: false, message: '正在读取规则…', error: false, editor: null, known: [], pending: null, settings: new Set(), rowErrors: new Map(), showDetail: false, view: 'person', plan: { status: 'idle', data: null, modified: null, rebuilding: false } };
   let dialog, toastTimer, pointerActive = false, deferred = null;
   const dirty = () => !!state.base && !!state.draft && !same(state.base.payload, state.draft);
   const entities = () => buildRuleEntities(state.draft || {});
@@ -252,7 +253,7 @@ export async function mountRules({ document, client, container, onClose }) {
     const hint = pending.message || (inspected && ['unknown', 'invalid'].includes(inspected.mode) ? inspected.label : '');
     return `<div class="task-row is-new ${pending.message ? 'has-error' : ''}" data-task="new" data-scope="${scope}" data-person="${escape(entity.key)}"><div class="task-main"><textarea class="task-input" data-field="task-text" rows="${inputRows(pending.text)}" aria-label="新任务内容" placeholder="写清具体任务与数量，回车确认，Esc 取消" spellcheck="false">${escape(pending.text)}</textarea>${hint ? `<div class="task-hint warn">${escape(hint)}</div>` : ''}</div><div class="task-actions">${handler(pending.text, entity.system, pending.manual)}<button type="button" class="icon-btn delete-btn" data-action="cancel-new" aria-label="取消新任务" title="取消">${CLOSE}</button></div></div>`;
   }
-  function attendanceBlock(entity) {
+  function attendanceBlock(entity, head = '<div><h3>随课任务</h3><p class="block-sub">有课当天，课后布置</p></div>') {
     const list = items(entity, 'attendance');
     const pendingHere = state.pending?.entityKey === entity.key && state.pending.scope === 'attendance' && !state.pending.choosingSubject;
     const subjects = [...new Set(['通用', ...list.map(item => item.subject), ...(pendingHere ? [state.pending.subject] : [])])];
@@ -263,7 +264,7 @@ export async function mountRules({ document, client, container, onClose }) {
       return `<div class="task-group" data-subject="${escape(subject)}"><h4 class="group-caption">${subject === '通用' ? '每节课' : escape(subject) + (isWindow ? '' : '课')}</h4>${rows || '<p class="empty-line">还没有随课任务</p>'}${subject !== '通用' && !isWindow ? `<button type="button" class="add-inline" data-action="add-task" data-scope="attendance" data-subject="${escape(subject)}">＋ 添加${escape(subject)}课任务</button>` : ''}</div>`;
     }).join('');
     const choosing = state.pending?.entityKey === entity.key && state.pending.choosingSubject;
-    return `<section class="rule-block" data-scope="attendance" data-person="${escape(entity.key)}"><header class="block-head"><div><h3>随课任务</h3><p class="block-sub">有课当天，课后布置</p></div></header>${groups}<div class="block-actions"><button type="button" class="add-btn" data-action="add-task" data-scope="attendance" data-subject="通用">＋ 添加任务</button>${choosing ? `<span class="subject-picker"><input data-field="new-subject" aria-label="科目名称" list="rules-subjects" placeholder="科目，如 听力"><datalist id="rules-subjects">${['听力', '阅读', '写作', '口语', '语法'].map(subject => `<option value="${subject}">`).join('')}</datalist><button type="button" class="button small primary" data-action="confirm-subject">确定</button><button type="button" class="button small ghost" data-action="cancel-subject">取消</button></span>` : '<button type="button" class="add-btn" data-action="choose-subject">＋ 按科目加任务</button>'}</div></section>`;
+    return `<section class="rule-block" data-scope="attendance" data-person="${escape(entity.key)}"><header class="block-head">${head}</header>${groups}<div class="block-actions"><button type="button" class="add-btn" data-action="add-task" data-scope="attendance" data-subject="通用">＋ 添加任务</button>${choosing ? `<span class="subject-picker"><input data-field="new-subject" aria-label="科目名称" list="rules-subjects" placeholder="科目，如 听力"><datalist id="rules-subjects">${['听力', '阅读', '写作', '口语', '语法'].map(subject => `<option value="${subject}">`).join('')}</datalist><button type="button" class="button small primary" data-action="confirm-subject">确定</button><button type="button" class="button small ghost" data-action="cancel-subject">取消</button></span>` : '<button type="button" class="add-btn" data-action="choose-subject">＋ 按科目加任务</button>'}</div></section>`;
   }
   const options = (values, current) => {
     const rows = values.map(value => Array.isArray(value) ? value : [value, value]);
@@ -283,7 +284,7 @@ export async function mountRules({ document, client, container, onClose }) {
       <label class="field wide"><span>备注</span><textarea data-field="row-note" data-row="${id}" rows="2">${escape(row['备注'] || '')}</textarea></label>
       ${completed(row) ? '<p class="small-note wide">本次已人工确认完成；此记录保留。</p>' : ''}</div>`;
   }
-  function checkinBlock(entity) {
+  function checkinBlock(entity, head = '<div><h3>打卡任务</h3><p class="block-sub">按下面的频率布置</p></div>') {
     const list = items(entity, 'checkin');
     const rows = (state.draft.frequency_rows || []).filter(row => entity.frequencyIds.includes(row.id));
     const mixed = entityStatus(entity, state.draft) === 'mixed';
@@ -294,7 +295,7 @@ export async function mountRules({ document, client, container, onClose }) {
       return `<div class="freq-group" data-row="${escape(row.id)}"><div class="freq-head"><span class="freq-summary">${escape(rowSummary(row))}${own}</span><button type="button" class="link-btn" data-action="toggle-settings" data-row="${escape(row.id)}" aria-expanded="${open}">${open ? '收起设置' : '频率与更多设置'}</button></div>${open ? rowSettings(row) : ''}${units}</div>`;
     }).join('');
     const pendingHere = state.pending?.scope === 'checkin' && state.pending.entityKey === entity.key;
-    return `<section class="rule-block" data-scope="checkin" data-person="${escape(entity.key)}"><header class="block-head"><div><h3>打卡任务</h3><p class="block-sub">按下面的频率布置</p></div>${statusSwitch(entity)}</header>${groups || (pendingHere ? '' : '<p class="empty-line">还没有打卡任务</p>')}${pendingRow(entity, 'checkin')}<div class="block-actions"><button type="button" class="add-btn" data-action="add-task" data-scope="checkin">＋ 添加打卡任务</button></div></section>`;
+    return `<section class="rule-block" data-scope="checkin" data-person="${escape(entity.key)}"><header class="block-head">${head}${statusSwitch(entity)}</header>${groups || (pendingHere ? '' : '<p class="empty-line">还没有打卡任务</p>')}${pendingRow(entity, 'checkin')}<div class="block-actions"><button type="button" class="add-btn" data-action="add-task" data-scope="checkin">＋ 添加打卡任务</button></div></section>`;
   }
   function relatedOverrides(entity) {
     return (state.draft.overrides || []).map((rule, index) => ({ rule, index })).filter(({ rule }) => (!rule.system || rule.system === entity.system) && entity.names.some(name => clean(name) === clean(rule.student)));
@@ -353,9 +354,30 @@ export async function mountRules({ document, client, container, onClose }) {
     element.focus({ preventScroll: true });
     if (typeof key.start === 'number' && element.setSelectionRange) try { element.setSelectionRange(key.start, key.end); } catch {}
   }
+  // Cross-learner views: every learner with tasks of one kind, expanded and editable in place.
+  function hasTasks(entity, scope) {
+    if (state.pending?.entityKey === entity.key && state.pending.scope === scope) return true;
+    return scope === 'attendance' ? items(entity, 'attendance').length > 0 : entity.frequencyIds.length > 0;
+  }
+  function overviewHtml(scope) {
+    const visible = visibleEntities(), shown = visible.filter(entity => hasTasks(entity, scope));
+    const head = entity => `<div class="ov-name"><button type="button" class="ov-open" data-action="open-person" data-person="${escape(entity.key)}" title="查看${escape(entity.name)}的全部规则">${escape(entity.name)} ›</button><span class="system-pill">${escape(entity.systemLabel)}</span></div>`;
+    const cards = shown.map(entity => `<article class="ov-card ${entity.key === state.selected ? 'is-current' : ''}" data-entity="${escape(entity.key)}">${scope === 'attendance' ? attendanceBlock(entity, head(entity)) : checkinBlock(entity, head(entity))}</article>`).join('');
+    const hidden = visible.length - shown.length;
+    const kind = scope === 'attendance' ? '随课' : '打卡';
+    return `<div class="detail-head"><button type="button" class="back-btn" data-action="back">‹ 名单</button><h2 class="detail-title">全部${kind}任务<span class="system-pill">${shown.length} 个</span></h2></div>${cards || `<div class="empty-state">没有符合条件的${kind}任务</div>`}${hidden > 0 ? `<p class="ov-hidden">另有 ${hidden} 个学员或班级没有${kind}任务，未列出；在「按学员」里可以为他们添加。</p>` : ''}`;
+  }
   function renderDetail() {
     const pane = q('.detail-pane'); if (!pane || !state.draft) return;
     const scroll = pane.scrollTop, focus = focusKey(document.activeElement);
+    if (state.view !== 'person') {
+      pane.innerHTML = overviewHtml(state.view);
+      pane.scrollTop = scroll;
+      restoreFocus(focus);
+      const fresh = pane.querySelector('[data-task="new"] textarea');
+      if (state.pending?.focus && fresh) { fresh.focus(); state.pending.focus = false; }
+      return;
+    }
     const entity = state.selected && selectedEntity(state.selected);
     if (!entity) { pane.innerHTML = '<div class="empty-state">在左侧选择一个学员或班级</div>'; return; }
     pane.innerHTML = `<div class="detail-head"><button type="button" class="back-btn" data-action="back">‹ 名单</button><h2 class="detail-title">${escape(entity.name)}<span class="system-pill">${escape(entity.systemLabel)}</span></h2></div>${attendanceBlock(entity)}${checkinBlock(entity)}${planBlock(entity)}${specialsBlock(entity)}`;
@@ -368,15 +390,29 @@ export async function mountRules({ document, client, container, onClose }) {
   function selectEntity(key, { focusRoster = false } = {}) {
     if (state.pending && !state.pending.text.trim()) state.pending = null;
     state.selected = key; state.showDetail = true;
+    if (state.view !== 'person') {
+      const card = [...root.querySelectorAll('.ov-card')].find(item => item.dataset.entity === key);
+      if (card) {
+        q('.studio-body')?.classList.add('show-detail');
+        root.querySelectorAll('.ov-card').forEach(item => item.classList.toggle('is-current', item === card));
+        renderRoster(); card.scrollIntoView?.({ block: 'start' });
+        if (focusRoster) [...root.querySelectorAll('.roster-item')].find(item => item.dataset.person === key)?.focus();
+        return;
+      }
+      state.view = 'person'; syncViewTabs();  // no card of this kind: show the learner's full rules
+    }
     q('.studio-body')?.classList.add('show-detail');
     renderRoster(); renderDetail();
     q('.detail-pane')?.scrollTo?.(0, 0);
     if (focusRoster) [...root.querySelectorAll('.roster-item')].find(item => item.dataset.person === key)?.focus();
   }
+  function syncViewTabs() {
+    root.querySelectorAll('.view-seg button').forEach(button => { const on = button.dataset.view === state.view; button.classList.toggle('active', on); button.setAttribute('aria-pressed', String(on)); });
+  }
   function render() {
     const ready = !!state.owner && !!state.draft;
     if (ready && !(state.selected && selectedEntity(state.selected))) state.selected = visibleEntities()[0]?.key || entities()[0]?.key || null;
-    root.innerHTML = `<header class="topbar"><span class="brand">Wayon</span><h1 class="page-title">任务规则</h1><div class="header-actions"><button type="button" class="icon-btn" data-action="reload" title="重新读取规则" aria-label="重新读取规则">↻</button>${ready ? '<button type="button" class="icon-btn" data-action="specials" title="全部特殊安排" aria-label="管理全部特殊安排">⋯</button>' : ''}<button type="button" class="icon-btn" data-action="close" aria-label="关闭任务规则">${CLOSE}</button></div></header>
+    root.innerHTML = `<header class="topbar"><span class="brand">Wayon</span><h1 class="page-title">任务规则</h1>${ready ? `<div class="view-seg" role="group" aria-label="视图">${VIEWS.map(([key, text]) => `<button type="button" class="${state.view === key ? 'active' : ''}" data-action="view" data-view="${key}" aria-pressed="${state.view === key}">${text}</button>`).join('')}</div>` : ''}<div class="header-actions"><button type="button" class="icon-btn" data-action="reload" title="重新读取规则" aria-label="重新读取规则">↻</button>${ready ? '<button type="button" class="icon-btn" data-action="specials" title="全部特殊安排" aria-label="管理全部特殊安排">⋯</button>' : ''}<button type="button" class="icon-btn" data-action="close" aria-label="关闭任务规则">${CLOSE}</button></div></header>
       ${ready ? `<div class="studio-body ${state.showDetail ? 'show-detail' : ''}"><aside class="roster-pane" aria-label="学员和班级"><label class="search"><span class="sr-only">搜索</span><input type="search" data-field="search" aria-label="搜索姓名或任务" placeholder="搜索姓名或任务" value="${escape(state.query)}"></label><div class="filter-chips" role="group" aria-label="筛选">${FILTERS.map(([key, text]) => `<button type="button" class="chip ${state.filter === key ? 'active' : ''}" data-action="filter" data-filter="${key}" aria-pressed="${state.filter === key}">${text}</button>`).join('')}</div><div class="roster-count" aria-live="polite"></div><ul class="roster-list"></ul></aside><main class="detail-pane content" aria-label="规则内容"></main></div>`
         : `<main class="content" aria-label="规则内容">${state.owner ? '<div class="empty-state">规则未能读取。<button type="button" class="button" data-action="reload">重试读取</button></div>' : '<form class="login-form"><h2>登录后查看任务规则</h2><label class="field">邮箱<input name="email" type="email" autocomplete="username" required></label><label class="field">密码<input name="password" type="password" autocomplete="current-password" required></label><button type="submit" class="button primary">登录</button></form>'}</main>`}
       <footer class="footer"><div class="save-state" role="status" aria-live="polite"></div><div class="footer-actions">${ready ? '<button type="button" class="button ghost" data-action="diff">查看变更</button><button type="button" class="button ghost" data-action="discard">放弃</button><button type="button" class="button primary" data-action="save">保存修改</button>' : ''}</div></footer><dialog class="drawer-backdrop" aria-labelledby="rules-drawer-title"></dialog><div class="toast" role="status" aria-live="polite" hidden></div>`;
@@ -575,13 +611,15 @@ export async function mountRules({ document, client, container, onClose }) {
   root.addEventListener('click', event => {
     const button = event.target.closest('[data-action]'); if (!button || !root.contains(button) || state.busy) return;
     const action = button.dataset.action, row = button.closest('[data-task]');
-    const current = () => selectedEntity(state.selected);
+    const current = () => selectedEntity(button.closest('[data-person]')?.dataset.person || state.pending?.entityKey || state.selected);
     if (action === 'select') selectEntity(button.dataset.person);
-    else if (action === 'filter') { state.filter = button.dataset.filter; root.querySelectorAll('.chip').forEach(chip => { const on = chip.dataset.filter === state.filter; chip.classList.toggle('active', on); chip.setAttribute('aria-pressed', String(on)); }); renderRoster(); }
+    else if (action === 'view') { if (state.pending && !state.pending.text.trim()) state.pending = null; state.view = button.dataset.view; state.showDetail = true; q('.studio-body')?.classList.add('show-detail'); syncViewTabs(); renderDetail(); q('.detail-pane')?.scrollTo?.(0, 0); if (state.view !== 'person') [...root.querySelectorAll('.ov-card')].find(item => item.dataset.entity === state.selected)?.scrollIntoView?.({ block: 'start' }); }
+    else if (action === 'open-person') { state.view = 'person'; syncViewTabs(); selectEntity(button.dataset.person); }
+    else if (action === 'filter') { state.filter = button.dataset.filter; root.querySelectorAll('.chip').forEach(chip => { const on = chip.dataset.filter === state.filter; chip.classList.toggle('active', on); chip.setAttribute('aria-pressed', String(on)); }); renderRoster(); if (state.view !== 'person') renderDetail(); }
     else if (action === 'back') { state.showDetail = false; q('.studio-body')?.classList.remove('show-detail'); }
-    else if (action === 'toggle-status') { const entity = selectedEntity(button.dataset.person); setEntityStatus(state.draft, entity, entityStatus(entity, state.draft) !== 'on'); modified(); renderDetail(); q('.detail-pane [data-action="toggle-status"]')?.focus({ preventScroll: true }); }
+    else if (action === 'toggle-status') { const entity = selectedEntity(button.dataset.person); setEntityStatus(state.draft, entity, entityStatus(entity, state.draft) !== 'on'); modified(); renderDetail(); [...root.querySelectorAll('.detail-pane [data-action="toggle-status"]')].find(item => item.dataset.person === entity.key)?.focus({ preventScroll: true }); }
     else if (action === 'add-task') startNew(current(), button.dataset.scope, button.dataset.subject || '通用');
-    else if (action === 'choose-subject') { state.pending = { entityKey: state.selected, choosingSubject: true, scope: 'attendance', subject: '', text: '', manual: true }; renderDetail(); q('[data-field="new-subject"]')?.focus(); }
+    else if (action === 'choose-subject') { state.pending = { entityKey: current()?.key || state.selected, choosingSubject: true, scope: 'attendance', subject: '', text: '', manual: true }; renderDetail(); q('[data-field="new-subject"]')?.focus(); }
     else if (action === 'cancel-subject' || action === 'cancel-new') { state.pending = null; renderDetail(); footer(); }
     else if (action === 'confirm-subject') {
       const subject = (q('[data-field="new-subject"]')?.value || '').trim().replace(/课$/, '');
@@ -634,7 +672,7 @@ export async function mountRules({ document, client, container, onClose }) {
   root.addEventListener('input', event => {
     if (state.busy) return;
     const target = event.target;
-    if (target.dataset.field === 'search') { state.query = target.value; renderRoster(); }
+    if (target.dataset.field === 'search') { state.query = target.value; renderRoster(); if (state.view !== 'person') renderDetail(); }
     else if (target.dataset.field === 'task-text') {
       target.rows = inputRows(target.value);
       const row = target.closest('[data-task]');

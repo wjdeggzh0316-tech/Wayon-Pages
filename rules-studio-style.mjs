@@ -143,6 +143,16 @@ export const STYLE = String.raw`
 .rules-studio .plan-note { margin: 4px 0 6px; padding: 8px 10px; border-radius: 8px; background: var(--orange-soft); color: #8a5a12; font-size: 12px; }
 .rules-studio .plan-day .empty-line { padding: 2px 0; margin: 0; }
 
+.rules-studio .view-seg { display: inline-flex; padding: 3px; gap: 2px; margin-left: 8px; background: #e9eaee; border-radius: 9px; }
+.rules-studio .view-seg button { border: 0; background: transparent; color: #6f7480; font-size: 13px; font-weight: 550; padding: 5px 12px; min-height: 30px; border-radius: 7px; white-space: nowrap; }
+.rules-studio .view-seg button.active { background: #fff; color: var(--ink); box-shadow: 0 1px 3px #1d1d1f1a; }
+.rules-studio .ov-card .rule-block { margin-bottom: 10px; }
+.rules-studio .ov-card.is-current .rule-block { border-color: #9cc3f2; box-shadow: 0 0 0 3px #eaf3ff; }
+.rules-studio .ov-name { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.rules-studio .ov-open { border: 0; background: transparent; padding: 0; font-size: 16px; font-weight: 650; color: var(--ink); text-align: left; overflow-wrap: anywhere; }
+.rules-studio .ov-open:hover { color: var(--blue); }
+.rules-studio .ov-hidden { margin: 4px 2px 12px; font-size: 12px; color: var(--muted); }
+
 /* ---- Switch */
 .rules-studio .status-switch { display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; padding: 4px 0; min-height: 34px; color: var(--blue); font-size: 12px; font-weight: 600; white-space: nowrap; flex: none; }
 .rules-studio .switch-track { display: inline-flex; align-items: center; width: 36px; height: 22px; padding: 2px; background: var(--blue); border-radius: 999px; flex: none; }
@@ -223,6 +233,9 @@ export const STYLE = String.raw`
   .wayon-rules-dialog .rules-studio.app { height: 100%; }
   .rules-studio .topbar { gap: 10px; padding-bottom: 10px; }
   .rules-studio .page-title { font-size: 16px; padding-left: 10px; }
+  .rules-studio .topbar { flex-wrap: wrap; }
+  .rules-studio .view-seg { order: 3; margin-left: 0; width: 100%; }
+  .rules-studio .view-seg button { flex: 1; min-height: 36px; padding: 5px 4px; }
   .rules-studio .studio-body { grid-template-columns: minmax(0, 1fr); }
   .rules-studio .studio-body.show-detail .roster-pane { display: none; }
   .rules-studio .studio-body:not(.show-detail) .detail-pane { display: none; }
