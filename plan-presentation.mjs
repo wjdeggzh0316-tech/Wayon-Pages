@@ -227,6 +227,18 @@ export async function admittedReminderRows(rows,policy) {
     globalThis.wayonChasingCopyFormatInstalled=true;
     const planDisplayName=${planDisplayName.toString()},format=${formatChasingReminder.toString()},admit=${admittedReminderRows.toString()},copyText=${copyChasingText.toString()};
     const bound=new WeakSet();let busy=false,again=false;
+    // The 待催 badge must count what this view will show: the same admission projection,
+    // the same stop / confirmed-done / copied state as the count line under the list.
+    globalThis.wayonChasingDue=async()=>{
+      if(typeof chasingRows!=='function'||typeof CHASING==='undefined'||typeof DATA==='undefined')return undefined;
+      if(DATA._chasing_status==='error'||DATA._chasing_unknown)return undefined;
+      if(chDay!==today||!Object.keys(ch||{}).length)chload();
+      const projection=await admit(chasingRows(CHASING||[]),DATA._reminder_admission);
+      return chasingRows(projection.rows).filter(row=>{
+        const ids=(row.uncompleted_details||[]).map(x=>String(x.id)),stopped=chasingStopIds(row),done=chasingDoneIds(row);
+        return ids.length&&!ids.every(id=>stopped.includes(id)||done.includes(id))&&!ch[row.name];
+      }).length;
+    };
     const bind=async()=>{
       if(busy){again=true;return;}
       if(typeof mode==='undefined'||mode!=='chasing'||typeof chasingRows!=='function'||typeof CHASING==='undefined')return;

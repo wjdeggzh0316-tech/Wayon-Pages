@@ -164,12 +164,37 @@
 
   // ---- still-to-do counts: every view already states "n / total" in #count ----------
   const left = {};
+  // The 今天 badges describe today. While another date is open, keep today's last counts.
+  const showsToday = () => !page.cur || page.cur === page.today;
   const readCount = m => {
+    if (['plan', 'done', 'quiz'].includes(m) && !showsToday()) return;
+    // 待催 hides follow-ups that are not yet due; its own count comes from that same filter.
+    if (m === 'chasing' && typeof globalThis.wayonChasingDue === 'function') { void countChasing(); return; }
     const text = $('#count')?.textContent || '', pair = text.match(/(\d+)\s*\/\s*(\d+)/), people = text.match(/^(\d+)\s*人待催/);
     if (pair) left[m] = Math.max(0, Number(pair[2]) - Number(pair[1]));
     else if (people) left[m] = Number(people[1]);
     else if (/未知/.test(text)) delete left[m];
+    const ended = endedOnly(m); if (ended !== undefined && left[m] !== undefined) left[m] = ended;
   };
+  // 抽背 / 完成 are only due once the lesson is over (as the 反馈 badge): a 17:00 lesson
+  // does not light the badge in the morning. A row with no clock time (自习) counts as before.
+  const bjNow = () => new Date().toLocaleTimeString('en-GB', {timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit'});
+  const lessonEnded = time => {
+    const ends = [...String(time || '').matchAll(/\d{1,2}:\d{2}\s*[-–~～]\s*(\d{1,2}:\d{2})/g)].map(x => x[1].padStart(5, '0')).sort();
+    return !ends.length || ends.at(-1) <= bjNow();
+  };
+  function endedOnly(m) {
+    if (!['quiz', 'done'].includes(m) || !showsToday()) return undefined;
+    try {
+      const rows = page.data[page.today] || [];
+      if (m === 'quiz') {
+        if (qzDay !== page.today) return undefined;
+        return quizRows(rows).filter(r => lessonEnded(r[1]) && !(qget(qk(r)).pre && qget(qk(r)).post)).length;
+      }
+      const own = typeof study !== 'undefined' ? study.cards(page.today).filter(c => lessonEnded(c.time) && !study.copied(page.today, c.id, 'done')).length : 0;
+      return rows.filter(r => lessonEnded(r[1]) && !get(r[0]).c).length + own;
+    } catch { return undefined; }
+  }
   const airconPending = () => {
     const day = page.tomorrow, api = globalThis.wayonAircon;
     if (!api?.buildRequest || !day) return null;
@@ -178,6 +203,16 @@
     let saved = {}; try { saved = JSON.parse(localStorage.getItem('wayon-aircon-' + day) || '{}') || {}; } catch {}
     return {request, copied: saved[request.id]?.signature === request.text};
   };
+  let chasingAsk = 0;
+  async function countChasing() {
+    const ask = ++chasingAsk;
+    try {
+      const n = await globalThis.wayonChasingDue();
+      if (ask !== chasingAsk) return;          // a newer count is on its way
+      if (n === undefined) delete left.chasing; else left.chasing = n;
+      decorateNav();
+    } catch (e) { console.warn('ux chasing count:', e); }
+  }
   let probing = false, probed = 0;
   // Ask each view for its own count once, in one synchronous pass the browser never paints.
   function probe() {
@@ -379,6 +414,16 @@
     // Local marks may have changed elsewhere (another tab, a cloud sync): recount when the page is looked at again.
     const again = () => { if (document.visibilityState === 'visible' && Date.now() - probed > 60000) { probe(); apply(); } };
     document.addEventListener('visibilitychange', again); window.addEventListener('focus', again);
+    // A lesson ending turns into something due without a redraw; re-check the clock once a minute.
+    setInterval(() => {
+      if (document.hidden || probing) return;
+      let changed = false;
+      for (const m of ['quiz', 'done']) {
+        const n = endedOnly(m);
+        if (n !== undefined && left[m] !== undefined && left[m] !== n) { left[m] = n; changed = true; }
+      }
+      if (changed) decorateNav();
+    }, 60000);
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once: true}); else start();
 })();
