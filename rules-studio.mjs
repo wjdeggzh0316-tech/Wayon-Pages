@@ -1,8 +1,8 @@
-import { clone, clean, todayShanghai, inspectTask, taskLines, manualTask, setManual, validateDraft } from './rules-model.mjs?v=20261111-studio2';
-import { canonical, saveCatalog } from './rules-store.mjs?v=20261111-studio2';
-import { buildRuleEntities, entityStatus, setEntityStatus, ruleEntityDisplayName } from './rules-entities.mjs?v=20261111-studio2';
-import { STYLE } from './rules-studio-style.mjs?v=20261111-studio2';
-import { parseTaskUnits, replaceTaskUnit, removeTaskUnit } from './rule-task-text.mjs?v=20261111-studio2';
+import { clone, clean, todayShanghai, inspectTask, taskLines, manualTask, setManual, validateDraft, publicData } from './rules-model.mjs?v=20261111-studio3';
+import { canonical, saveCatalog } from './rules-store.mjs?v=20261111-studio3';
+import { buildRuleEntities, entityStatus, setEntityStatus, ruleEntityDisplayName } from './rules-entities.mjs?v=20261111-studio3';
+import { STYLE } from './rules-studio-style.mjs?v=20261111-studio3';
+import { parseTaskUnits, replaceTaskUnit, removeTaskUnit } from './rule-task-text.mjs?v=20261111-studio3';
 
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
 const same = (a, b) => canonical(a) === canonical(b);
@@ -116,6 +116,44 @@ export function describeChanges(before = {}, after = {}) {
   return [...groups].map(([name, lines]) => ({ name, lines }));
 }
 
+// ---- Published plan: read-only view of what the Python compiler already produced.
+const planKey = value => ruleEntityDisplayName(String(value ?? '')).replace(/[【】「」\[\]\s]/g, '').toLocaleLowerCase();
+export function addDays(day, count) {
+  const date = new Date(day + 'T12:00:00Z'); date.setUTCDate(date.getUTCDate() + count);
+  return date.toISOString().slice(0, 10);
+}
+export const ASSIGN_LABELS = { sent: '已布置', waiting: '等上一批完成', not_sent: '还没发', decision: '需决定', check: '需核对' };
+function planNames(entity) {
+  const names = new Set();
+  for (const value of [entity.name, ...(entity.rawLabels || [])]) {
+    names.add(planKey(value));
+    for (const part of String(ruleEntityDisplayName(value)).split(/\s*(?:[&＆/／、]|\band\b)\s*/i)) if (part.trim()) names.add(planKey(part));
+  }
+  names.delete('');
+  return names;
+}
+function labelMatches(label, names) {
+  const key = planKey(label);
+  if (names.has(key)) return true;
+  // "George吴洋亿SAT一对一" belongs to "George". Only a Latin name may carry such a tail, and the
+  // tail must not continue the name (Leonard is not Leo); Chinese names must match exactly (李培 is not 李培生).
+  return [...names].some(name => /^[a-z][a-z0-9]+$/.test(name) && key.startsWith(name) && !/^[a-z0-9]/.test(key.slice(name.length)));
+}
+export function planFor(data, entity, day) {
+  const names = planNames(entity);
+  const known = Array.isArray(data?.[day]);
+  const rows = (known ? data[day] : []).filter(row => Array.isArray(row) && labelMatches(row[0], names)).map(row => ({
+    label: String(row[0] ?? ''),
+    time: String(row[1] ?? ''),
+    tasks: (Array.isArray(row[3]) ? row[3] : []).map(task => Array.isArray(task) ? String(task[0] ?? '') : String(task ?? '')).filter(Boolean),
+  }));
+  const states = data?._assign_state?.[day];
+  const assign = states && typeof states === 'object'
+    ? Object.entries(states).filter(([name]) => labelMatches(name, names)).flatMap(([name, lines]) => (Array.isArray(lines) ? lines : []).map(([text, state]) => ({ name, text: String(text), state: String(state) })))
+    : null;
+  return { known, rows, assign };
+}
+
 export async function mountRules({ document, client, container, onClose }) {
   if (!document.getElementById('wayon-rules-studio-style')) {
     const style = document.createElement('style'); style.id = 'wayon-rules-studio-style'; style.textContent = STYLE;
@@ -124,7 +162,7 @@ export async function mountRules({ document, client, container, onClose }) {
   const host = container || document.getElementById('rules') || document.body;
   const root = document.createElement('div'); root.className = 'rules-studio app'; host.replaceChildren(root);
   const q = selector => root.querySelector(selector);
-  const state = { owner: null, base: null, draft: null, selected: null, query: '', filter: 'all', busy: false, message: '正在读取规则…', error: false, editor: null, known: [], pending: null, settings: new Set(), rowErrors: new Map(), showDetail: false };
+  const state = { owner: null, base: null, draft: null, selected: null, query: '', filter: 'all', busy: false, message: '正在读取规则…', error: false, editor: null, known: [], pending: null, settings: new Set(), rowErrors: new Map(), showDetail: false, plan: { status: 'idle', data: null, modified: null, rebuilding: false } };
   let dialog, toastTimer, pointerActive = false, deferred = null;
   const dirty = () => !!state.base && !!state.draft && !same(state.base.payload, state.draft);
   const entities = () => buildRuleEntities(state.draft || {});
@@ -265,6 +303,41 @@ export async function mountRules({ document, client, container, onClose }) {
     const list = relatedOverrides(entity);
     return `<section class="rule-block specials" data-scope="specials"><header class="block-head"><div><h3>特殊安排${list.length ? '（' + list.length + '）' : ''}</h3><p class="block-sub">某段时间暂停或改交老师处理</p></div></header>${list.map(({ rule, index }) => `<div class="special-note"><span>${escape((rule.subject || (rule.kind === 'vocab' ? '单词' : '自动任务')) + ' · ' + (rule.action === 'pause' ? '暂停' : '交老师处理') + ' · ' + (rule.start || '立即') + ' 至 ' + (rule.end || '另行恢复'))}${rule.reason ? '<br>' + escape(rule.reason) : ''}</span><button type="button" class="icon-btn" data-action="edit-override" data-index="${index}" aria-label="编辑特殊安排">${EDIT}</button></div>`).join('')}<div class="block-actions"><button type="button" class="add-btn" data-action="new-override" data-person="${escape(entity.key)}">＋ 添加特殊安排</button></div></section>`;
   }
+  const dayLabel = day => { const date = new Date(day + 'T12:00:00Z'); return (date.getUTCMonth() + 1) + '月' + date.getUTCDate() + '日 ' + ['周日', '周一', '周二', '周三', '周四', '周五', '周六'][date.getUTCDay()]; };
+  const timeLabel = value => { const date = new Date(value); return Number.isFinite(date.valueOf()) ? date.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }) : ''; };
+  function planDay(entity, day, title) {
+    const { known, rows, assign } = planFor(state.plan.data, entity, day);
+    const visits = rows.map(row => `<div class="plan-visit"><div class="plan-when">${escape(row.time === '自习' ? '来校自习' : row.time + ' 有课')}${planKey(row.label) !== planKey(entity.name) ? ` <span class="plan-source">（${escape(ruleEntityDisplayName(row.label))}）</span>` : ''}</div><ul>${row.tasks.map(task => '<li>' + escape(task) + '</li>').join('') || '<li class="muted">没有列出任务</li>'}</ul></div>`).join('');
+    const system = assign === null ? '' : assign.length ? `<div class="plan-visit"><div class="plan-when">系统作业</div><ul>${assign.map(item => `<li><span>${escape(item.text)}</span><span class="assign-state state-${escape(item.state)}">${escape(ASSIGN_LABELS[item.state] || item.state)}</span></li>`).join('')}</ul></div>` : '';
+    const empty = !known ? '这天的计划还没生成。' : !rows.length && !system ? (assign === null ? '这天不来校。线上作业当天早班才编排，这里暂时看不到。' : '这天没有安排。') : '';
+    return `<div class="plan-day"><h4>${escape(title)} · ${escape(dayLabel(day))}</h4>${visits}${system}${empty ? `<p class="empty-line">${escape(empty)}</p>` : ''}</div>`;
+  }
+  function planBlock(entity) {
+    const plan = state.plan, today = todayShanghai();
+    let body;
+    if (plan.status === 'loading' && !plan.data) body = '<p class="empty-line">正在读取工作台计划…</p>';
+    else if (plan.status === 'error' && !plan.data) body = '<p class="empty-line">工作台计划没读到。<button type="button" class="link-btn" data-action="reload-plan">重试</button></p>';
+    else if (!plan.data) body = '';
+    else body = `<div class="plan-days">${planDay(entity, today, '今天')}${planDay(entity, addDays(today, 1), '明天')}</div>`;
+    const notes = [];
+    if (plan.rebuilding) notes.push('<p class="plan-note">规则已保存，正在按新规则重编；完成后这里自动更新。</p>');
+    else if (dirty()) notes.push('<p class="plan-note">下面是修改前的计划。保存规则后会重编今天和明天的计划。</p>');
+    const stamp = plan.modified ? '工作台数据 ' + timeLabel(plan.modified) + ' 更新' : '';
+    return `<section class="rule-block plan-block" data-scope="plan"><header class="block-head"><div><h3>今天和明天的计划</h3><p class="block-sub">按规则排出的结果，计划不等于已布置${stamp ? ' · ' + escape(stamp) : ''}</p></div><button type="button" class="link-btn" data-action="reload-plan" ${plan.status === 'loading' ? 'disabled' : ''}>${plan.status === 'loading' ? '读取中…' : '重新读取'}</button></header>${notes.join('')}${body}</section>`;
+  }
+  async function loadPlan() {
+    if (state.plan.status === 'loading') return;
+    state.plan.status = 'loading'; renderDetail();
+    try {
+      const response = await fetch('./workspace-source.html?rules-plan=' + Date.now(), { cache: 'no-store', credentials: 'omit' });
+      if (!response.ok) throw Error('PLAN_UNAVAILABLE');
+      const text = await response.text();
+      state.plan.data = publicData(text);
+      state.plan.modified = response.headers.get('last-modified') || null;
+      state.plan.status = 'ready';
+    } catch { state.plan.status = 'error'; }
+    renderDetail();
+  }
   function focusKey(element) {
     if (!element || !root.contains(element) || !element.closest('.detail-pane')) return null;
     const row = element.closest('[data-task]');
@@ -285,7 +358,7 @@ export async function mountRules({ document, client, container, onClose }) {
     const scroll = pane.scrollTop, focus = focusKey(document.activeElement);
     const entity = state.selected && selectedEntity(state.selected);
     if (!entity) { pane.innerHTML = '<div class="empty-state">在左侧选择一个学员或班级</div>'; return; }
-    pane.innerHTML = `<div class="detail-head"><button type="button" class="back-btn" data-action="back">‹ 名单</button><h2 class="detail-title">${escape(entity.name)}<span class="system-pill">${escape(entity.systemLabel)}</span></h2></div>${attendanceBlock(entity)}${checkinBlock(entity)}${specialsBlock(entity)}`;
+    pane.innerHTML = `<div class="detail-head"><button type="button" class="back-btn" data-action="back">‹ 名单</button><h2 class="detail-title">${escape(entity.name)}<span class="system-pill">${escape(entity.systemLabel)}</span></h2></div>${attendanceBlock(entity)}${checkinBlock(entity)}${planBlock(entity)}${specialsBlock(entity)}`;
     pane.scrollTop = scroll;
     restoreFocus(focus);
     const fresh = pane.querySelector('[data-task="new"] textarea');
@@ -466,7 +539,7 @@ export async function mountRules({ document, client, container, onClose }) {
     try { const result = await saveCatalog(client, state.owner, state.base, submitted); state.base = clone(result); state.draft = clone(result.payload); state.known = entities(); state.pending = null; const refreshing = globalThis.wayonRefreshAPI?.enabled === true;
       setMessage(refreshing ? '规则已保存，正在重编今天和明天的计划。保存不等于已布置：今天已发的作业不变；今天需要补发的，用「指定学员补布置」。'
         : '规则已保存。保存不等于已布置：今天的计划要在工作台点「刷新」后才更新；今天需要补发的，用「指定学员补布置」。');
-      try { globalThis.dispatchEvent?.(new Event('wayon-rules-saved')); } catch {} setBusy(false); renderAll(); toast('规则已保存'); }
+      state.plan.rebuilding = refreshing; try { globalThis.dispatchEvent?.(new Event('wayon-rules-saved')); } catch {} setBusy(false); renderAll(); toast('规则已保存'); }
     catch (error) { setMessage(error.message === 'CONFLICT' ? '版本冲突，修改已保留。请核对最新规则后再保存。' : error.message === 'READBACK_FAILED' ? '保存结果尚未核实，修改已保留。请重新读取核对。' : '保存未成功，修改已保留，请稍后重试。', true); }
     finally { setBusy(false); }
   }
@@ -528,6 +601,7 @@ export async function mountRules({ document, client, container, onClose }) {
     else if (action === 'edit-override') editOverride(Number(button.dataset.index));
     else if (action === 'new-override') editOverride(undefined, button.dataset.person ? (selectedEntity(button.dataset.person)?.rawLabels[0] || '') : '');
     else if (action === 'delete-override' && state.editor?.type === 'override') { state.draft.overrides.splice(state.editor.index, 1); closeDrawer(); renderDetail(); modified(); }
+    else if (action === 'reload-plan') void loadPlan();
     else if (action === 'close') onClose?.();
   });
   root.addEventListener('focusout', event => {
@@ -588,6 +662,10 @@ export async function mountRules({ document, client, container, onClose }) {
     }
   });
   document.defaultView?.addEventListener('beforeunload', event => { if (dirty()) { event.preventDefault(); event.returnValue = ''; } });
+  // The workbench announces a finished refresh; re-read the plan it just published.
+  const onRefreshed = () => { if (!root.isConnected) { document.defaultView?.removeEventListener('wayon-refresh-updated', onRefreshed); return; } state.plan.rebuilding = false; void loadPlan(); };
+  document.defaultView?.addEventListener('wayon-refresh-updated', onRefreshed);
   render(); await load();
+  if (state.draft) void loadPlan();
   return { getDraft: () => clone(state.draft), getBase: () => clone(state.base), reload: () => load(), refreshIfClean };
 }

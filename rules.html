@@ -98,7 +98,7 @@
       showLoading();
       try {
         const [{ mountRules }, sdk, response] = await Promise.all([
-          within(import('./rules-editor.mjs?v=20261111-studio2'), 15000),
+          within(import('./rules-editor.mjs?v=20261111-studio3'), 15000),
           loadSdk(),
           within(fetch('./checks-public-config.json', { cache: 'no-store' }), 15000)
         ]);

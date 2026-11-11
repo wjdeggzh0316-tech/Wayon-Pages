@@ -125,6 +125,24 @@ export const STYLE = String.raw`
 .rules-studio .special-note { display: flex; align-items: center; gap: 8px; margin: 6px 0; padding: 10px 12px; border: 1px solid #f0e2cb; border-radius: 9px; background: #fffbf3; color: #8d6c33; font-size: 12px; line-height: 1.7; }
 .rules-studio .special-note > span { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 
+.rules-studio .plan-block .block-head .link-btn { flex: none; }
+.rules-studio .plan-days { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 6px 0 4px; }
+.rules-studio .plan-day { background: #f7f8fa; border-radius: 10px; padding: 10px 12px; min-width: 0; }
+.rules-studio .plan-day h4 { margin: 0 0 6px; font-size: 13px; font-weight: 650; }
+.rules-studio .plan-visit + .plan-visit { margin-top: 8px; }
+.rules-studio .plan-when { font-size: 12px; font-weight: 600; color: var(--secondary); }
+.rules-studio .plan-source { font-weight: 400; color: var(--muted); }
+.rules-studio .plan-visit ul { margin: 3px 0 0; padding-left: 18px; font-size: 13px; line-height: 1.65; }
+.rules-studio .plan-visit li { overflow-wrap: anywhere; white-space: pre-line; }
+.rules-studio .plan-visit li .assign-state { margin-left: 8px; }
+.rules-studio .plan-visit .muted { color: var(--muted); list-style: none; margin-left: -18px; }
+.rules-studio .assign-state { font-size: 11px; font-weight: 600; border-radius: 5px; padding: 1px 6px; white-space: nowrap; color: #4c5a71; background: #e9edf3; }
+.rules-studio .assign-state.state-sent { color: var(--green); background: var(--green-soft); }
+.rules-studio .assign-state.state-waiting { color: var(--orange); background: var(--orange-soft); }
+.rules-studio .assign-state.state-decision, .rules-studio .assign-state.state-check { color: var(--red); background: var(--red-soft); }
+.rules-studio .plan-note { margin: 4px 0 6px; padding: 8px 10px; border-radius: 8px; background: var(--orange-soft); color: #8a5a12; font-size: 12px; }
+.rules-studio .plan-day .empty-line { padding: 2px 0; margin: 0; }
+
 /* ---- Switch */
 .rules-studio .status-switch { display: inline-flex; align-items: center; gap: 8px; border: 0; background: transparent; padding: 4px 0; min-height: 34px; color: var(--blue); font-size: 12px; font-weight: 600; white-space: nowrap; flex: none; }
 .rules-studio .switch-track { display: inline-flex; align-items: center; width: 36px; height: 22px; padding: 2px; background: var(--blue); border-radius: 999px; flex: none; }
@@ -220,6 +238,7 @@ export const STYLE = String.raw`
   .rules-studio .icon-btn { width: 40px; height: 40px; padding: 10px; }
   .rules-studio .handler-select { min-height: 36px; }
   .rules-studio .row-settings { grid-template-columns: minmax(0, 1fr); }
+  .rules-studio .plan-days { grid-template-columns: minmax(0, 1fr); }
   .rules-studio .footer { flex-wrap: wrap; gap: 8px; padding: 10px 0 max(10px, env(safe-area-inset-bottom)); }
   .rules-studio .footer-actions { width: 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .rules-studio .footer-actions .button { padding: 8px 4px; }
