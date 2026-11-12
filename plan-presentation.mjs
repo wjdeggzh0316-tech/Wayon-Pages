@@ -247,11 +247,14 @@ export async function admittedReminderRows(rows,policy) {
         const root=document.getElementById('list'),anchor=root?.firstChild;if(!root)return;
         const raw=chasingRows(CHASING||[]),projection=await admit(raw,typeof DATA==='undefined'?null:DATA._reminder_admission);
         if(mode!=='chasing'||root.firstChild!==anchor){again=true;return;}
-        if(projection.deferred&&!root.firstChild?.wayonAdmissionApplied){
+        // Mark every node of an admitted render. Another display layer may reorder the cards (ux.js moves
+        // students whose exam has passed to the bottom); judging by the first child alone made the two
+        // layers redraw each other without end.
+        if(projection.deferred&&![...root.childNodes].some(node=>node.wayonAdmissionApplied)){
           const source=CHASING;
           try{CHASING=projection.rows;root.replaceChildren();renderChasing();}finally{CHASING=source;}
           if(!projection.rows.length)root.textContent='当前没有已到催交阶段的任务；新任务待下班核对。';
-          if(root.firstChild)root.firstChild.wayonAdmissionApplied=true;
+          for(const node of root.childNodes)node.wayonAdmissionApplied=true;
         }
         for(const [index,row] of projection.rows.entries()){
           const button=document.getElementById('chcopy-'+index);
