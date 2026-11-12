@@ -229,12 +229,17 @@ export async function admittedReminderRows(rows,policy) {
     const bound=new WeakSet();let busy=false,again=false;
     // The 待催 badge must count what this view will show: the same admission projection,
     // the same stop / confirmed-done / copied state as the count line under the list.
+    // Read-only: has the cloud copy of this day been read? Display layers ask this instead of holding the sync object.
+    globalThis.wayonCloudReady=day=>{try{return typeof checkCloud!=='undefined'&&checkCloud?.ready?.(day)===true;}catch(e){return false;}};
     globalThis.wayonChasingDue=async()=>{
       if(typeof chasingRows!=='function'||typeof CHASING==='undefined'||typeof DATA==='undefined')return undefined;
       if(DATA._chasing_status==='error'||DATA._chasing_unknown)return undefined;
       if(chDay!==today||!Object.keys(ch||{}).length)chload();
-      const projection=await admit(chasingRows(CHASING||[]),DATA._reminder_admission);
-      return chasingRows(projection.rows).filter(row=>{
+      const projection=await admit(chasingRows(CHASING||[]),DATA._reminder_admission),rows=chasingRows(projection.rows);
+      // Same rule as the count line under the list: new work owed or three days since the last reminder;
+      // students whose exam is over are listed but not counted.
+      if(typeof chasingDue==='function'){const due=chasingDue(rows);return Math.max(0,due.open-due.chased);}
+      return rows.filter(row=>{
         const ids=(row.uncompleted_details||[]).map(x=>String(x.id)),stopped=chasingStopIds(row),done=chasingDoneIds(row);
         return ids.length&&!ids.every(id=>stopped.includes(id)||done.includes(id))&&!ch[row.name];
       }).length;

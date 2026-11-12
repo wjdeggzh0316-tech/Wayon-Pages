@@ -221,8 +221,18 @@
     if (probing || !page.mode || page.mode === 'classroom' || document.body.dataset.airconOpen || document.body.dataset.memoOpen
         || $('dialog[open]') || (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName))) return;
     const saved = page.mode, y = scrollY; probing = true;
-    try { for (const m of ['plan', 'done', 'quiz', 'chasing', 'notice']) { page.mode = m; page.render(); readCount(m); } }
-    finally { page.mode = saved; page.render(); probing = false; scrollTo(0, y); probed = Date.now(); }
+    // Counting redraws the list; put back what the user had opened afterwards.
+    const shownDetail = $$('#list .ux-assign-detail').map((el, i) => el.hidden ? -1 : i).filter(i => i >= 0);
+    // 待催 is counted by its own rule without drawing the view.
+    const views = ['plan', 'done', 'quiz', ...(typeof globalThis.wayonChasingDue === 'function' ? [] : ['chasing']), 'notice'];
+    try { for (const m of views) { page.mode = m; page.render(); readCount(m); } if (views.length < 5) readCount('chasing'); }
+    finally {
+      page.mode = saved; page.render(); probing = false; scrollTo(0, y); probed = Date.now();
+      try {
+        decorateCards(); decorateNotice(); decorateChasing(); reopen();
+        $$('#list .ux-assign-detail').forEach((el, i) => { if (shownDetail.includes(i)) el.hidden = false; });
+      } catch (e) { console.warn('ux restore:', e); }
+    }
   }
 
   function badge(button, n) {
@@ -239,7 +249,22 @@
     if (button.title !== title) button.title = title;
     if (button.getAttribute('aria-label') !== title) button.setAttribute('aria-label', title);
   }
+  // Counts made before the cloud copy arrives are counts of this device's stale state: they flashed
+  // wrong numbers for a second or two. Show none until the cloud copy is in, or it is clear none is coming.
+  const bornAt = Date.now();
+  // Today's marks and tomorrow's notices live in two cloud rows; both must be in before the numbers are right.
+  // Read-only question put to the sync layer through plan-presentation; this layer never touches it.
+  const ready = day => { try { return globalThis.wayonCloudReady?.(day) === true; } catch { return false; } };
+  const noticeDay = () => { try { return curN; } catch { return ''; } };
+  const cloudReady = () => ready(page.today);
+  const cloudComplete = () => cloudReady() && (!noticeDay() || noticeDay() === page.today || ready(noticeDay()));
+  // The sync indicator already says when no cloud copy is coming (not signed in, not configured, failed).
+  const noCloud = () => { const s = $('#sync'); return s?.dataset.connection === 'error' || /请登录|权限|尚未配置|失败|不可用/.test(s?.title || ''); };
+  let cloudCounted = false, readyAt = 0;
+  const settled = () => cloudCounted || (cloudReady() ? readyAt > 0 && Date.now() - readyAt > 3000
+    : noCloud() || Date.now() - bornAt > 6000);
   function decorateNav() {
+    const hold = !settled();
     const air = airconPending();
     const noticeLeft = left.notice === undefined && !air ? undefined : (left.notice || 0) + (air && !air.copied ? 1 : 0);
     const todayLeft = ['plan', 'done', 'quiz', 'chasing'].some(m => left[m] !== undefined)
@@ -247,11 +272,11 @@
     for (const [id, text] of Object.entries(NAV)) {
       const b = document.getElementById(id); if (!b) continue;
       const n = id === 'nav-notice' ? noticeLeft : id === 'nav-today' ? todayLeft : undefined;
-      label(b, text, n); if (n !== undefined) badge(b, n);
+      label(b, text, hold ? undefined : n); if (hold) badge(b, undefined); else if (n !== undefined) badge(b, n);
     }
     for (const [id, text] of Object.entries(TAB)) {
       const b = document.getElementById(id); if (!b) continue;
-      const n = left[id.slice(4)];
+      const n = hold ? undefined : left[id.slice(4)];
       label(b, text, n); badge(b, n);
     }
   }
@@ -437,20 +462,40 @@
     if (!globalThis.confirm('删除「' + String(text).slice(0, 40) + '」？\n删除后今天的清单里不再显示这一项。')) { event.preventDefault(); event.stopImmediatePropagation(); }
   }, true);
 
+  // ---- a group the user opened stays open across redraws --------------------------------
+  // The page rebuilds its list on every change (a mark, a cloud update, a recount), which closed any
+  // <details> the user had opened. Remember those by view, day, card and heading; re-open after a redraw.
+  let lastUser = 0;
+  const userOpened = new Set();
+  const cardName = el => { const card = el.closest('.item'); return card ? ($('.head .name', card)?.textContent || '') : ''; };
+  const detailKey = el => [page.mode, page.cur, el.className, cardName(el),
+    ($(':scope > summary', el)?.textContent || '').replace(/[0-9]+/g, '').trim().slice(0, 24)].join('|').replace(/^([^|]*\|[^|]*\|[^|]*\|)[0-9]+\.\s*/, '$1');
+  document.addEventListener('toggle', event => {
+    const el = event.target;
+    if (!(el instanceof HTMLDetailsElement) || !el.closest('#list') || Date.now() - lastUser > 800) return;   // only the user's own click
+    if (el.open) userOpened.add(detailKey(el)); else userOpened.delete(detailKey(el));
+  }, true);
+  function reopen() {
+    if (!userOpened.size) return;
+    for (const el of $$('#list details')) if (!el.open && userOpened.has(detailKey(el))) el.open = true;
+  }
+
   // ---- keep everything applied as the page re-renders --------------------------------
   let queued = false;
   function apply() {
     queued = false;
     if (probing) return;
+    // The cloud copy has just been applied: count every view once on it, then let the numbers show.
+    if (!cloudCounted && cloudReady()) { readyAt ||= Date.now(); if (cloudComplete()) { probe(); cloudCounted = probed > 0 && Date.now() - probed < 50; } }
     if (page.mode && !document.body.dataset.airconOpen && !document.body.dataset.memoOpen) readCount(page.mode);
-    try { decorateNav(); decorateCards(); decorateNotice(); decorateChasing(); brandMark(); } catch (e) { console.warn('ux:', e); }
+    try { decorateNav(); decorateCards(); decorateNotice(); decorateChasing(); reopen(); brandMark(); } catch (e) { console.warn('ux:', e); }
   }
   const schedule = () => { if (!queued && !probing) { queued = true; requestAnimationFrame(apply); } };
   function start() {
     // A count read for a view you are not on goes stale when marks change underneath it — the cloud copy arriving
     // after the first count, or another device. When the list redraws on its own (not right after a tap or a key),
     // count every view again once it has settled.
-    let lastUser = 0, recount = 0;
+    let recount = 0;
     ['pointerdown', 'keydown', 'input'].forEach(t => document.addEventListener(t, () => { lastUser = Date.now(); }, true));
     const inList = n => (n.nodeType === 1 ? n : n.parentElement)?.closest?.('#list');
     new MutationObserver(records => {
@@ -461,6 +506,7 @@
     }).observe(document.body, {childList: true, subtree: true, characterData: true});
     apply();
     setTimeout(() => { probe(); apply(); }, 1200);
+    setTimeout(apply, 6100);   // no cloud copy came: show this device's counts
     // Local marks may have changed elsewhere (another tab, a cloud sync): recount when the page is looked at again.
     const again = () => { if (document.visibilityState === 'visible' && Date.now() - probed > 60000) { probe(); apply(); } };
     document.addEventListener('visibilitychange', again); window.addEventListener('focus', again);
