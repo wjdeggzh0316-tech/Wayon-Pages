@@ -65,8 +65,20 @@ export function ownTaskText(value) {
   return lines.map((line,index)=>index?line.replace(own,'$1'):line).join('\n');
 }
 export function taskMatchKey(value) {
-  const text=String(value||'').trim();
-  return text.includes('口语') ? text.replace(/(?<![A-Za-z0-9])p(?:art)?\s*([123])(?![A-Za-z0-9])/gi,(_,part)=>'p'+part) : text;
+  let text = String(value || '').trim();
+  const original = text;
+  text = text.replace(/^(?:每天|每日|托福|雅思)+/, '').trim();
+  text = text.replace(/(?:任务)+$/, '').trim();
+  // Prefix/suffix-only tasks must not all collapse into one empty key.
+  if (!text) return original;
+  if (text.includes('口语')) {
+    text = text.replace(/(?<![A-Za-z0-9])p(?:art)?\s*([123])(?![A-Za-z0-9])/gi, (_, part) => 'p' + part);
+  }
+  const m = text.match(/^([0-9]+|[一二两三四五六七八九十百]+)(套|篇|个)(.+)$/);
+  if (m) {
+    text = m[3] + m[1] + m[2];
+  }
+  return text;
 }
 // Select original indices only. Never rewrite saved marks or task definitions.
 export function generatedTaskIndices(tasks,state={}) {

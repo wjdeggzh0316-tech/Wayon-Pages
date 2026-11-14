@@ -1498,6 +1498,10 @@
       if (g.querySelector(':scope > .vq')) return;
       const head = g.querySelector('.qhead'), rows = [...g.querySelectorAll(':scope > .qrow')];
       if (!head || !rows.length) return;   // a finished, folded student stays folded
+      head.onclick = null;
+      head.removeAttribute('role');
+      head.removeAttribute('tabindex');
+      g.classList.remove('qfold');
       const student = plainName(head.childNodes[0]?.textContent || head.textContent).split(/\s/)[0];
       if (!student) return;
       g.classList.add('vq-card');
@@ -1506,12 +1510,46 @@
       title.childNodes.forEach(node => { if (node.nodeType === 3) node.textContent = plainName(globalThis.wayonDisplayName?.(node.textContent) || node.textContent); });
       head.append(title);
       const meta = make('div', 'vq-meta');
+
+      const updateCardNote = () => {
+        const allChecks = [...meta.querySelectorAll('.vq-check')];
+        const doneN = allChecks.filter(b => b.classList.contains('on')).length;
+        note.textContent = '· ' + (doneN === 0 ? '未抽背' : doneN === allChecks.length ? '已抽背' : allChecks.map(b => b.textContent.replace(/^✓\s*/, '')).join(' · '));
+      };
+      const updateQuizProgress = () => {
+        try {
+          if (typeof quizRows === 'function' && typeof qget === 'function' && typeof qk === 'function') {
+            const qr = quizRows(window.DATA?.[curDay()] || []);
+            const n = qr.filter(r => qget(qk(r)).pre && qget(qk(r)).post).length;
+            const countEl = document.getElementById('count');
+            if (countEl) countEl.textContent = n + ' / ' + qr.length + ' 课前课后都抽了';
+            const fillEl = document.getElementById('fill');
+            if (fillEl) fillEl.style.width = (qr.length ? (n / qr.length * 100) : 0) + '%';
+          }
+        } catch {}
+      };
+
       rows.forEach(r => {
         const line = make('span', 'vq-session');
         line.append(make('span', '', [r.querySelector('.qcourse')?.textContent, r.querySelector('.qrange')?.textContent].filter(Boolean).join(' · ')));
         r.querySelectorAll('button.qchk').forEach(b => {
           const done = b.getAttribute('aria-pressed') === 'true', label = /pre/.test(b.id) ? '课前' : '课后';
-          line.append(btn('vq-check' + (done ? ' on' : ''), (done ? '✓ ' : '') + label + (done ? '已抽' : '未抽'), () => b.click(), label + (done ? '已抽背，点一下取消' : '未抽背，点一下标记')));
+          const chkBtn = btn('vq-check' + (done ? ' on' : ''), (done ? '✓ ' : '') + label + (done ? '已抽' : '未抽'), e => {
+            if (e) { e.preventDefault(); e.stopPropagation(); }
+            globalThis._wayonSuppressRender = true;
+            try {
+              b.click();
+            } finally {
+              globalThis._wayonSuppressRender = false;
+            }
+            const isDone = b.getAttribute('aria-pressed') === 'true';
+            chkBtn.className = 'vq-check' + (isDone ? ' on' : '');
+            chkBtn.textContent = (isDone ? '✓ ' : '') + label + (isDone ? '已抽' : '未抽');
+            chkBtn.title = label + (isDone ? '已抽背，点一下取消' : '未抽背，点一下标记');
+            updateCardNote();
+            updateQuizProgress();
+          }, label + (done ? '已抽背，点一下取消' : '未抽背，点一下标记'));
+          line.append(chkBtn);
         });
         meta.append(line);
       });
@@ -1528,7 +1566,7 @@
       void fillLists(vq, student);
     });
   }
-  async function fillLists(vq, student) {
+  async function fillLists(vq, student, cachedLists) {
     if (!vq.childElementCount) vq.append(make('div', 'vq-empty', '读取单词清单…'));
     await ready();
     if (mode !== 'cloud' && mode !== 'preview') { vq.textContent = ''; vq.append(make('div', 'vq-empty', '登录工作台后可选词和抽背')); return; }
@@ -1536,17 +1574,21 @@
     const localKey = activeOwner ? draftKey(activeOwner, day, student, vqTab.get(student) || '课前') : null;
     let localDraft = null, previousResult = null;
     try { if (localKey) { localDraft = await localRecord(localKey); previousResult = await localRecord('result:' + localKey); } } catch (e) { flash(e.message, true); }
-    let lists, learners;
-    try { await lessonIndex(); lists = await getLists(day, student); learners = learnersFor(student, allLearners()); }
-    catch (e) {
-      if (!localDraft && !previousResult) { vq.textContent = ''; vq.append(make('div', 'vq-empty', '读取失败：' + (e.message || e))); return; }
-      lists = {课前: [], 课后: [], 补充: []}; learners = [];
-      if (localDraft?.value?.state === 'draft') lists[localDraft.value.phase] = localDraft.value.payload.items;
+    let lists = cachedLists, learners;
+    if (!lists) {
+      try { await lessonIndex(); lists = await getLists(day, student); learners = learnersFor(student, allLearners()); }
+      catch (e) {
+        if (!localDraft && !previousResult) { vq.textContent = ''; vq.append(make('div', 'vq-empty', '读取失败：' + (e.message || e))); return; }
+        lists = {课前: [], 课后: [], 补充: []}; learners = [];
+        if (localDraft?.value?.state === 'draft') lists[localDraft.value.phase] = localDraft.value.payload.items;
+      }
+    } else {
+      learners = learnersFor(student, allLearners());
     }
     const phase = vqTab.get(student) || '课前', items = lists[phase];
     // Repair the display of lists saved by older clients without a cloud write.
     // Supplemental pasted words keep the user's own input order.
-    if (phase !== '补充') {
+    if (!cachedLists && phase !== '补充') {
       try {
         const ordered = await feedbackOrder(items); items.splice(0, items.length, ...ordered);
         for (const id of new Set(items.map(x => x.lesson_id).filter(Boolean))) {
@@ -1561,7 +1603,7 @@
     vq.textContent = '';
     const bar = make('div', 'vq-bar'), tabs = make('div', 'vq-tabs');
     tabs.title = learners.length ? '单词库：' + learners.map(l => l.replace(/\//g, '、')).join('，') : '还没有单词库（收集反馈后自动生成）';
-    ['课前', '课后', '补充'].forEach(p => tabs.append(btn(p === phase ? 'on' : '', p + ' ' + lists[p].length, () => { vqTab.set(student, p); redraw(); })));
+    ['课前', '课后', '补充'].forEach(p => tabs.append(btn(p === phase ? 'on' : '', p + ' ' + lists[p].length, () => { vqTab.set(student, p); fillLists(vq, student, lists); })));
     let finished = previousResult?.value?.state === 'completed' && previousResult.value.payload?.day === day ? previousResult.value : null;
     if (!finished && mode === 'cloud') {
       try {
@@ -1572,7 +1614,14 @@
     const wordsOf = list => JSON.stringify((list || []).map(x => String(x.word || '').trim().toLowerCase()));
     // Finished today and the list is unchanged since: the card shows the result instead of 「开始抽背」.
     const doneNow = !!(finished?.state === 'completed' && finished.payload?.day === day && items.length && wordsOf(finished.payload?.items) === wordsOf(items));
-    if (doneNow && localDraft?.value?.state !== 'draft' && markChecked(student, phase, finished)) return;
+    if (doneNow && localDraft?.value?.state !== 'draft') {
+      globalThis._wayonSuppressRender = true;
+      try {
+        if (markChecked(student, phase, finished)) return;
+      } finally {
+        globalThis._wayonSuppressRender = false;
+      }
+    }
     const showResult = res => {
       const last = overlay('抽背结果'); last.body.append(make('pre', 'fb-body', resultText(res.payload)));
       last.foot.append(btn('fb-btn pri', '复制结果', async () => { try { await navigator.clipboard.writeText(resultText(res.payload)); flash('已复制'); } catch { flash('复制失败，请手动选中文字复制', true); } }), btn('fb-btn', '关闭', last.close));
@@ -1941,6 +1990,13 @@
     decorateQuiz();
   }
   function start() {
+    if (typeof globalThis.render === 'function' && !globalThis._wayonOrigRender) {
+      globalThis._wayonOrigRender = globalThis.render;
+      globalThis.render = function(...args) {
+        if (globalThis._wayonSuppressRender) return;
+        return globalThis._wayonOrigRender.apply(this, args);
+      };
+    }
     mount();
     document.addEventListener('click', e => { const nav = e.target.closest?.('#tabs button'); if (open && nav && nav.id !== 'nav-feedback') close(); }, true);
     new MutationObserver(mount).observe(document.body, {childList: true, subtree: true});

@@ -72,7 +72,7 @@
         const time=date.toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false});
         message(full?'课表与作业状态已更新 · '+time:
           '课表及课程通知已更新 · '+time+'；部分作业未能核实，待催清单保留上次结果。',full?'verified':'unknown');
-        pending=null;return 'updated';
+        pending=null;window.dispatchEvent(new Event('wayon-refresh-updated'));return 'updated';
       };
       while(Date.now()<deadline){
         const result=await api.status(pending);
