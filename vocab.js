@@ -1518,37 +1518,60 @@
       };
       const updateQuizProgress = () => {
         try {
-          if (typeof quizRows === 'function' && typeof qget === 'function' && typeof qk === 'function') {
+          if (typeof quizRows === "function" && typeof qget === "function" && typeof qk === "function") {
             const qr = quizRows(window.DATA?.[curDay()] || []);
             const n = qr.filter(r => qget(qk(r)).pre && qget(qk(r)).post).length;
-            const countEl = document.getElementById('count');
-            if (countEl) countEl.textContent = n + ' / ' + qr.length + ' 课前课后都抽了';
-            const fillEl = document.getElementById('fill');
-            if (fillEl) fillEl.style.width = (qr.length ? (n / qr.length * 100) : 0) + '%';
+            const countEl = document.getElementById("count");
+            if (countEl) countEl.textContent = n + " / " + qr.length + " 课前课后都抽了";
+            const fillEl = document.getElementById("fill");
+            if (fillEl) fillEl.style.width = (qr.length ? (n / qr.length * 100) : 0) + "%";
+            const metaEl = document.querySelector(".quiz .head .meta");
+            if (metaEl) {
+              const pre = qr.filter(r => qget(qk(r)).pre).length, post = qr.filter(r => qget(qk(r)).post).length;
+              metaEl.textContent = "课前 " + pre + " / " + qr.length + " · 课后 " + post + " / " + qr.length + "（这节课前课后都抽了 = 变绿）";
+            }
           }
         } catch {}
       };
 
       rows.forEach(r => {
-        const line = make('span', 'vq-session');
-        line.append(make('span', '', [r.querySelector('.qcourse')?.textContent, r.querySelector('.qrange')?.textContent].filter(Boolean).join(' · ')));
-        r.querySelectorAll('button.qchk').forEach(b => {
-          const done = b.getAttribute('aria-pressed') === 'true', label = /pre/.test(b.id) ? '课前' : '课后';
-          const chkBtn = btn('vq-check' + (done ? ' on' : ''), (done ? '✓ ' : '') + label + (done ? '已抽' : '未抽'), e => {
+        const line = make("span", "vq-session");
+        line.append(make("span", "", [r.querySelector(".qcourse")?.textContent, r.querySelector(".qrange")?.textContent].filter(Boolean).join(" · ")));
+        r.querySelectorAll("button.qchk").forEach(b => {
+          const done = b.getAttribute("aria-pressed") === "true", label = /pre/.test(b.id) ? "课前" : "课后";
+          const chkBtn = btn("vq-check" + (done ? " on" : ""), (done ? "✓ " : "") + label + (done ? "已抽" : "未抽"), e => {
             if (e) { e.preventDefault(); e.stopPropagation(); }
-            globalThis._wayonSuppressRender = true;
-            try {
-              b.click();
-            } finally {
-              globalThis._wayonSuppressRender = false;
+            const k = /pre/.test(b.id) ? "pre" : "post";
+            let q = null;
+            if (typeof quizRows === "function" && typeof qget === "function" && typeof qk === "function") {
+              const rTime = (r.querySelector(".qrange")?.textContent || "").trim();
+              const matched = quizRows([]).filter(row => plainName(globalThis.wayonDisplayName?.(row[0]) || row[0]) === student);
+              const targetRow = matched.find(row => (row[1] || "").trim() === rTime) || matched[0];
+              if (targetRow) q = qget(qk(targetRow));
             }
-            const isDone = b.getAttribute('aria-pressed') === 'true';
-            chkBtn.className = 'vq-check' + (isDone ? ' on' : '');
-            chkBtn.textContent = (isDone ? '✓ ' : '') + label + (isDone ? '已抽' : '未抽');
-            chkBtn.title = label + (isDone ? '已抽背，点一下取消' : '未抽背，点一下标记');
-            updateCardNote();
-            updateQuizProgress();
-          }, label + (done ? '已抽背，点一下取消' : '未抽背，点一下标记'));
+            if (q) {
+              q[k] = !q[k];
+              if (typeof qsave === "function") qsave();
+              const isDone = Boolean(q[k]);
+              b.setAttribute("aria-pressed", String(isDone));
+              b.className = "mark qchk" + (isDone ? " on" : "");
+              b.textContent = (isDone ? "✅ " : "☐ ") + label;
+              chkBtn.className = "vq-check" + (isDone ? " on" : "");
+              chkBtn.textContent = (isDone ? "✓ " : "") + label + (isDone ? "已抽" : "未抽");
+              chkBtn.title = label + (isDone ? "已抽背，点一下取消" : "未抽背，点一下标记");
+              updateCardNote();
+              updateQuizProgress();
+            } else {
+              globalThis._wayonSuppressRender = true;
+              try { b.click(); } finally { globalThis._wayonSuppressRender = false; }
+              const isDone = b.getAttribute("aria-pressed") === "true";
+              chkBtn.className = "vq-check" + (isDone ? " on" : "");
+              chkBtn.textContent = (isDone ? "✓ " : "") + label + (isDone ? "已抽" : "未抽");
+              chkBtn.title = label + (isDone ? "已抽背，点一下取消" : "未抽背，点一下标记");
+              updateCardNote();
+              updateQuizProgress();
+            }
+          }, label + (done ? "已抽背，点一下取消" : "未抽背，点一下标记"));
           line.append(chkBtn);
         });
         meta.append(line);
@@ -1566,6 +1589,50 @@
       void fillLists(vq, student);
     });
   }
+  globalThis.wayonVocabSync = function() {
+    if (typeof quizRows !== "function" || typeof qget !== "function" || typeof qk !== "function") return;
+    const qr = quizRows(window.DATA?.[curDay()] || []);
+    const box = document.querySelector("#list .quiz");
+    if (!box) return;
+    box.querySelectorAll(".vq-card").forEach(g => {
+      const head = g.querySelector(".qhead");
+      const student = plainName(head?.childNodes[0]?.textContent || head?.textContent || "").split(/\s/)[0];
+      if (!student) return;
+      const matched = qr.filter(row => plainName(globalThis.wayonDisplayName?.(row[0]) || row[0]) === student);
+      g.querySelectorAll(".vq-session").forEach((sess, si) => {
+        const timeEl = sess.querySelector("span:first-child");
+        const rTime = (timeEl?.textContent || "").split("·").pop().trim();
+        const targetRow = matched.find(row => (row[1] || "").trim() === rTime) || matched[si] || matched[0];
+        if (!targetRow) return;
+        const q = qget(qk(targetRow));
+        sess.querySelectorAll(".vq-check").forEach(chkBtn => {
+          const isPre = /课前/.test(chkBtn.textContent);
+          const k = isPre ? "pre" : "post";
+          const label = isPre ? "课前" : "课后";
+          const isDone = Boolean(q[k]);
+          chkBtn.className = "vq-check" + (isDone ? " on" : "");
+          chkBtn.textContent = (isDone ? "✓ " : "") + label + (isDone ? "已抽" : "未抽");
+          chkBtn.title = label + (isDone ? "已抽背，点一下取消" : "未抽背，点一下标记");
+        });
+      });
+      const note = g.querySelector(".vq-note");
+      if (note) {
+        const allChecks = [...g.querySelectorAll(".vq-check")];
+        const doneN = allChecks.filter(b => b.classList.contains("on")).length;
+        note.textContent = "· " + (doneN === 0 ? "未抽背" : doneN === allChecks.length ? "已抽背" : allChecks.map(b => b.textContent.replace(/^✓\s*/, "")).join(" · "));
+      }
+    });
+    const n = qr.filter(r => qget(qk(r)).pre && qget(qk(r)).post).length;
+    const countEl = document.getElementById("count");
+    if (countEl) countEl.textContent = n + " / " + qr.length + " 课前课后都抽了";
+    const fillEl = document.getElementById("fill");
+    if (fillEl) fillEl.style.width = (qr.length ? (n / qr.length * 100) : 0) + "%";
+    const metaEl = document.querySelector(".quiz .head .meta");
+    if (metaEl) {
+      const pre = qr.filter(r => qget(qk(r)).pre).length, post = qr.filter(r => qget(qk(r)).post).length;
+      metaEl.textContent = "课前 " + pre + " / " + qr.length + " · 课后 " + post + " / " + qr.length + "（这节课前课后都抽了 = 变绿）";
+    }
+  };
   async function fillLists(vq, student, cachedLists) {
     if (!vq.childElementCount) vq.append(make('div', 'vq-empty', '读取单词清单…'));
     await ready();
