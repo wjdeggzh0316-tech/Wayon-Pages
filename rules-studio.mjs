@@ -1,4 +1,4 @@
-import { clone, clean, todayShanghai, inspectTask, taskLines, manualTask, setManual, validateDraft, publicData } from './rules-model.mjs?v=20261111-studio4';
+import { clone, clean, todayShanghai, inspectTask, taskLines, manualTask, setManual, validateDraft, publicData } from './rules-model.mjs?v=20261116-01';
 import { canonical, saveCatalog } from './rules-store.mjs?v=20261111-studio4';
 import { buildRuleEntities, entityStatus, setEntityStatus, ruleEntityDisplayName } from './rules-entities.mjs?v=20261111-studio4';
 import { STYLE } from './rules-studio-style.mjs?v=20261111-studio4';
@@ -163,27 +163,57 @@ export async function mountRules({ document, client, container, onClose }) {
   const host = container || document.getElementById('rules') || document.body;
   const root = document.createElement('div'); root.className = 'rules-studio app'; host.replaceChildren(root);
   const q = selector => root.querySelector(selector);
-  const state = { owner: null, base: null, draft: null, selected: null, query: '', filter: 'all', busy: false, message: '正在读取规则…', error: false, editor: null, known: [], pending: null, settings: new Set(), rowErrors: new Map(), showDetail: false, view: 'person', plan: { status: 'idle', data: null, modified: null, rebuilding: false } };
+  const state = { owner: null, email: '', nonOwner: false, base: null, draft: null, selected: null, query: '', filter: 'all', busy: false, message: '正在读取规则…', error: false, editor: null, known: [], pending: null, settings: new Set(), rowErrors: new Map(), showDetail: false, view: 'person', plan: { status: 'idle', data: null, modified: null, rebuilding: false } };
   let dialog, toastTimer, pointerActive = false, deferred = null;
   const dirty = () => !!state.base && !!state.draft && !same(state.base.payload, state.draft);
   const entities = () => buildRuleEntities(state.draft || {});
   const selectedEntity = key => entities().find(entity => entity.key === key) || state.known.find(entity => entity.key === key);
   const items = (entity, scope) => scope === 'attendance' ? attendanceItems(state.draft, entity) : checkinItems(state.draft, entity);
   const changeCount = () => dirty() ? describeChanges(state.base.payload, state.draft).reduce((sum, group) => sum + group.lines.length, 0) || 1 : 0;
+  function liveInputDirty() {
+    if (state.rowErrors.size > 0) return true;
+    if (state.pending && !state.pending.choosingSubject && state.pending.text.trim()) return true;
+    const active = document.activeElement;
+    if (active?.dataset?.field === 'task-text' && root.contains(active) && !active.dataset.cancelled) {
+      const row = active.closest('[data-task]');
+      if (row) {
+        if (row.dataset.task === 'new') return !!active.value.trim();
+        const { item } = findItem(row);
+        if (item && active.value.trim() !== item.text) return true;
+      }
+    }
+    return false;
+  }
+  function flushActiveInput() {
+    const active = document.activeElement;
+    if (active?.dataset?.field === 'task-text' && root.contains(active) && !active.dataset.cancelled) {
+      const row = active.closest('[data-task]');
+      if (row) commitText(row, active.value);
+      active.blur?.();
+    }
+  }
 
   // A blur commit must not rebuild the row the pointer is pressing on, or the click is lost.
+  const clearPointer = () => {
+    if (!pointerActive && !deferred) return;
+    pointerActive = false;
+    if (deferred) { const run = deferred; deferred = null; setTimeout(run, 0); }
+  };
   root.addEventListener('pointerdown', () => { pointerActive = true; }, true);
-  document.addEventListener('pointerup', () => { pointerActive = false; if (deferred) { const run = deferred; deferred = null; setTimeout(run, 0); } }, true);
+  document.addEventListener('pointerup', clearPointer, true);
+  document.addEventListener('pointercancel', clearPointer, true);
+  document.defaultView?.addEventListener('blur', clearPointer);
+  root.addEventListener('contextmenu', clearPointer, true);
   const later = fn => { if (pointerActive) deferred = fn; else fn(); };
 
   function setMessage(text, error = false) { state.message = text; state.error = error; footer(); }
   function footer() {
     const status = q('.save-state');
     if (!status) return;
-    const count = changeCount();
-    status.textContent = state.error || !count ? (state.message || '已读取最新规则') : count + ' 处修改未保存';
-    status.classList.toggle('dirty', !!count); status.classList.toggle('error', state.error);
-    for (const action of ['save', 'discard', 'diff']) { const button = q(`.footer [data-action="${action}"]`); if (button) button.disabled = state.busy || !count; }
+    const count = changeCount(), live = liveInputDirty(), effective = count || (live ? 1 : 0);
+    status.textContent = state.error || !effective ? (state.message || '已读取最新规则') : effective + ' 处修改未保存';
+    status.classList.toggle('dirty', !!effective); status.classList.toggle('error', state.error);
+    for (const action of ['save', 'discard', 'diff']) { const button = q(`.footer [data-action="${action}"]`); if (button) button.disabled = state.busy || !effective; }
   }
   function modified() { state.error = false; state.message = ''; footer(); renderRoster(); }
   function toast(text) {
@@ -414,7 +444,7 @@ export async function mountRules({ document, client, container, onClose }) {
     if (ready && !(state.selected && selectedEntity(state.selected))) state.selected = visibleEntities()[0]?.key || entities()[0]?.key || null;
     root.innerHTML = `<header class="topbar"><span class="brand">Wayon</span><h1 class="page-title">任务规则</h1>${ready ? `<div class="view-seg" role="group" aria-label="视图">${VIEWS.map(([key, text]) => `<button type="button" class="${state.view === key ? 'active' : ''}" data-action="view" data-view="${key}" aria-pressed="${state.view === key}">${text}</button>`).join('')}</div>` : ''}<div class="header-actions"><button type="button" class="icon-btn" data-action="reload" title="重新读取规则" aria-label="重新读取规则">↻</button>${ready ? '<button type="button" class="icon-btn" data-action="specials" title="全部特殊安排" aria-label="管理全部特殊安排">⋯</button>' : ''}<button type="button" class="icon-btn" data-action="close" aria-label="关闭任务规则">${CLOSE}</button></div></header>
       ${ready ? `<div class="studio-body ${state.showDetail ? 'show-detail' : ''}"><aside class="roster-pane" aria-label="学员和班级"><label class="search"><span class="sr-only">搜索</span><input type="search" data-field="search" aria-label="搜索姓名或任务" placeholder="搜索姓名或任务" value="${escape(state.query)}"></label><div class="filter-chips" role="group" aria-label="筛选">${FILTERS.map(([key, text]) => `<button type="button" class="chip ${state.filter === key ? 'active' : ''}" data-action="filter" data-filter="${key}" aria-pressed="${state.filter === key}">${text}</button>`).join('')}</div><div class="roster-count" aria-live="polite"></div><ul class="roster-list"></ul></aside><main class="detail-pane content" aria-label="规则内容"></main></div>`
-        : `<main class="content" aria-label="规则内容">${state.owner ? '<div class="empty-state">规则未能读取。<button type="button" class="button" data-action="reload">重试读取</button></div>' : '<form class="login-form"><h2>登录后查看任务规则</h2><label class="field">邮箱<input name="email" type="email" autocomplete="username" required></label><label class="field">密码<input name="password" type="password" autocomplete="current-password" required></label><button type="submit" class="button primary">登录</button></form>'}</main>`}
+        : `<main class="content" aria-label="规则内容">${state.owner ? `<div class="empty-state"><p>${state.nonOwner ? `当前账号${state.email ? '（' + escape(state.email) + '）' : ''}没有本人规则库权限，请退出后用本人账号登录。` : '规则未能读取。'}</p><div style="display:inline-flex;gap:8px;margin-top:8px;justify-content:center"><button type="button" class="button" data-action="reload">重试读取</button><button type="button" class="button ghost" data-action="signout">退出登录</button></div></div>` : '<form class="login-form"><h2>登录后查看任务规则</h2><label class="field">邮箱<input name="email" type="email" autocomplete="username" required></label><label class="field">密码<input name="password" type="password" autocomplete="current-password" required></label><button type="submit" class="button primary">登录</button></form>'}</main>`}
       <footer class="footer"><div class="save-state" role="status" aria-live="polite"></div><div class="footer-actions">${ready ? '<button type="button" class="button ghost" data-action="diff">查看变更</button><button type="button" class="button ghost" data-action="discard">放弃</button><button type="button" class="button primary" data-action="save">保存修改</button>' : ''}</div></footer><dialog class="drawer-backdrop" aria-labelledby="rules-drawer-title"></dialog><div class="toast" role="status" aria-live="polite" hidden></div>`;
     dialog = q('dialog');
     dialog.addEventListener('close', () => { state.editor = null; });
@@ -436,7 +466,7 @@ export async function mountRules({ document, client, container, onClose }) {
     return { entity, item: items(entity, row.dataset.scope).find(item => item.ref === row.dataset.task) };
   }
   function rowError(row, text, message) {
-    state.rowErrors.set(row.dataset.task, { text, message });
+    state.rowErrors.set(row.dataset.task, { text, message, person: row.dataset.person, scope: row.dataset.scope });
     row.classList.add('has-error');
     let hint = row.querySelector('.task-hint');
     if (!hint) { hint = document.createElement('div'); row.querySelector('.task-main').append(hint); }
@@ -514,7 +544,9 @@ export async function mountRules({ document, client, container, onClose }) {
     if (row.dataset.scope === 'attendance') removeAttendance(item);
     else { const remaining = removeTaskUnit(item.rule['任务内容'], item.index); if (taskLines(remaining).length) item.rule['任务内容'] = remaining; else state.draft.frequency_rows = state.draft.frequency_rows.filter(rule => rule !== item.rule); }
     updateManual(item.rule, row.dataset.scope, item.text, null, false);
-    state.rowErrors.clear();
+    for (const [k, v] of state.rowErrors) {
+      if (k === row.dataset.task || (v.person === row.dataset.person && v.scope === row.dataset.scope)) state.rowErrors.delete(k);
+    }
     modified(); renderDetail();
   }
   const rowById = id => (state.draft.frequency_rows || []).find(row => String(row.id) === id);
@@ -565,10 +597,41 @@ export async function mountRules({ document, client, container, onClose }) {
     closeDrawer(); renderDetail(); modified();
   }
   async function save() {
-    if (state.busy || !dirty()) return;
-    const active = document.activeElement;
-    if (active?.dataset?.field === 'task-text' && root.contains(active)) active.blur();
-    if (state.rowErrors.size || state.pending?.message) { setMessage('有任务还没改好（标红的行），请先改好或放弃。', true); return; }
+    if (state.busy) return;
+    flushActiveInput();
+    if (state.rowErrors.size || state.pending?.message) {
+      let targetKey = null, targetTask = null;
+      if (state.rowErrors.size) {
+        const [taskRef, errInfo] = state.rowErrors.entries().next().value;
+        targetTask = taskRef;
+        targetKey = errInfo.person;
+      } else if (state.pending?.message) {
+        targetTask = 'new';
+        targetKey = state.pending.entityKey;
+      }
+      const targetEntity = targetKey && selectedEntity(targetKey);
+      const who = targetEntity?.name ? `「${targetEntity.name}」` : '';
+      if (targetEntity) {
+        if (!visibleEntities().some(e => e.key === targetEntity.key)) {
+          state.query = ''; state.filter = 'all';
+          const searchInput = q('[data-field="search"]'); if (searchInput) searchInput.value = '';
+          root.querySelectorAll('.chip').forEach(chip => { const on = chip.dataset.filter === 'all'; chip.classList.toggle('active', on); chip.setAttribute('aria-pressed', String(on)); });
+        }
+        if (state.selected !== targetEntity.key || (state.view !== 'person' && ![...root.querySelectorAll('.ov-card')].some(c => c.dataset.entity === targetEntity.key))) {
+          state.view = 'person'; syncViewTabs();
+        }
+        state.selected = targetEntity.key; state.showDetail = true;
+        q('.studio-body')?.classList.add('show-detail');
+        renderRoster(); renderDetail();
+        const errRow = [...root.querySelectorAll('.detail-pane [data-task]')].find(r => r.dataset.task === targetTask && r.dataset.person === targetEntity.key)
+          || root.querySelector('.detail-pane .task-row.has-error');
+        errRow?.scrollIntoView?.({ block: 'center' });
+        errRow?.querySelector('textarea')?.focus({ preventScroll: true });
+      }
+      setMessage(`${who}有任务还没改好（标红的行），请先改好或放弃。`, true);
+      return;
+    }
+    if (!dirty()) return;
     const submitted = clone(state.draft), errors = validateDraft(submitted, state.base.payload);
     if (errors.length) { setMessage('规则尚未保存，请核对提示。', true); showDrawer('请先完善规则', `<div class="error-copy">${errors.map(error => '<p>' + escape(error) + '</p>').join('')}</div>`); return; }
     setBusy(true); setMessage('正在保存规则…');
@@ -584,13 +647,16 @@ export async function mountRules({ document, client, container, onClose }) {
     setBusy(true); setMessage('正在读取规则…');
     try {
       const result = await client.auth.getSession(), session = result.data?.session;
-      if (!session) { state.owner = null; state.base = null; state.draft = null; state.message = '登录后查看本人规则。'; render(); return; }
+      if (!session) { state.owner = null; state.email = ''; state.nonOwner = false; state.base = null; state.draft = null; state.message = '登录后查看本人规则。'; render(); return; }
       if (state.owner !== session.user.id) { state.base = null; state.draft = null; state.selected = null; }
-      state.owner = session.user.id;
+      state.owner = session.user.id; state.email = session.user.email || '';
       const read = await client.from('wayon_rule_catalog').select('revision,payload').eq('owner_id', state.owner).maybeSingle();
-      if (read.error || !read.data) throw Error('READ_FAILED');
+      if (read.error) throw Error('READ_FAILED');
+      if (!read.data) { state.nonOwner = true; state.base = null; state.draft = null; setMessage('当前账号没有本人规则库权限，请退出后用本人账号登录。', true); render(); return; }
+      state.nonOwner = false;
       state.base = clone(read.data); state.draft = clone(read.data.payload); state.known = entities(); state.pending = null; state.rowErrors.clear(); state.error = false; state.message = '已读取最新规则。'; render();
-    } catch { setMessage('规则未能读取，当前修改已保留，请稍后重试。', true); if (!state.draft) render(); }
+      void loadPlan();
+    } catch { state.nonOwner = false; setMessage('规则未能读取，当前修改已保留，请稍后重试。', true); if (!state.draft) render(); }
     finally { setBusy(false); }
   }
   async function refreshIfClean() {
@@ -600,11 +666,14 @@ export async function mountRules({ document, client, container, onClose }) {
       if (auth.error) throw Error('AUTH_UNKNOWN');
       const owner = auth.data?.session?.user?.id || null;
       if (owner !== state.owner) {
-        closeDrawer(); state.owner = null; state.base = null; state.draft = null; state.known = []; state.selected = null;
+        closeDrawer(); state.owner = null; state.email = ''; state.nonOwner = false; state.base = null; state.draft = null; state.known = []; state.selected = null;
         render(); await load(); return { refreshed: !!state.draft, reason: 'account-changed' };
       }
     } catch { setMessage('登录状态未能核实，当前修改已保留，请稍后重试。', true); return { refreshed: false, reason: 'auth-unknown' }; }
-    if (dirty() || dialog?.open || state.pending || state.rowErrors.size) return { refreshed: false, reason: 'draft-preserved' };
+    if (dirty() || dialog?.open || state.pending || state.rowErrors.size) {
+      if (state.draft && (state.plan.status === 'idle' || state.plan.status === 'error')) void loadPlan();
+      return { refreshed: false, reason: 'draft-preserved' };
+    }
     await load(); return { refreshed: !!state.draft };
   }
 
@@ -630,9 +699,21 @@ export async function mountRules({ document, client, container, onClose }) {
     else if (action === 'toggle-settings') { const id = button.dataset.row; state.settings.has(id) ? state.settings.delete(id) : state.settings.add(id); renderDetail(); }
     else if (action === 'weekday') { const rule = rowById(button.dataset.row); if (!rule) return; const values = new Set(rule['周几'] || []), day = button.dataset.day; values.has(day) ? values.delete(day) : values.add(day); rule['周几'] = WEEKDAYS.filter(item => values.has(item)); modified(); renderDetail(); }
     else if (action === 'close-drawer') closeDrawer();
-    else if (action === 'diff') diff();
-    else if (action === 'discard') { state.draft = clone(state.base.payload); state.pending = null; state.rowErrors.clear(); state.error = false; state.message = '已恢复到上次读取或保存的规则。'; closeDrawer(); renderAll(); }
+    else if (action === 'diff') { flushActiveInput(); diff(); }
+    else if (action === 'discard') {
+      const active = document.activeElement;
+      if (active?.dataset?.field === 'task-text' && root.contains(active)) { active.dataset.cancelled = '1'; active.blur?.(); }
+      state.draft = clone(state.base.payload); state.pending = null; state.rowErrors.clear(); state.error = false; state.message = '已恢复到上次读取或保存的规则。'; closeDrawer(); renderAll();
+    }
     else if (action === 'save') void save();
+    else if (action === 'signout') {
+      void (async () => {
+        setBusy(true);
+        try { await client.auth?.signOut?.(); } catch {}
+        state.owner = null; state.email = ''; state.nonOwner = false; state.base = null; state.draft = null; state.known = []; state.selected = null; state.pending = null; state.rowErrors.clear(); state.error = false; state.message = '已退出登录，请用本人账号登录。';
+        setBusy(false); render();
+      })();
+    }
     else if (action === 'reload') { if (dirty()) showDrawer('重新读取规则', '<p>重新读取会放弃本页未保存的修改。可以先查看变更，或继续保留当前修改。</p>', '<button type="button" class="button" data-action="close-drawer">保留修改</button><button type="button" class="button primary" data-action="confirm-reload">放弃并重新读取</button>'); else void load(); }
     else if (action === 'confirm-reload') { closeDrawer(); void load(); }
     else if (action === 'specials') listOverrides();
@@ -683,6 +764,7 @@ export async function mountRules({ document, client, container, onClose }) {
         const select = row.querySelector('[data-field="task-handler"]');
         if (select) select.outerHTML = handler(target.value, entity?.system, state.pending.manual);
       }
+      footer();
     }
   });
   root.addEventListener('change', event => {

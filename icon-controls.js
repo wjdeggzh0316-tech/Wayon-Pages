@@ -63,6 +63,7 @@
   `;document.head.append(style);
   const refresh=()=>{
     for(const e of document.querySelectorAll('button,summary')){
+      if(e.closest?.('#wayon-rules-dialog, #feedback-panel, .vx-overlay, #tlsh, #tlhall, #memo-panel'))continue;
       // Source renderers replace text when an action changes; reapply only to known action labels.
       const raw=e.textContent.trim();
       const quiz=/^(?:Before Class|After Class)(?: ✓)?$/.test(raw)?[raw.startsWith('Before')?'before':'after',raw]:null;

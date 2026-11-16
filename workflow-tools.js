@@ -14,7 +14,7 @@
   const close = document.createElement('button');close.type='button';close.className='workflow-icon workflow-close';close.title='Close';close.setAttribute('aria-label','Close workflow guide');close.textContent='×';close.onclick=()=>guide.close();
   const heading=document.createElement('h2');heading.id='workflow-guide-title';heading.textContent='Daily Workflow';guide.append(close,heading);
   for (const [title, entries] of [
-    ['Before work', [['Tasks · 核对今日安排','tab-plan'],['Assigned · 查看实际已布置','tab-assigned'],['Follow-ups · 处理待催作业','tab-chasing']]],
+    ['Before work', [['Tasks · 核对今日安排','tab-plan'],['Assigned · 在今日安排查看卡片布置状态','tab-plan'],['Follow-ups · 处理待催作业','tab-chasing']]],
     ['During & after work', [['Progress · 记录完成情况与备注','tab-done'],['Vocabulary · 记录线下抽背','tab-quiz'],['Notices · 核对明日课程通知','nav-notice'],['Rooms · 核对教室冲突','nav-rooms']]]
   ]) {
     const h=document.createElement('h3');h.textContent=title;const ul=document.createElement('ul');

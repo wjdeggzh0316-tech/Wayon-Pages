@@ -21,26 +21,46 @@
   const base=days[Object.keys(days).sort().pop()];
   if(!base?.rows || !base?.segs)throw Error('ROOM_DATA_INVALID');
   let skippedBookings=0;
+  const validDay=s=>{
+   if(typeof s!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;
+   const [y,m,d]=s.split('-').map(Number),dt=new Date(Date.UTC(y,m-1,d));
+   return m>=1&&m<=12&&d>=1&&dt.getUTCFullYear()===y&&dt.getUTCMonth()===m-1&&dt.getUTCDate()===d;
+  };
+  const toMin=s=>{
+   if(typeof s!=='string'||!/^\d{2}:\d{2}$/.test(s))return NaN;
+   const h=+s.slice(0,2),m=+s.slice(3,5);
+   return h>=0&&h<=23&&m>=0&&m<=59?h*60+m:NaN;
+  };
+  const validEntries=[];
   for(const b of entries){
+   const st=toMin(b?.start), et=toMin(b?.end);
    if(!b || typeof b!=='object' ||
-      typeof b.day!=='string' || !/^\d{4}-\d{2}-\d{2}$/.test(b.day) ||
+      !validDay(b.day) ||
       typeof b.room!=='string' || !base.rows.includes(b.room) ||
-      typeof b.start!=='string' || !/^\d{2}:\d{2}$/.test(b.start) ||
-      typeof b.end!=='string' || !/^\d{2}:\d{2}$/.test(b.end) ||
-      b.start>=b.end ||
+      !Number.isFinite(st) || !Number.isFinite(et) || st>=et ||
       typeof b.label!=='string' ||
       typeof b.course!=='string'){
     skippedBookings++;
     continue;
    }
-   if(!days[b.day]) days[b.day]={iso:b.day,rows:base.rows,segs:base.segs,cells:base.rows.map(()=>base.segs.map(()=>[['课表待更新','','','']])),teachers:[],online:[],unknown:[],missing:true,booking_preview:true};
+   validEntries.push(b);
+  }
+  for(const b of validEntries){
+   if(!days[b.day]) days[b.day]={iso:b.day,rows:base.rows,segs:base.segs,cells:base.rows.map(()=>base.segs.map(()=>[])),teachers:[],online:[],unknown:[],missing:true,booking_preview:true};
    const day=days[b.day], ri=day.rows.indexOf(b.room);
-   day.segs.forEach((seg,si)=>{
-    const stop=seg[0]==='D'?'21:30':seg[2];if(!(b.start<stop&&b.end>seg[1]))return;
+   const segStop=seg=>seg[0]==='D'?'21:30':seg[2];
+   let targets=day.segs.map((_,si)=>si).filter(si=>b.start<segStop(day.segs[si])&&b.end>day.segs[si][1]);
+   if(!targets.length){
+    const mid=(toMin(b.start)+toMin(b.end))/2, dist=si=>Math.min(Math.abs(mid-toMin(day.segs[si][1])),Math.abs(mid-toMin(day.segs[si][2])));
+    targets=[day.segs.map((_,si)=>si).sort((p,q)=>dist(p)-dist(q))[0]];
+   }
+   targets.forEach(si=>{
+    const seg=day.segs[si];
     const span=x=>x[3]||seg[1]+'-'+seg[2];
+    const courseTag=b.course+'（课表外）';
     // The reservation file is newer than the baked page: it replaces a borrowed entry at the same room and time.
-    const rows=day.cells[ri][si].filter(x=>x?.[0]!=='课表待更新' && !(/（课表外）$/.test(String(x?.[1]||'')) && span(x)===b.start+'-'+b.end && !entries.some(e=>e&&e.day===b.day&&e.room===b.room&&e.start===b.start&&e.end===b.end&&e.label===x[0])));
-    if(!rows.some(x=>x[0]===b.label && span(x)===b.start+'-'+b.end))rows.push([b.label,b.course+'（课表外）','',b.start+'-'+b.end]);
+    const rows=day.cells[ri][si].filter(x=>x?.[0]!=='课表待更新' && !(/（课表外）$/.test(String(x?.[1]||'')) && span(x)===b.start+'-'+b.end && !validEntries.some(e=>e.day===b.day&&e.room===b.room&&e.start===b.start&&e.end===b.end&&e.label===x[0]&&e.course+'（课表外）'===x[1])));
+    if(!rows.some(x=>x[0]===b.label && x[1]===courseTag && span(x)===b.start+'-'+b.end))rows.push([b.label,courseTag,'',b.start+'-'+b.end]);
     day.cells[ri][si]=rows;
    });
   }

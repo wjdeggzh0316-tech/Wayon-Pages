@@ -1,10 +1,11 @@
 // Presentation only: identity keys and saved task definitions remain untouched.
+import {taskUnitTexts} from './rule-task-text.mjs';
 export function planDisplayName(value) {
   let text=String(value||'').trim();
   // Explicit person brackets retain the boundary before a course suffix.
-  const head=text.match(/^((?:\d+[.、．]\s*)?)(?:【([^】]+)】|「([^」]+)」|\[([^\]]+)\])(?=\s*(?:$|[-－—]?\s*(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语|高中|初中|小学)))/i);
+  const head=text.match(/^((?:\d+[.、．]\s*)?)(?:【([^】]+)】|「([^」]+)」|\[([^\]]+)\])(?=\s*(?:$|[-－—]?\s*(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语|高中|初中|小学|1\s*v\s*1|一对一|1对1)))/i);
   if(head)text=head[1]+(head[2]||head[3]||head[4]);
-  return text.replace(/[【】「」]/g,'').trim().replace(/(?:[-－—]\s*)?(?:(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语)\s*(?:1\s*v\s*1|一对一|1对1)(?:课程|班)?|高中同步课程|初中同步课程|小学同步课程|英语能力提升课程|雅思(?:基础|强化)?(?:课程|班)|托福(?:基础|强化)?(?:课程|班))$/i,'').trim();
+  return text.replace(/[【】「」]/g,'').trim().replace(/(?:[-－—]\s*)?(?:(?:(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语)\s*)?(?:1\s*v\s*1|一对一|1对1)(?:课程|班)?|高中同步课程|初中同步课程|小学同步课程|英语能力提升课程|雅思(?:基础|强化)?(?:课程|班)|托福(?:基础|强化)?(?:课程|班))$/i,'').trim();
 }
 // Explicitly bracketed roster identities map their bracket-free spelling to the person name.
 export function rosterPeople(identities) {
@@ -26,9 +27,9 @@ export function rosterDisplayName(value, people, names) {
     if(body===plain||body===person)return prefix+person;
     for(const start of [plain,person])if(body.startsWith(start)&&label.test(body.slice(start.length)))return prefix+person;
   }
-  // A plain roster name followed by a separated course label, e.g. 丁嘉宝-雅思基础.
-  if(names&&typeof names[Symbol.iterator]==='function'&&!(typeof names.has==='function'&&names.has(body))){
-    for(const known of names)if(known&&body.startsWith(known)&&/^\s*[-－—]/.test(body.slice(known.length))&&label.test(body.slice(known.length)))return prefix+known;
+  // A plain roster name followed by a separated course label, e.g. 丁嘉宝-雅思基础 or 郭璟Jack-SAT.
+  if(names&&typeof names[Symbol.iterator]==='function'){
+    for(const known of names)if(known&&known!==body&&body.startsWith(known)&&/^\s*[-－—]/.test(body.slice(known.length))&&label.test(body.slice(known.length)))return prefix+known;
   }
   const swap=body.match(/^([一-鿿]{2,4})([A-Za-z]+)$/)||body.match(/^([A-Za-z]+)([一-鿿]{2,4})$/);
   if(swap&&names&&typeof names.has==='function'&&!names.has(body)&&names.has(swap[2]+swap[1]))return prefix+swap[2]+swap[1];
@@ -110,21 +111,23 @@ export function planDisplayTasks(values) {
 export function planDisplayText(value) {
   const lines=String(value||'').split('\n');
   const header=lines.shift().replace(/【((?:【[^】]*】|[^【】])+)】/,(_,name)=>'【'+planDisplayName(name)+'】');
-  const numbered=lines.filter(x=>/^\s*\d+[、.．]\s*/.test(x));
-  if(!numbered.length)return [header,...lines].join('\n');
+  const first=lines.find(x=>x.trim());
   // Only rewrite a generated numbered list, never a free-form teacher paragraph.
-  if(lines.some(x=>x.trim()&&!/^\s*\d+[、.．]\s*/.test(x)))return [header,...lines].join('\n');
-  const tasks=planDisplayTasks(numbered.map(x=>x.replace(/^\s*\d+[、.．]\s*/,'')));
+  if(!first||!/^\s*\d+(?:、|[.．](?!\d))\s*/.test(first))return [header,...lines].join('\n');
+  const units=taskUnitTexts(lines.join('\n'));
+  if(!units.length)return [header,...lines].join('\n');
+  const tasks=planDisplayTasks(units);
   return header+'\n\n'+tasks.map((x,i)=>(i+1)+'、'+x).join('\n');
 }
 (() => {
  if(typeof document==='undefined')return;
+ globalThis.wayonTaskUnitTexts=taskUnitTexts;
  const script=document.createElement('script');
  script.textContent=`(() => {
    if(typeof planCard!=='function'||typeof foldRow!=='function'||document.documentElement.dataset.wayonStudentNames==='1')return;
    document.documentElement.dataset.wayonPlanDisplay='1';
    document.documentElement.dataset.wayonStudentNames='1';
-   const taskMatchKey=${taskMatchKey.toString()},generatedTaskIndices=${generatedTaskIndices.toString()};
+   const taskMatchKey=${taskMatchKey.toString()},generatedTaskIndices=${generatedTaskIndices.toString()},taskUnitTexts=globalThis.wayonTaskUnitTexts;
    globalThis.wayonGeneratedTaskVisible=(name,index)=>{
      const state=get(name);if(Array.isArray(state.tk))return true;
      const rows=(DATA[cur]||[]).filter(row=>row[0]===name);
@@ -140,6 +143,9 @@ export function planDisplayText(value) {
          if(/^\\d{4}-\\d{2}-\\d{2}$/.test(day)&&Array.isArray(rows))for(const row of rows)if(Array.isArray(row)&&typeof row[0]==='string')ids.push(row[0]);
        }
        for(const rows of Object.values(DATA._plan||{}))if(Array.isArray(rows))for(const row of rows)if(Array.isArray(row)&&typeof row[0]==='string')ids.push(row[0]);
+       for(const row of DATA._chasing||[])if(row&&typeof row.name==='string')ids.push(row.name);
+       if(typeof CHASING!=='undefined'&&Array.isArray(CHASING))for(const row of CHASING)if(row&&typeof row.name==='string')ids.push(row.name);
+       for(const rows of Object.values(DATA._sess||{}))if(Array.isArray(rows))for(const row of rows)if(Array.isArray(row)&&typeof row[0]==='string')ids.push(row[0]);
      }catch{}
      return ids;
    };
@@ -205,7 +211,8 @@ export function formatChasingReminder(name,items) {
     const ordered=[...new Set(dates)].sort(),first=ordered[0],last=ordered.at(-1);
     label=first===last?md(first):md(first)+'-'+md(last);
   }
-  return '【'+planDisplayName(name)+'】剩余未完成任务_'+label+'❗️\n\n'+items.map((item,i)=>(i+1)+'. '+item.title).join('\n');
+  const shown=typeof globalThis.wayonDisplayName==='function'?globalThis.wayonDisplayName(name):planDisplayName(name);
+  return '【'+shown+'】剩余未完成任务_'+label+'❗️\n\n'+items.map((item,i)=>(i+1)+'. '+item.title).join('\n');
 }
 
 // Admission is a projection, never a change to completion or manual state.
@@ -278,7 +285,7 @@ export async function admittedReminderRows(rows,policy) {
           if(!button||button.disabled||bound.has(button))continue;
           const card=button.closest('.item'),heading=card?.querySelector('.head .name');
           // Open follow-ups are numbered among themselves, so match the name after the number.
-          const expected=planDisplayName(row.name);
+          const expected=typeof globalThis.wayonDisplayName==='function'?globalThis.wayonDisplayName(row.name):planDisplayName(row.name);
           const title=(heading?.textContent||'').replace(/^\\d+\\.\\s*/,'');
           const original=String(row.name||'').replace(/[【】]/g,'');
           if(![expected,original].some(value=>title.startsWith(value)&&(title.length===value.length||/^\\s/.test(title.slice(value.length)))))continue;

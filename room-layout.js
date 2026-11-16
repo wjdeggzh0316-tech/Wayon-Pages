@@ -140,6 +140,16 @@
     const toM = t => { const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || '').trim()); return m ? +m[1] * 60 + +m[2] : NaN; };
     const toT = m => String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
     const plain = value => String(value || '').replace(/[【】「」]/g, '').trim();
+    const HALL_COURSE_SUFFIX = /(?:[-－—\s])*(?:(?:(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语|能力提升|校内|同步|阅读|听力|口语|写作|语法|数学)\s*)?(?:1\s*v\s*1|一对一|1对1)(?:课程|班)?|高中同步课程|初中同步课程|小学同步课程|英语能力提升课程|(?:雅思|托福|SAT)(?:基础|强化|冲刺)?(?:课程|班)|[-－—]\s*(?:雅思|托福|SAT|GRE|IELTS|TOEFL))$/i;
+    const hallName = value => {
+      const raw = String(value || '').trim().replace(/(?:\s*[（(]自习[)）])+$/g, '').trim();
+      if (!raw) return '';
+      const headed = /^(?:【([^】]+)】|「([^」]+)」|\[([^\]]+)\])\s*(.*)$/.exec(raw);
+      if (headed && (!headed[4] || HALL_COURSE_SUFFIX.test(headed[4]))) return plain(headed[1] || headed[2] || headed[3]);
+      const p = plain(raw);
+      if (/[&＆/／、]|\s+and\s+|班|小组|多人|三人/i.test(p) && !/(?:1\s*v\s*1|一对一|1对1)(?:课程|班)?$/i.test(p)) return p;
+      return p.replace(HALL_COURSE_SUFFIX, '').trim() || p;
+    };
     // The page data matches D up to 21:30 while showing 15:40–17:40 (same rule as the generator).
     const segStop = si => S[si][0] === 'D' ? '21:30' : S[si][2];
     const spanOf = (x, si) => { const m = /^(\d{2}:\d{2})\s*-\s*(\d{2}:\d{2})$/.exec(String(x[3] || '').trim()); return m ? [m[1], m[2]] : [S[si][1], S[si][2]]; };
@@ -170,7 +180,7 @@
         setCell(ri, si, items(ri, si).concat([[who, subject, teacher, time]]));
       });
     }
-    let view = null, tdrag = null, sheetLesson = null;
+    let view = null, tdrag = null, pendingRender = false, renderedDay = null, sheetLesson = null;
     const scroller = grid.closest('.room-scroll');
     function rowHeight(rows) {
       const head = 34, room = scroller ? scroller.clientHeight - head - 8 : 0;
@@ -184,21 +194,49 @@
       const people = new Map();
       S.forEach((_, si) => items(HALL, si).forEach(x => {
         if (!x) return;
-        const name = String(x[0] || '').trim(); if (!name) return;
-        if (!people.has(name)) people.set(name, {name, segs: new Map()});
-        people.get(name).segs.set(si, x);
+        const raw = String(x[0] || '').trim(); if (!raw) return;
+        const name = hallName(raw); if (!name) return;
+        if (!people.has(name)) people.set(name, {name, rawNames: new Set(), segs: new Map()});
+        const p = people.get(name);
+        p.rawNames.add(raw);
+        const existing = p.segs.get(si);
+        if (!existing || (existing[1] === '课后' && x[1] !== '课后')) p.segs.set(si, x);
       }));
       return [...people.values()].sort((p, q) => Math.min(...p.segs.keys()) - Math.min(...q.segs.keys()) || p.name.localeCompare(q.name, 'zh'));
     }
-    function setHallPerson(oldName, name, wanted, confirm) {
+    function matchesHallPerson(x, target) {
+      if (!x) return false;
+      const raw = String(x[0] || '').trim();
+      if (!raw) return false;
+      if (typeof target === 'object' && target) return target.rawNames?.has(raw) || hallName(raw) === target.name;
+      return raw === target || hallName(raw) === hallName(target);
+    }
+    function setHallPerson(target, name, wanted, confirmSegs) {
+      const oldName = typeof target === 'object' && target ? target.name : hallName(target);
+      const cleanNew = hallName(name) || name;
+      const renamed = cleanNew !== oldName;
       S.forEach((_, si) => {
-        const arr = items(HALL, si).slice(), at = arr.findIndex(x => x && String(x[0] || '').trim() === oldName);
+        const arr = items(HALL, si).slice();
+        const idxs = [];
+        arr.forEach((x, idx) => { if (matchesHallPerson(x, target)) idxs.push(idx); });
         if (wanted.has(si)) {
-          const prev = at >= 0 ? arr[at] : null;
-          const status = prev ? (confirm && prev[1] === '课后' ? '确定' : prev[1]) : '自习';
-          const entry = [name, status || '自习', prev ? prev[2] || '' : '', prev ? prev[3] || '' : ''];
-          if (at >= 0) arr[at] = entry; else { const free = arr.findIndex(x => !x); if (free < 0) arr.push(entry); else arr[free] = entry; }
-        } else if (at >= 0) arr[at] = null;
+          if (confirmSegs instanceof Set && !confirmSegs.has(si) && !renamed && idxs.length === 1) return;
+          const at = idxs[0] ?? -1, prev = at >= 0 ? arr[at] : null;
+          const shouldConfirm = confirmSegs === true || (confirmSegs instanceof Set && confirmSegs.has(si));
+          const status = prev ? (shouldConfirm && prev[1] === '课后' ? '确定' : prev[1]) : '自习';
+          const storedName = !renamed && prev ? prev[0] : name;
+          const entry = [storedName, status || '自习', prev ? prev[2] || '' : '', prev ? prev[3] || '' : ''];
+          if (at >= 0) {
+            arr[at] = entry;
+            for (let k = 1; k < idxs.length; k++) arr[idxs[k]] = null;
+          } else {
+            const free = arr.findIndex(x => !x);
+            if (free < 0) arr.push(entry); else arr[free] = entry;
+          }
+        } else {
+          if (!idxs.length) return;
+          idxs.forEach(idx => { arr[idx] = null; });
+        }
         setCell(HALL, si, arr);
       });
     }
@@ -217,20 +255,25 @@
       const vertical = width / lanes < 64;
       people.forEach((person, lane) => {
         const segs = [...person.segs.keys()].sort((a, b) => a - b), runs = [];
-        segs.forEach(si => { const last = runs[runs.length - 1]; if (last && last[last.length - 1] === si - 1) last.push(si); else runs.push([si]); });
+        segs.forEach(si => {
+          const last = runs[runs.length - 1];
+          const isPre = person.segs.get(si)[1] === '课后';
+          if (last && last[last.length - 1] === si - 1 && (person.segs.get(last[0])[1] === '课后') === isPre) last.push(si);
+          else runs.push([si]);
+        });
         runs.forEach(run => {
           const pre = run.every(si => person.segs.get(si)[1] === '课后');
           const from = S[run[0]][1], to = S[run[run.length - 1]][2];
           const bar = el('div', 'tl-hallbar' + (pre ? ' pre' : '') + (vertical ? ' vertical' : ''));
-          bar.append(el('span', 'tl-hallname', plain(person.name)));
+          bar.append(el('span', 'tl-hallname', person.name));
           if (!vertical) bar.append(el('span', 'tl-hallmeta', run.map(si => S[si][0]).join(' ')));
           bar.style.width = 'calc(' + (100 / lanes) + '% - 3px)';
           bar.style.marginLeft = 'calc(' + (100 * lane / lanes) + '%)';
           bar.tabIndex = 0; bar.setAttribute('role', 'button');
-          const label = plain(person.name) + ' 大厅 ' + run.map(si => S[si][0]).join('、') + ' 段 ' + from + '–' + to + (pre ? '，预占（上完课自动放入，点一下确认）' : '');
+          const label = person.name + ' 大厅 ' + run.map(si => S[si][0]).join('、') + ' 段 ' + from + '–' + to + (pre ? '，预占（上完课自动放入，点一下确认）' : '');
           bar.title = label; bar.setAttribute('aria-label', label);
           const act = () => {
-            if (pre) { const before = JSON.stringify(ed); setHallPerson(person.name, person.name, new Set(person.segs.keys()), true); commit(before); }
+            if (pre) { const before = JSON.stringify(ed); setHallPerson(person, person.name, new Set(person.segs.keys()), new Set(run)); commit(before); }
             else openHall(person);
           };
           bar.onclick = e => { e.stopPropagation(); act(); };
@@ -270,6 +313,10 @@
       return node;
     }
     function timelineRender() {
+      if (tdrag?.active && curD === renderedDay) { pendingRender = true; return; }
+      if (tdrag) { if (tdrag.raf) cancelAnimationFrame(tdrag.raf); if (tdrag.active) tdrag = null; }
+      pendingRender = false; renderedDay = curD;
+      if (typeof curD === 'string' && typeof mdD === 'function') document.title = 'Wayon 教室使用 ' + mdD(curD);
       grid.textContent = ''; grid.classList.add('tl');
       const current = rooms.map(ri => lessonsOf(ri, items));
       let lo = toM(S[0][1]), hi = toM(S[S.length - 1][2]);
@@ -348,7 +395,7 @@
       if (e.button !== undefined && e.button !== 0) return;
       e.stopPropagation();
       const r = node.getBoundingClientRect();
-      tdrag = {node, lesson, x0: e.clientX, y0: e.clientY, grab: e.clientY - r.top, moved: false, preview: null, target: null, raf: 0, px: 0, py: 0};
+      tdrag = {active: true, pointerId: e.pointerId, node, lesson, x0: e.clientX, y0: e.clientY, grab: e.clientY - r.top, moved: false, preview: null, target: null, raf: 0, px: 0, py: 0};
       try { node.setPointerCapture(e.pointerId); } catch (_) {}
       node.onpointermove = lessonMove; node.onpointerup = lessonUp; node.onpointercancel = () => finishDrag(false);
     }
@@ -362,6 +409,7 @@
       return {ri, a: toT(start), b: toT(start + length)};
     }
     function paintDrag() {
+      if (!tdrag?.active) return;
       tdrag.raf = 0;
       const target = dropAt(tdrag.px, tdrag.py);
       tdrag.target = target;
@@ -372,28 +420,32 @@
       place(tdrag.preview, lineOf(toM(target.a)), lineOf(toM(target.b)), target.ri + 2);
     }
     function lessonMove(e) {
-      if (!tdrag) return;
+      if (!tdrag?.active) return;
       tdrag.px = e.clientX; tdrag.py = e.clientY;
       if (!tdrag.moved) { if (Math.hypot(e.clientX - tdrag.x0, e.clientY - tdrag.y0) < 5) return; tdrag.moved = true; tdrag.node.classList.add('dragging'); }
       if (!tdrag.raf) tdrag.raf = requestAnimationFrame(paintDrag);
     }
     function finishDrag(apply, quiet) {
-      const d = tdrag; if (!d) return;
+      const d = tdrag; if (!d || !d.active) return;
+      d.active = false;
       if (d.raf) cancelAnimationFrame(d.raf);
       d.node.onpointermove = d.node.onpointerup = d.node.onpointercancel = null;
-      setTimeout(() => { tdrag = null; }, 0);
+      setTimeout(() => { if (tdrag === d) tdrag = null; }, 0);
       const t = d.target, l = d.lesson;
       if (apply && t && (t.ri !== l.ri || t.a !== l.a)) {
         const before = JSON.stringify(ed);
         removeLesson(l); addLesson(t.ri, l.x[0] || '', l.x[1] || '', l.x[2] || '', t.a, t.b);
         commit(before);
-      } else if (!quiet) render();
+      } else if (!quiet || pendingRender) render();
     }
     function lessonUp(e) {
-      if (!tdrag) return;
+      if (!tdrag?.active) return;
       if (!tdrag.moved) { const lesson = tdrag.lesson; finishDrag(false, true); openLesson(lesson); return; }
       tdrag.px = e.clientX; tdrag.py = e.clientY; paintDrag(); finishDrag(true);
     }
+    window.addEventListener('blur', () => { if (tdrag?.active) finishDrag(false); });
+    document.addEventListener('pointercancel', e => { if (tdrag?.active && (tdrag.pointerId === undefined || e.pointerId === tdrag.pointerId)) finishDrag(false); }, true);
+    document.addEventListener('pointerup', e => { if (tdrag?.active && (tdrag.pointerId === undefined || e.pointerId === tdrag.pointerId) && !tdrag.node.isConnected) finishDrag(false); }, true);
     // Lesson editor: who / subject / teacher / room / start / end. Only this page's table changes.
     const sheet = el('div', 'sheet'); sheet.id = 'tlsh'; sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-modal', 'false');
     const title = el('div', 't'), fields = el('div', 'tl-fields'), err = el('div', 'tl-err');
@@ -458,13 +510,21 @@
       if (!name) { hErr.textContent = '请填写姓名'; hName.focus(); return; }
       if (!wanted.size) { hErr.textContent = '至少勾选一个时段；不在大厅请点「从大厅移除」'; return; }
       const before = JSON.stringify(ed);
-      if (hallPerson && hallPerson.name !== name) setHallPerson(hallPerson.name, name, new Set(), false);
-      setHallPerson(hallPerson && hallPerson.name === name ? hallPerson.name : name, name, wanted, false);
+      if (hallPerson && hallName(name) !== hallPerson.name) {
+        setHallPerson(hallPerson, hallPerson.name, new Set(), false);
+        setHallPerson(name, name, wanted, true);
+      } else {
+        setHallPerson(hallPerson || name, name, wanted, true);
+      }
       closeHall(); commit(before);
     };
-    hDel.onclick = () => { if (!hallPerson) return; const before = JSON.stringify(ed); setHallPerson(hallPerson.name, hallPerson.name, new Set(), false); closeHall(); commit(before); };
+    hDel.onclick = () => { if (!hallPerson) return; const before = JSON.stringify(ed); setHallPerson(hallPerson, hallPerson.name, new Set(), false); closeHall(); commit(before); };
     document.addEventListener('keydown', e => { if (e.key === 'Escape' && hallSheet.classList.contains('on')) closeHall(); });
     render = timelineRender;   // the page's own commit/useDay/cloud apply call render()
+    if (typeof useDay === 'function') {
+      const origUseDay = useDay;
+      useDay = d => { origUseDay(d); if (typeof curD === 'string' && typeof mdD === 'function') document.title = 'Wayon 教室使用 ' + mdD(curD); };
+    }
     if (scroller && typeof ResizeObserver === 'function') {
       let last = 0;
       new ResizeObserver(() => { if (!view || tdrag) return; const next = rowHeight((view.hi - view.lo) / STEP); if (next !== view.rowH && next !== last) { last = next; render(); } }).observe(scroller);

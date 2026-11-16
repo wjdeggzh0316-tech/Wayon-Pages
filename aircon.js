@@ -13,8 +13,12 @@
     const slots=[];const occupied=[];
     for (const date of days) {
       const cooling=data._aircon_schedule?.[date];
-      const sessions=cooling ? (Array.isArray(cooling.slots)?cooling.slots.map(time=>['',time,'','','线下']):null) : data._sess?.[date];
-      const status=cooling?.status || data._schedule_status?.[date]?.status;
+      const sched=data._schedule_status?.[date];
+      const coolingTime=Date.parse(cooling?.checked_at||'');
+      const schedTime=Date.parse(sched?.checked_at||'');
+      const useSess=!cooling || (Array.isArray(data._sess?.[date]) && Number.isFinite(schedTime) && (!Number.isFinite(coolingTime) || schedTime>coolingTime));
+      const sessions=useSess ? data._sess?.[date] : (Array.isArray(cooling.slots)?cooling.slots.map(time=>['',time,'','','线下']):null);
+      const status=useSess ? sched?.status : (cooling?.status || sched?.status);
       if (status!=='verified' || !Array.isArray(sessions)) return {status:'unknown',days,text:''};
       let offline=false;
       for (const row of sessions) {
@@ -56,9 +60,9 @@
       if(Array.isArray(key) && key.length===2 && key[0]==='aircon-copy-v1' && value && typeof value.copied_at==='string' && typeof value.signature==='string')marks[key[1]]=value;
     }
     write(day,marks);
-    if(open && day===selected)render();
+    if(isOpen && day===selected)render();
   }
-  let open=false,selected='',root=null,lastSnapshot='';
+  let isOpen=false,selected='',root=null,lastSnapshot='';
   const opened=new Set();
   const data = () => {try{return DATA;}catch{return {};}};
   const cloud = () => {try{return checkCloud;}catch{return null;}};
@@ -67,7 +71,8 @@
     opened.add(day);Promise.resolve(c.open(day)).catch(()=>opened.delete(day));
   }
   function save(day,marks) {write(day,marks);cloud()?.observe(day);}
-  globalThis.wayonAircon={buildRequest,capture,apply,currentDay:()=>open?selected:null};
+  let openPanel=day=>{if(iso(day))selected=day;isOpen=true;};
+  globalThis.wayonAircon={buildRequest,capture,apply,currentDay:()=>isOpen?selected:null,open:day=>openPanel(day)};
   if(typeof document==='undefined')return;
   const make=(tag,cls,text)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(text!==undefined)e.textContent=text;return e;};
   const style=make('style');style.textContent=`
@@ -92,7 +97,7 @@
     try{Promise.resolve(navigator.clipboard.writeText(text)).then(ok,fail);}catch{fail();}
   }
   function render() {
-    if(!root || !open)return;
+    if(!root || !isOpen)return;
     const snapshot=data();lastSnapshot=JSON.stringify([snapshot._sess,snapshot._schedule_status,snapshot._aircon_schedule]);
     root.replaceChildren();watch(selected);
     const heading=make('div','aircon-heading');heading.append(make('h2','','空调加时'));
@@ -117,15 +122,23 @@
     const button=make('button','copy',copied?'再次复制':'复制');button.type='button';button.id='aircon-copy';
     button.onclick=()=>{const copyDay=selected;copyText(request.text,()=>{
       // A schedule refresh during the permission prompt must not mark a different version as copied.
-      const marks=read(copyDay);marks[request.id]={signature:request.text,copied_at:new Date().toLocaleTimeString('zh-CN',{timeZone:'Asia/Shanghai',hour:'2-digit',minute:'2-digit'})};
+      const marks=read(copyDay);marks[request.id]={signature:request.text,copied_at:new Date().toLocaleTimeString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false,hour:'2-digit',minute:'2-digit'})};
       save(copyDay,marks);render();
     },()=>{button.textContent='复制失败，请重试';feedback.textContent='复制未成功，请重试，或手动选中下方文字复制。';});};
     head.append(button);
     if(copied){const undo=make('button','small','撤销');undo.type='button';undo.id='aircon-undo';undo.onclick=()=>{const marks=read(selected);delete marks[request.id];save(selected,marks);render();};head.append(undo);}
     content.append(head,pre,feedback);card.append(content);root.append(card);
-    const verified=request.days.map(day=>snapshot._aircon_schedule?.[day]?.checked_at || snapshot._schedule_status?.[day]?.checked_at).filter(Boolean);
+    const verified=request.days.map(day=>{const c=snapshot._aircon_schedule?.[day]?.checked_at,s=snapshot._schedule_status?.[day]?.checked_at;return c&&s?(Date.parse(s)>Date.parse(c)?s:c):(c||s);}).filter(Boolean);
     if(verified.length)root.append(make('p','aircon-hint','课表核对时间：'+verified.map(t=>new Date(t).toLocaleString('zh-CN',{timeZone:'Asia/Shanghai',hour12:false})).join(' / ')));
   }
+  openPanel=day=>{
+    mount();
+    if(iso(day))selected=day;
+    else if(!iso(selected))selected=shift(new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Shanghai'}),1);
+    isOpen=true;document.body.dataset.airconOpen='true';if(root)root.hidden=false;
+    const button=document.getElementById('nav-aircon');if(button){button.classList.add('on');button.setAttribute('aria-pressed','true');}
+    render();
+  };
   function mount() {
     const tabs=document.getElementById('tabs'),list=document.getElementById('list');if(!tabs || !list)return;
     if(!root){root=make('section');root.id='aircon-panel';root.hidden=true;root.setAttribute('aria-label','空调加时');list.before(root);}
@@ -133,18 +146,19 @@
     const notice=list.parentNode&&[...list.parentNode.children].find(e=>e.classList.contains('wayon-sync-notice'));
     if(notice&&root.compareDocumentPosition(notice)&Node.DOCUMENT_POSITION_FOLLOWING)notice.after(root);
     if(!document.getElementById('nav-aircon')) {
-      const button=make('button','wayon-icon-control'+(open?' on':''));button.id='nav-aircon';button.type='button';button.title='空调加时';button.setAttribute('aria-label','空调加时');button.setAttribute('aria-pressed',String(open));
+      const button=make('button','wayon-icon-control'+(isOpen?' on':''));button.id='nav-aircon';button.type='button';button.title='空调加时';button.setAttribute('aria-label','空调加时');button.setAttribute('aria-pressed',String(isOpen));
       button.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v20 M3.34 7l17.32 10 M3.34 17L20.66 7 M8 4l4 4 4-4 M8 20l4-4 4 4 M3 11l5-1-1-5 M17 19l-1-5 5-1 M3 13l5 1-1 5 M17 5l-1 5 5 1"/></svg>';
-      button.onclick=()=>{open=true;document.body.dataset.airconOpen='true';root.hidden=false;button.classList.add('on');button.setAttribute('aria-pressed','true');render();};tabs.append(button);
+      button.onclick=()=>openPanel();tabs.append(button);
     }
-    if(open){watch(selected);if(lastSnapshot!==JSON.stringify([data()._sess,data()._schedule_status,data()._aircon_schedule]))render();}
+    if(isOpen){watch(selected);if(lastSnapshot!==JSON.stringify([data()._sess,data()._schedule_status,data()._aircon_schedule]))render();}
   }
   function start() {
     selected=shift(new Date().toLocaleDateString('en-CA',{timeZone:'Asia/Shanghai'}),1);mount();
     document.addEventListener('click',event=>{
       const nav=event.target.closest?.('#tabs button');
-      if(open && nav && nav.id!=='nav-aircon'){open=false;root.hidden=true;delete document.body.dataset.airconOpen;const ac=document.getElementById('nav-aircon');ac?.classList.remove('on');ac?.setAttribute('aria-pressed','false');}
+      if(isOpen && nav && nav.id!=='nav-aircon'){isOpen=false;root.hidden=true;delete document.body.dataset.airconOpen;const ac=document.getElementById('nav-aircon');ac?.classList.remove('on');ac?.setAttribute('aria-pressed','false');}
     },true);
+    window.addEventListener?.('wayon-refresh-updated',()=>{if(isOpen)render();});
     new MutationObserver(mount).observe(document.body,{childList:true,subtree:true});
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();

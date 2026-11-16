@@ -206,6 +206,7 @@
   // Titles: 学生名_课程_日期 on the feedback page; quiz titles add the teacher's lesson number, e.g. "陈书进_阅读L3_11/7".
   const lessonLabel = (learner, course, no, day) => String(learner || '').replace(/\//g, '、') + '_' + (course || '课程') + (no ? 'L' + no : '') + '_' + md(day);
   const lessonNo = title => { let n = null; for (const m of String(title || '').matchAll(LESSON_NO)) n = Number(m[1] || m[2]); return n && n <= 150 ? n : null; };
+  const normSpan = v => { const m = /^(\d{1,2}):(\d{2})\s*[-–—~～至]\s*(\d{1,2}):(\d{2})/.exec(String(v || '').trim()); return m ? m[1].padStart(2, '0') + ':' + m[2] + '-' + m[3].padStart(2, '0') + ':' + m[4] : ''; };
 
   // ---------- Store: owner cloud tables, or local preview data on this computer only ----------
   const client = () => globalThis.wayonSupabaseClient?.client || null;
@@ -384,6 +385,7 @@
     const learner = old.learner, subject = patch.subject || old.subject, lesson_date = patch.lesson_date === undefined ? old.lesson_date : patch.lesson_date;
     let title = (body.split('\n').find(x => x.trim()) || '').trim().slice(0, 120) || old.title;
     const oldNo = lessonNo(old.title); if (oldNo && !lessonNo(title)) title += ' L' + oldNo;   // the first line may not carry the lesson number; keep it
+    const oldSpan = normSpan(old.title); if (oldSpan && !normSpan(title)) title = oldSpan + ' ' + title;
     const row = {body, body_sha256: sha, title, subject, lesson_date, notion_synced_at: null, words: patch.custom ? slimWords(words) : null};
     if (mode === 'preview') {
       if (preview.lessons.some(l => l.id !== id && l.learner === learner && l.body_sha256 === sha)) throw new Error('这段内容和另一节完全相同');
@@ -425,7 +427,12 @@
     return new Promise(resolve => {
       const ov = make('div', 'vx-overlay fb-confirm'), box = make('div', 'vx-box fb-confirm-box');
       const done = v => { ov.remove(); document.removeEventListener('keydown', key); resolve(v); };
-      const key = e => { if (e.key === 'Escape') done(false); if (e.key === 'Enter') done(true); };
+      const key = e => {
+        const ovs = document.querySelectorAll('.vx-overlay');
+        if (ovs[ovs.length - 1] !== ov) return;
+        if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); done(false); }
+        if (e.key === 'Enter') { e.preventDefault(); e.stopImmediatePropagation(); done(true); }
+      };
       box.append(make('h3', '', title)); if (detail) box.append(make('p', 'fb-meta', detail));
       const row = make('div', 'fb-row'); row.style.justifyContent = 'flex-end';
       const ok = btn('fb-btn ' + (danger ? 'danger' : 'pri'), okText || '确认', () => done(true));
@@ -558,6 +565,15 @@
     finally { backupRunning.delete(owner); }
   }
   const draftKey = (owner, day, student, phase) => 'draft:' + JSON.stringify([owner, student, phase]);
+  async function retireDraft(key) {
+    if (!key) return;
+    try {
+      const existing = await localRecord(key);
+      if (existing?.value?.state === 'draft') {
+        await localRecords([{...existing, status: 'discarded', value: {...existing.value, state: 'discarded', discarded_at: new Date().toISOString()}}]);
+      }
+    } catch {}
+  }
 
   // ---------- Learner mapping: a student's words live in their own folder and in their class folders ----------
   function learnersFor(student, all) {
@@ -623,7 +639,7 @@
     .fb-wdel{flex:none;width:26px;height:26px;border:0;border-radius:6px;background:transparent;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;opacity:0;transition:opacity .15s}
     .fb-wdel svg{width:15px;height:15px}.fb-wrow:hover .fb-wdel,.fb-wrow:focus-within .fb-wdel{opacity:1}.fb-wdel:hover{background:#fdecec;color:#d93036}
     @media not ((hover:hover) and (pointer:fine)){.fb-wdel{opacity:1}}
-    .fb-wedit{position:relative;user-select:none;-webkit-user-select:none}.fb-wedit:focus{outline:none}.fb-wedit input{user-select:text;-webkit-user-select:text}
+    .fb-wedit{position:relative;user-select:none;-webkit-user-select:none}.fb-wedit:focus{outline:none}.fb-wedit input,.fb-wedit textarea{user-select:text;-webkit-user-select:text}
     .fb-wrow{transition:background .12s}.fb-wrow.picked{background:color-mix(in srgb,var(--accent,#0a63d8) 12%,transparent);border-radius:8px;box-shadow:0 0 0 4px color-mix(in srgb,var(--accent,#0a63d8) 12%,transparent)}
     .fb-marquee{position:absolute;z-index:3;border:1px solid var(--accent,#0a63d8);background:color-mix(in srgb,var(--accent,#0a63d8) 10%,transparent);border-radius:3px;pointer-events:none}
     .fb-link.danger{color:#d93036}.fb-meta.fb-warn{color:#b42318;font-weight:550;flex-basis:100%;order:-1}
@@ -838,14 +854,34 @@
     t.textContent = text; t.classList.toggle('bad', !!bad); t.hidden = false;
     clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, bad ? 4000 : 1200);
   }
-  function overlay(title) {
+  function overlay(title, opts) {
     const ov = make('div', 'vx-overlay'), box = make('div', 'vx-box'), head = make('div', 'vx-head'), body = make('div', 'vx-body'), foot = make('div', 'vx-foot');
-    head.append(make('h3', '', title)); const close = btn('fb-btn vx-close', '关闭', () => ov.remove()); head.append(close);
+    let closed = false;
+    const closeNow = () => {
+      if (closed) return;
+      closed = true;
+      document.removeEventListener('keydown', esc);
+      ov.remove();
+    };
+    const requestClose = () => {
+      if (closed) return true;
+      if (opts?.onClose && opts.onClose() === false) return false;
+      closeNow();
+      return true;
+    };
+    head.append(make('h3', '', title)); const close = btn('fb-btn vx-close', '关闭', () => requestClose()); head.append(close);
     box.append(head, body, foot); ov.append(box); document.body.append(ov);
-    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
-    const esc = e => { if (e.key === 'Escape' && document.body.contains(ov)) { ov.remove(); document.removeEventListener('keydown', esc); } };
+    ov.addEventListener('click', e => { if (e.target === ov) requestClose(); });
+    function esc(e) {
+      if (e.key !== 'Escape' || !document.body.contains(ov)) return;
+      const ovs = document.querySelectorAll('.vx-overlay');
+      if (ovs[ovs.length - 1] !== ov) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      requestClose();
+    }
     document.addEventListener('keydown', esc);
-    return {ov, head, body, foot, close: () => ov.remove()};
+    return {ov, head, body, foot, close: closeNow, requestClose};
   }
 
   // ---------- Splitting a long paste into lessons (same rules as split_lessons / classify in Manager/vocab_import.py) ----------
@@ -974,27 +1010,48 @@
     if (view === 'today') renderToday(); else if (learnerOpen) renderLearner(learnerOpen); else renderLearners();
     void updateBadge();
   }
-  function collected(s, got, learners) {
-    const learner = learners.find(l => keyOf(l) === keyOf(s.who)) || learners.find(l => sameGroup(l, s.who)) || keyOf(s.who);   // only a folder with exactly these students; never a look-alike class
+  function resolveLearner(who, learners) {
+    return learners.find(l => keyOf(l) === keyOf(who)) || learners.find(l => sameGroup(l, who)) || keyOf(who);   // only a folder with exactly these students; never a look-alike class
+  }
+  function collected(s, got, learners, allSessions = null) {
+    const learner = resolveLearner(s.who, learners);
     const subject = subjectOf(s.course);
-    return {learner, subject, done: got.filter(l => l.learner === learner && (String(l.title || '').startsWith(s.time) || l.subject === subject))};
+    const sSpan = normSpan(s.time);
+    const own = got.filter(l => l.learner === learner);
+    const timed = sSpan ? own.filter(l => normSpan(l.title) === sSpan) : [];
+    const untimed = own.filter(l => !normSpan(l.title) && subjectOf(l.subject) === subject);
+    const peers = Array.isArray(allSessions)
+      ? allSessions.filter(p => resolveLearner(p.who, learners) === learner && subjectOf(p.course) === subject)
+      : [s];
+    if (peers.length <= 1) return {learner, subject, done: [...timed, ...untimed]};
+    if (timed.length) return {learner, subject, done: timed};
+    const unmatched = peers.filter(p => { const sp = normSpan(p.time); return !sp || !own.some(l => normSpan(l.title) === sp); });
+    const idx = unmatched.findIndex(p => p === s || (sSpan && normSpan(p.time) === sSpan));
+    if (idx < 0 || idx >= untimed.length) return {learner, subject, done: []};
+    return {learner, subject, done: idx === unmatched.length - 1 ? untimed.slice(idx) : [untimed[idx]]};
   }
   // Red count on the sidebar button: today's lessons that have already ended and still have no feedback.
-  let badgeBusy = false;
+  let badgeBusy = false, lastBadgeTodo = '';
+  const sessionEnd = time => {
+    const m = /[-–—~～至]\s*(\d{1,2}):(\d{2})/.exec(String(time || ''));
+    return m ? m[1].padStart(2, '0') + ':' + m[2] : '';
+  };
   async function updateBadge() {
-    const b = document.getElementById('nav-feedback'); if (!b || badgeBusy) return;
+    if (badgeBusy || !document.getElementById('nav-feedback')) return;
     badgeBusy = true;
     let n = 0;
     try {
       await ready();
       if (mode === 'cloud' || mode === 'preview') {
         const day = today(), now = new Date().toLocaleTimeString('en-GB', {timeZone: 'Asia/Shanghai', hour: '2-digit', minute: '2-digit'});
-        const got = (await lessonIndex()).filter(l => l.lesson_date === day), learners = allLearners();
-        n = sessionsFor(day).filter(s => { const end = /^\d{1,2}:\d{2}$/.test(String(s.time).split('-')[1] || '') ? String(s.time).split('-')[1].padStart(5, '0') : ''; return (!end || end <= now) && !collected(s, got, learners).done.length; }).length;
+        const got = (await lessonIndex()).filter(l => l.lesson_date === day), learners = allLearners(), sess = sessionsFor(day);
+        n = sess.filter(s => { const end = sessionEnd(s.time); return Boolean(end && end <= now) && !collected(s, got, learners, sess).done.length; }).length;
       }
     } catch { n = 0; } finally { badgeBusy = false; }
     const text = n ? String(n) : '';
-    if ((b.dataset.todo || '') !== text) { if (text) b.dataset.todo = text; else delete b.dataset.todo; }
+    lastBadgeTodo = text;
+    const b = document.getElementById('nav-feedback');
+    if (b && (b.dataset.todo || '') !== text) { if (text) b.dataset.todo = text; else delete b.dataset.todo; }
   }
   function renderToday() {
     collectDay = collectDay || today();
@@ -1007,7 +1064,7 @@
     let missing = 0;
     if (!sess.length) root.append(make('div', 'fb-card fb-meta', '这天的课表没有记录（只能收集已发布课表里的课）。下面仍可手动添加。'));
     sess.forEach(s => {
-      const {learner, subject, done} = collected(s, got, learners);
+      const {learner, subject, done} = collected(s, got, learners, sess);
       if (!done.length) missing++;
       root.append(collectCard({learner, subject, time: s.time, course: s.course, teacher: s.teacher, done}));
     });
@@ -1021,7 +1078,7 @@
   // Waiting: one line with 「粘贴反馈」. Pasting: text left, live words right, lesson number/date read from the teacher's first line.
   // Collected: one quiet line (✓ L6 · 18 词) that opens to the saved feedback.
   function collectCard(s) {
-    const [t1, t2] = String(s.time || '').split('-');
+    const [t1, t2] = String(s.time || '').split(/\s*[-–—~～至]\s*/);
     const timeCol = () => { const c = make('div', 'fb-time'); c.append(make('b', '', t1 || '—'), make('small', '', t2 || '')); return c; };
     const headLine = right => { const h = make('div', 'fb-collect-head'); h.append(subjectChip(s.course || s.subject), make('span', 'fb-who', String(s.learner || '').replace(/\//g, '、')), make('span', 'fb-teacher', s.teacher || ''), ...right); return h; };
     if (s.done.length) {
@@ -1091,7 +1148,9 @@
       save.disabled = true; status.textContent = '';
       try {
         // The teacher's own first line (e.g. "26-11-01 雅思听力 L3") is the title, so the lesson number is the teacher's.
-        const r = await busy('正在保存…', () => saveLesson({learner: who, subject: subj, lesson_date: d, title: firstLine || (s.course || subj), body}, ws, ed.edited));
+        const rawTitle = firstLine || (s.course || subj);
+        const spanPrefix = !s.manual && normSpan(s.time) && !normSpan(rawTitle) ? normSpan(s.time) + ' ' : '';
+        const r = await busy('正在保存…', () => saveLesson({learner: who, subject: subj, lesson_date: d, title: spanPrefix + rawTitle, body}, ws, ed.edited));
         if (r.duplicate) { status.textContent = dupText(r.existing); status.classList.add('fb-warn'); save.disabled = false; ta.focus(); return; }   // keep the box open to paste the right text
         flash('已保存，新增 ' + r.added + ' 个生词'); renderPanel();
       } catch (e) { status.textContent = '保存失败：' + (e.message || e); save.disabled = false; }
@@ -1223,11 +1282,11 @@
         del.onclick = () => { list.splice(i, 1); touch(); draw(); };
         const top = make('div', 'fb-wtop'); top.append(word, pos, del);
         row.append(top, mean); entryNotes(w).forEach(t => row.append(make('div', 'fb-meta fb-entry-notes', t))); row.dataset.i = i; row.classList.toggle('picked', picked.has(i)); box.append(row);
-        row.addEventListener('mousedown', e => { if ((e.metaKey || e.ctrlKey) && !e.target.closest('input,select,button')) { e.preventDefault(); picked.has(i) ? picked.delete(i) : picked.add(i); box.focus({preventScroll: true}); draw(); } });
+        row.addEventListener('mousedown', e => { if ((e.metaKey || e.ctrlKey) && !e.target.closest('input,textarea,select,button')) { e.preventDefault(); picked.has(i) ? picked.delete(i) : picked.add(i); box.focus({preventScroll: true}); draw(); } });
         const fit = () => { const ctx = (fitCanvas.c ||= document.createElement('canvas').getContext('2d')); ctx.font = getComputedStyle(word).font; word.style.width = Math.ceil(Math.max(ctx.measureText(word.value || word.placeholder).width + 8, 40)) + 'px'; word.style.height = 'auto'; word.style.height = word.scrollHeight + 'px'; };
         requestAnimationFrame(fit); word.addEventListener('input', fit);
       });
-      box.append(btn('fb-link fb-wadd', '＋ 加一个词', () => { list.push({word: '', pos: '', meaning: ''}); touch(); draw(); const ins = box.querySelectorAll('.fb-wrow input.w'); ins[ins.length - 1]?.focus(); }));
+      box.append(btn('fb-link fb-wadd', '＋ 加一个词', () => { list.push({word: '', pos: '', meaning: ''}); touch(); draw(); const ins = box.querySelectorAll('.fb-wrow textarea.w, .fb-wrow input.w'); ins[ins.length - 1]?.focus(); }));
     };
     function removePicked() {
       if (!picked.size) return;
@@ -1596,15 +1655,20 @@
     if (!box) return;
     box.querySelectorAll(".vq-card").forEach(g => {
       const head = g.querySelector(".qhead");
-      const student = plainName(head?.childNodes[0]?.textContent || head?.textContent || "").split(/\s/)[0];
+      const student = g.querySelector(":scope > .vq")?.dataset.student || plainName(head?.childNodes[0]?.textContent || head?.textContent || "").split(/\s/)[0];
       if (!student) return;
-      const matched = qr.filter(row => plainName(globalThis.wayonDisplayName?.(row[0]) || row[0]) === student);
+      const matched = qr.filter(row => {
+        const disp = plainName(globalThis.wayonDisplayName?.(row[0]) || row[0]);
+        return disp === student || disp.split(/\s/)[0] === student;
+      });
+      const qrows = [...g.querySelectorAll(":scope > .qrow")];
       g.querySelectorAll(".vq-session").forEach((sess, si) => {
         const timeEl = sess.querySelector("span:first-child");
         const rTime = (timeEl?.textContent || "").split("·").pop().trim();
         const targetRow = matched.find(row => (row[1] || "").trim() === rTime) || matched[si] || matched[0];
         if (!targetRow) return;
         const q = qget(qk(targetRow));
+        const qrow = qrows.find(r => (r.querySelector(".qrange")?.textContent || "").trim() === rTime) || qrows[si] || qrows[0];
         sess.querySelectorAll(".vq-check").forEach(chkBtn => {
           const isPre = /课前/.test(chkBtn.textContent);
           const k = isPre ? "pre" : "post";
@@ -1613,9 +1677,15 @@
           chkBtn.className = "vq-check" + (isDone ? " on" : "");
           chkBtn.textContent = (isDone ? "✓ " : "") + label + (isDone ? "已抽" : "未抽");
           chkBtn.title = label + (isDone ? "已抽背，点一下取消" : "未抽背，点一下标记");
+          const rawBtn = qrow && [...qrow.querySelectorAll("button.qchk")].find(b => /pre/.test(b.id) === isPre);
+          if (rawBtn) {
+            rawBtn.setAttribute("aria-pressed", String(isDone));
+            rawBtn.className = "mark qchk" + (isDone ? " on" : "");
+            rawBtn.textContent = (isDone ? "✅ " : "☐ ") + label;
+          }
         });
       });
-      const note = g.querySelector(".vq-note");
+      const note = g.querySelector(".vq-fold-note");
       if (note) {
         const allChecks = [...g.querySelectorAll(".vq-check")];
         const doneN = allChecks.filter(b => b.classList.contains("on")).length;
@@ -1671,11 +1741,12 @@
     const bar = make('div', 'vq-bar'), tabs = make('div', 'vq-tabs');
     tabs.title = learners.length ? '单词库：' + learners.map(l => l.replace(/\//g, '、')).join('，') : '还没有单词库（收集反馈后自动生成）';
     ['课前', '课后', '补充'].forEach(p => tabs.append(btn(p === phase ? 'on' : '', p + ' ' + lists[p].length, () => { vqTab.set(student, p); fillLists(vq, student, lists); })));
-    let finished = previousResult?.value?.state === 'completed' && previousResult.value.payload?.day === day ? previousResult.value : null;
+    let finished = previousResult?.value?.state === 'completed' && previousResult.value.payload?.day === day && !previousResult.value.payload?.re_quiz ? previousResult.value : null;
     if (!finished && mode === 'cloud') {
       try {
-        const {data} = await client().from('wayon_vocab_sessions').select('id,state,payload,created_at').eq('day', day).eq('student', student).eq('phase', phase).eq('state', 'completed').order('created_at', {ascending: false}).limit(1);
-        if (data && data[0]) finished = data[0];
+        const {data} = await client().from('wayon_vocab_sessions').select('id,state,payload,created_at').eq('day', day).eq('student', student).eq('phase', phase).eq('state', 'completed').order('created_at', {ascending: false}).limit(10);
+        const full = (data || []).find(r => !r.payload?.re_quiz);
+        if (full) finished = full;
       } catch {}
     }
     const wordsOf = list => JSON.stringify((list || []).map(x => String(x.word || '').trim().toLowerCase()));
@@ -1684,7 +1755,7 @@
     if (doneNow && localDraft?.value?.state !== 'draft') {
       globalThis._wayonSuppressRender = true;
       try {
-        if (markChecked(student, phase, finished)) return;
+        markChecked(student, phase, finished);
       } finally {
         globalThis._wayonSuppressRender = false;
       }
@@ -1752,8 +1823,17 @@
       vq.append(row);
     } else if (items.length || draft) {   // no word chips: one line naming the lesson, and the start button
       const ready = make('div', 'vq-ready');
-      ready.append(make('span', 'vq-label', draft ? '已暂存 · ' + (draft.payload.course || phase) + (draft.payload.course_no ? 'L' + draft.payload.course_no : '') : listLabel(items, phase)), make('span', 'vq-n', (draft ? draft.payload.items.length : items.length) + ' 项'),
-        btn('vq-clear', '清空', () => { if (confirm('清空这个清单？（单词库里的词不受影响）')) { items.splice(0); keep(); } }),
+      ready.append(make('span', 'vq-label', draft ? '已暂存 · ' + (draft.payload.course || phase) + (draft.payload.course_no ? 'L' + draft.payload.course_no : '') : listLabel(items, phase)), make('span', 'vq-n', (draft ? draft.payload.items.length : items.length) + ' 项'));
+      if (draft && items.length) {
+        ready.append(btn('vq-clear vq-drop-draft', '放弃暂存', async () => {
+          if (confirm('放弃这次暂存的抽背进度？（已选单词清单保留）')) { await retireDraft(localKey); redraw(); }
+        }));
+      }
+      ready.append(
+        btn('vq-clear', '清空', async () => {
+          const msg = draft ? '清空这个清单并放弃暂存进度？（单词库里的词不受影响）' : '清空这个清单？（单词库里的词不受影响）';
+          if (confirm(msg)) { await retireDraft(localKey); if (items.length) { items.splice(0); keep(); } else redraw(); }
+        }),
         btn('fb-btn pri vq-start', draft ? '▶ 继续抽背' : '▶ 开始抽背', () => startQuiz(student, phase, items, redraw)));
       if (draft) {
         const pendingKey = 'snapshot:' + activeOwner + ':' + draft.id, backup = await localRecord(pendingKey);
@@ -1786,7 +1866,7 @@
       .sort((a, b) => (a.last_result === 'wrong' ? 0 : 1) - (b.last_result === 'wrong' ? 0 : 1) || (b.wrong_count || 0) - (a.wrong_count || 0));
     return [...last.map(r => ({...r, _from: prev.id})), ...rest].slice(0, Math.max(limit, last.length));
   }
-  function editItem(it, done) {
+  function editItem(it, done, listCtx) {
     const o = overlay('修改单词'), word = make('input'), pos = make('input'), meaning = make('input');
     [word, pos, meaning].forEach(i => { i.type = 'text'; i.className = 'fb-search'; i.style.width = '100%'; i.style.marginBottom = '8px'; });
     word.value = it.word; pos.value = normPos(it.pos); meaning.value = it.meaning || '';
@@ -1794,14 +1874,25 @@
     o.body.append(make('div', 'fb-meta', '单词'), word, make('div', 'fb-meta', '词性'), pos, make('div', 'fb-meta', '中文'), meaning,
       make('div', 'fb-meta', lesson || it.vocab_id ? '保存后这节课的生词和单词库里这个词也会一起改。' : '这个词不在单词库里，只改这份清单。'));
     const save = btn('fb-btn pri', '保存', async () => {
+      const beforeWord = it.word;
       const patch = {word: word.value.trim() || it.word, pos: normPos(pos.value), meaning: meaning.value.trim()};
       save.disabled = true;
       try {
         let saved = false;
-        if (lesson) { const i = (await lessonWords(lesson.id)).findIndex(w => wordKey(w.word) === wordKey(it.word)); if (i >= 0) { await editLessonWord(lesson, i, patch); saved = true; } }
+        const targetLesson = lesson || (it.lesson_id && (await lessonIndex().catch(() => [])).find(l => l.id === it.lesson_id));
+        if (targetLesson) { const i = (await lessonWords(targetLesson.id)).findIndex(w => wordKey(w.word) === wordKey(beforeWord)); if (i >= 0) { await editLessonWord(targetLesson, i, patch); saved = true; } }
         if (!saved && it.vocab_id) { await updateVocab(it.vocab_id, {...patch, pos: patch.pos || null}); if (it.learner) dropVocabCache(it.learner); }
       } catch (e) { flash('单词库未能更新：' + (e.message || e), true); }
-      Object.assign(it, patch); o.close(); done();
+      Object.assign(it, patch);
+      if (listCtx?.day && listCtx?.student && ['课前', '课后', '补充'].includes(listCtx.phase)) {
+        const cached = listCache.get(listCtx.day + '|' + listCtx.student)?.[listCtx.phase];
+        if (Array.isArray(cached)) {
+          const hit = cached.find(x => x === it || (it.vocab_id && x.vocab_id === it.vocab_id) || wordKey(x.word) === wordKey(beforeWord));
+          if (hit && hit !== it) Object.assign(hit, patch);
+          saveList(listCtx.day, listCtx.student, listCtx.phase);
+        }
+      }
+      o.close(); done();
     }), close = btn('fb-btn', '取消', () => o.close());
     o.foot.append(save, close);
     o.body.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); save.click(); } };
@@ -1919,26 +2010,36 @@
   // ---------- Quiz ----------
   // A scrolling list: read the Chinese (or English), tap ✗ on the ones the student gets wrong, then 完成.
   // Only explicit marks count. Drafts and completed results are committed locally first.
-  async function startQuiz(student, phase, items, done) {
+  async function startQuiz(student, phase, items, done, opts = {}) {
+    const reQuiz = !!opts?.reQuiz;
     const owner = activeOwner || (mode === 'preview' ? 'preview' : null);
     if (!owner) { flash('请先登录工作台', true); return; }
     const key = draftKey(owner, curDay(), student, phase);
-    let stored;
-    try { stored = await localRecord(key); } catch (e) { flash(e.message, true); return; }
+    let stored = null;
+    if (!reQuiz) {
+      try { stored = await localRecord(key); } catch (e) { flash(e.message, true); return; }
+    }
     const resume = stored?.value?.state === 'draft' ? stored.value : null;
     if (resume) items = JSON.parse(JSON.stringify(resume.payload.items));
     const marks = new Map((resume?.payload?.marks || []).map(m => [m.index, {result: m.result, reason: m.reason || ''}]));
     const sessionId = resume?.session_id || uuid(), listDay = resume?.payload?.list_day || curDay();
     let revision = resume?.revision || 0;
-    let finishing = false;
+    let finishing = false, summaryShown = false;
     let hide = resume?.payload?.hide || localStorage.getItem('wayon-vocab-hide') || 'none';
-    const o = overlay(student + ' · ' + phase + '抽背 · ' + items.length + ' 项'); o.ov.classList.add('vx-quizov');
+    const o = overlay(student + ' · ' + phase + (reQuiz ? '错词复抽' : '抽背') + ' · ' + items.length + ' 项', {
+      onClose: () => {
+        if (finishing) return false;
+        if (summaryShown) { done(); return true; }
+        return !marks.size || confirm('不保存这次抽背结果？');
+      }
+    });
+    o.ov.classList.add('vx-quizov');
     const tools = make('div', 'fb-tabs vx-hide');
     const paintTools = () => { tools.textContent = ''; [['none', '都显示'], ['en', '遮英文'], ['zh', '遮中文']].forEach(([k, t]) => tools.append(btn(hide === k ? 'on' : '', t, () => { hide = k; try { localStorage.setItem('wayon-vocab-hide', k); } catch {} paintTools(); list.dataset.hide = k; }))); };
     o.head.insertBefore(tools, o.head.querySelector('.vx-close'));
     const allRight = btn('fb-btn vx-allright', '✅ 全对', () => { items.forEach((_, i) => { if (!marks.has(i)) marks.set(i, {result: 'right'}); }); painters.forEach(p => p()); recount(); }, '没标的全部标为答对');
     o.head.insertBefore(allRight, o.head.querySelector('.vx-close'));
-    const quit = () => { if (!marks.size || confirm('不保存这次抽背结果？')) o.close(); };
+    const quit = () => o.requestClose();
     o.head.querySelector('.vx-close').onclick = quit;
     const list = make('div', 'vx-list'); list.dataset.hide = hide; o.body.append(list);
     const tally = make('span', 'fb-meta'), painters = [];
@@ -1956,7 +2057,7 @@
       const en = make('div', 'vx-en'), zh = make('div', 'vx-zh');
       const paintText = () => { en.textContent = ''; en.append(make('b', '', it.word)); if (it.pos) en.append(make('small', '', ' ' + it.pos)); zh.textContent = it.meaning || ''; zh.hidden = !it.meaning; };
       paintText(); text.title = '双击修改';
-      text.ondblclick = e => { e.preventDefault(); getSelection()?.removeAllRanges(); row.classList.remove('peek'); editItem(it, paintText); };
+      text.ondblclick = e => { e.preventDefault(); getSelection()?.removeAllRanges(); row.classList.remove('peek'); editItem(it, paintText, {day: listDay, student, phase}); };
       text.append(en, zh); entryNotes(it).forEach(t => text.append(make('div', 'vx-note', t)));
       const ok = btn('vx-ok', '✓', () => { if (marks.get(i)?.result === 'right') marks.delete(i); else marks.set(i, {result: 'right'}); paintRow(); recount(); }, '答对：' + it.word);
       const x = btn('vx-x', '✗', () => { if (marks.get(i)?.result === 'wrong') marks.delete(i); else marks.set(i, {result: 'wrong', reason: ''}); paintRow(); recount(); }, '答错：' + it.word);
@@ -1973,7 +2074,7 @@
       row.append(no, text, ok, x, reasons); list.append(row); paintRow();
     });
     paintTools(); recount();
-    o.foot.append(tally, btn('fb-btn', '暂存', () => finish('draft')), btn('fb-btn pri', '完成并保存', () => finish('completed')));
+    o.foot.append(tally, ...(reQuiz ? [] : [btn('fb-btn', '暂存', () => finish('draft'))]), btn('fb-btn pri', '完成并保存', () => finish('completed')));
     if (resume) { requestAnimationFrame(() => { o.body.scrollTop = resume.payload.scroll_top || 0; }); flash('已恢复暂存，可继续抽背'); }
     async function finish(state) {
       if (finishing) return;
@@ -1989,30 +2090,33 @@
       const text = quizCopyText(student, course, courseNo, day, items, marks);
       const payload = {schema: 1, session_id: sessionId, state, student, phase, list_day: listDay, day, saved_at: new Date().toISOString(),
         items: JSON.parse(JSON.stringify(items)), marks: [...marks].map(([index, m]) => ({index, result: m.result, reason: m.result === 'wrong' ? m.reason || null : null})),
-        text, course, course_no: courseNo, hide, direction: hide === 'zh' ? 'en-zh' : 'zh-en', scroll_top: o.body.scrollTop};
+        text, course, course_no: courseNo, hide, direction: hide === 'zh' ? 'en-zh' : 'zh-en', scroll_top: o.body.scrollTop, ...(reQuiz ? {re_quiz: true} : {})};
       let snapshot;
       const snapshotKey = 'snapshot:' + owner + ':' + uuid();
       try {
         snapshot = {id: snapshotKey.split(':').at(-1), owner_id: owner, session_id: sessionId, revision: revision + 1, state, day, student, phase,
           payload, payload_hash: await sha256(JSON.stringify(payload))};
-        const records = [{key, owner, status: state, value: snapshot}, {key: snapshotKey, owner, status: 'pending', value: snapshot}];
-        if (state === 'completed') records.push({key: 'result:' + key, owner, status: 'completed', value: snapshot});
+        const records = reQuiz
+          ? [{key: snapshotKey, owner, status: 'pending', value: snapshot}]
+          : [{key, owner, status: state, value: snapshot}, {key: snapshotKey, owner, status: 'pending', value: snapshot}];
+        if (state === 'completed' && !reQuiz) records.push({key: 'result:' + key, owner, status: 'completed', value: snapshot});
         await localRecords(records); revision++;
       } catch (e) { finishing = false; o.ov.querySelectorAll('button').forEach(b => { b.disabled = false; }); flash('本机未能保存，请保留当前窗口重试', true); return; }
       setTimeout(() => void flushVocabBackups(owner), 0);
-      if (state === 'draft') { o.close(); flash('已暂存本机，下次可继续'); done(); return; }
-      allRight.remove(); tools.remove(); Object.assign(o.head.querySelector('.vx-close'), {disabled: false, onclick: () => { o.close(); done(); }});
+      if (state === 'draft') { finishing = false; o.close(); flash('已暂存本机，下次可继续'); done(); return; }
+      finishing = false; summaryShown = true;
+      allRight.remove(); tools.remove(); Object.assign(o.head.querySelector('.vx-close'), {disabled: false, onclick: () => o.requestClose()});
       marks.forEach((m, i) => { items[i].wrong = m.result === 'wrong'; });
       // 完成并保存 means the check happened, whether or not every word got a mark; an empty session ticks nothing.
-      markChecked(student, phase, snapshot);
+      if (!reQuiz) markChecked(student, phase, snapshot);
       list.textContent = ''; o.foot.textContent = '';
       const sum = make('div', 'vx-summary'); sum.append(make('div', 'fb-meta', '✅ ' + right + ' · ❌ ' + wrong.length + ' · 未标 ' + (items.length - marks.size)), make('pre', '', text));
       list.append(sum);
       const status = make('span', 'fb-meta', owner === 'preview' ? '已保存本机' : '已保存本机 · 正在备份');
       backupListeners.set(snapshotKey, value => { if (status.isConnected) status.textContent = value; });
-      o.foot.append(status, btn('fb-btn pri', '复制结果', async () => { try { await navigator.clipboard.writeText(text); flash('已复制'); } catch { flash('复制失败，请手动选中文字复制', true); } }),
-        btn('fb-btn', '错的再抽一遍', () => { if (!wrong.length) return; o.close(); startQuiz(student, phase, wrong, done); }),
-        btn('fb-btn', '完成', () => { o.close(); done(); }));
+      o.foot.append(status, btn('fb-btn pri', '复制结果', async () => { try { await navigator.clipboard.writeText(text); flash('已复制'); } catch { flash('复制失败，请手动选中文字复制', true); } }));
+      if (wrong.length) o.foot.append(btn('fb-btn', '错的再抽一遍', () => { o.close(); startQuiz(student, phase, wrong, done, {reQuiz: true}); }));
+      o.foot.append(btn('fb-btn', '完成', () => { o.close(); done(); }));
     }
   }
   // Tick the existing 课前/课后 check for this student once a quiz is finished.
@@ -2034,7 +2138,10 @@
       if (q.vocabEvidence?.[k] === token) return false;
       (q.vocabEvidence ||= {})[k] = token;
       const changed = !q[k]; q[k] = true; qsave();
-      if (changed) render();
+      if (changed) {
+        if (globalThis._wayonSuppressRender) globalThis.wayonVocabSync?.();
+        else render();
+      }
       return changed;
     } catch { return false; }
   }
@@ -2047,11 +2154,17 @@
       if (!root) { root = make('section'); root.id = 'feedback-panel'; root.hidden = !open; root.setAttribute('aria-label', '课堂反馈'); list.before(root); }
       const notice = list.parentNode && [...list.parentNode.children].find(e => e.classList.contains('wayon-sync-notice'));
       if (notice && root.compareDocumentPosition(notice) & Node.DOCUMENT_POSITION_FOLLOWING) notice.after(root);
-      if (!document.getElementById('nav-feedback')) {
-        const b = make('button', 'wayon-icon-control'); b.id = 'nav-feedback'; b.type = 'button'; b.title = '课堂反馈'; b.setAttribute('aria-label', '课堂反馈'); b.setAttribute('aria-pressed', 'false');
+      let b = document.getElementById('nav-feedback');
+      if (!b) {
+        b = make('button', 'wayon-icon-control' + (open ? ' on' : '')); b.id = 'nav-feedback'; b.type = 'button'; b.title = '课堂反馈'; b.setAttribute('aria-label', '课堂反馈'); b.setAttribute('aria-pressed', String(open));
+        if (lastBadgeTodo) b.dataset.todo = lastBadgeTodo;
         b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5 M8 8h8 M8 12h5"/></svg>';
         b.onclick = () => { open = true; document.body.dataset.feedbackOpen = 'true'; root.hidden = false; b.classList.add('on'); b.setAttribute('aria-pressed', 'true'); renderPanel(); };
         const memo = document.getElementById('nav-memo'); if (memo) memo.before(b); else tabs.append(b);
+      } else {
+        if (lastBadgeTodo && b.dataset.todo !== lastBadgeTodo) b.dataset.todo = lastBadgeTodo;
+        else if (!lastBadgeTodo && b.dataset.todo) delete b.dataset.todo;
+        if (open && !b.classList.contains('on')) { b.classList.add('on'); b.setAttribute('aria-pressed', 'true'); }
       }
     }
     decorateQuiz();
@@ -2060,7 +2173,7 @@
     if (typeof globalThis.render === 'function' && !globalThis._wayonOrigRender) {
       globalThis._wayonOrigRender = globalThis.render;
       globalThis.render = function(...args) {
-        if (globalThis._wayonSuppressRender) return;
+        if (globalThis._wayonSuppressRender) { globalThis.wayonVocabSync?.(); return; }
         return globalThis._wayonOrigRender.apply(this, args);
       };
     }
@@ -2068,7 +2181,23 @@
     document.addEventListener('click', e => { const nav = e.target.closest?.('#tabs button'); if (open && nav && nav.id !== 'nav-feedback') close(); }, true);
     new MutationObserver(mount).observe(document.body, {childList: true, subtree: true});
     window.addEventListener('online', () => void flushVocabBackups(activeOwner));
-    window.addEventListener('wayon-refresh-ready', () => { mode = 'pending'; void ready().then(updateBadge); });
+    const refreshAfterAuthOrData = () => {
+      const prevOwner = activeOwner;
+      mode = 'pending';
+      void ready().then(nextMode => {
+        if (nextMode !== 'cloud' && nextMode !== 'preview') activeOwner = null;
+        if (prevOwner && activeOwner !== prevOwner) { index = null; bodies.clear(); customWords.clear(); vocabCache.clear(); listCache.clear(); ignored = null; }
+        void updateBadge();
+        const editingFeedback = open && root?.querySelector('.fb-edit, .fb-paste, .fb-word-edit, .fb-wedit');
+        if (open && !editingFeedback) renderPanel();
+        document.querySelectorAll('.vq').forEach(v => { if (v.dataset.student && !v.contains(document.activeElement)) void fillLists(v, v.dataset.student); });
+      });
+    };
+    window.addEventListener('wayon-refresh-ready', refreshAfterAuthOrData);
+    window.addEventListener('wayon-refresh-updated', () => {
+      void updateBadge();
+      if (open && view === 'today' && !root?.querySelector('.fb-edit, .fb-paste, .fb-word-edit, .fb-wedit')) renderPanel();
+    });
     setInterval(() => { if (!document.hidden) void updateBadge(); }, 300000);   // a lesson ending turns into a reminder without a reload
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { void flushVocabBackups(activeOwner); void updateBadge(); } });
     let tries = 0; const wait = setInterval(() => { if (client() || ++tries > 60) { clearInterval(wait); mode = 'pending'; if (open) renderPanel(); else void updateBadge(); document.querySelectorAll('.vq').forEach(v => fillLists(v, v.dataset.student)); } }, 1000);

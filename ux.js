@@ -25,7 +25,7 @@
   };
   const clean = v => String(v || '').replace(/[【】「」\s]/g, '');
   const shown = v => clean(globalThis.wayonDisplayName?.(v) || v);
-  const members = v => String(v || '').replace(/^\d+\.\s*/, '').replace(/（.*?）/g, '').split(/[&＆/／、]/).map(shown).filter(Boolean);
+  const members = v => String(v || '').replace(/^\d+\.\s*/, '').replace(/\s*\[(?:已停止催缴|本人已确认完成|已停止)[^\]]*\]/g, '').replace(/\s*考期[：:]\s*\S+/g, '').replace(/\s*\((?:距考期|考期|已停止)[^)]*\)/g, '').replace(/（.*?）/g, '').split(/[&＆/／、]/).map(shown).filter(Boolean);
   const md = d => { const p = String(d).split('-'); return Number(p[1]) + '月' + Number(p[2]) + '日'; };
 
   const NAV = {'nav-today': ['今天', '今天的任务'], 'nav-notice': ['通知', '课程通知与空调加时'], 'nav-rooms': ['教室', '教室使用'],
@@ -63,7 +63,11 @@
     .ux-past{margin:8px 0 0;border:1px dashed var(--line,#d2d2d7);border-radius:14px;padding:4px 12px}
     .ux-past>summary{cursor:pointer;padding:10px 4px;font-size:13.5px;color:var(--muted,#888);list-style-position:inside}
     .ux-past[open]>summary{margin-bottom:8px}
-    .wayon-workbench[data-mode=chasing] .task.no>button.small{width:44px;min-width:44px;justify-self:end}
+    body.wayon-workbench[data-mode=chasing] #list .task{grid-template-columns:minmax(0,1fr) auto auto!important;padding:8px 10px;gap:6px 8px;align-items:center}
+    body.wayon-workbench[data-mode=chasing] #list .task.ok{grid-template-columns:minmax(0,1fr) auto!important}
+    body.wayon-workbench[data-mode=chasing] #list .task>.txt{grid-area:1/1}
+    body.wayon-workbench[data-mode=chasing] #list .task>.mark{grid-area:1/2!important;width:auto!important;padding:5px 10px}
+    body.wayon-workbench[data-mode=chasing] #list .task>button.small,.wayon-workbench[data-mode=chasing] .task.no>button.small{grid-column:-2/-1;grid-row:1;width:auto;min-width:44px;justify-self:end}
     .wayon-workbench[data-mode=done] .del-btn{opacity:.45}.wayon-workbench[data-mode=done] .del-btn:hover,.wayon-workbench[data-mode=done] .del-btn:focus-visible{opacity:1}
     #ux-student{width:min(720px,calc(100vw - 24px));max-height:min(86vh,900px);padding:0;border:1px solid var(--line,#d2d2d7);border-radius:18px;background:var(--card,#fff);color:inherit;box-shadow:0 20px 60px #0003}
     #ux-student::backdrop{background:#0006}
@@ -163,14 +167,115 @@
   `;
   document.head.append(style);
 
-  // ---- still-to-do counts: every view already states "n / total" in #count ----------
+  // ---- still-to-do counts: computed in-memory without redrawing views ---------------
   const left = {};
+  const PLAN_GROUPS = [
+    {members: ['Leo', 'Iven', 'Ivan'], label: 'Leo & Iven', key: 'Leo&Iven'},
+    {members: ['聂彦如', '陈书进'], label: '聂彦如 & 陈书进', key: '聂彦如&陈书进'},
+    {members: ['周家琪', '潘韬薄', '苏顺平'], label: '周家琪 / 潘韬薄 / 苏顺平', key: '周家琪/潘韬薄/苏顺平'},
+    {members: ['戴荧', '汤馨然'], label: '戴荧 & 汤馨然', key: '戴荧&汤馨然'},
+    {members: ['王明泽', '李子熙'], label: '王明泽 & 李子熙', key: '王明泽&李子熙'},
+    {members: ['王子居', 'Andy'], label: '王子居 & Andy', key: '王子居&Andy'}
+  ];
+  const mergePlanGroupTasks = (raw, indices, presentNames) => {
+    const entries = new Map();
+    indices.forEach((idx, pos) => {
+      const owner = presentNames[pos];
+      for (const item of raw[idx]?.[3] || []) {
+        const txt = String(typeof item === 'string' ? item : item?.[0] || '').trim();
+        if (!txt) continue;
+        let entry = entries.get(txt);
+        if (!entry) { entry = {text: txt, owners: []}; entries.set(txt, entry); }
+        if (!entry.owners.includes(owner)) entry.owners.push(owner);
+      }
+    });
+    return [...entries.values()].map(entry => {
+      if (entry.owners.length === presentNames.length || /^[「【][^」】]+[」】]/.test(entry.text)) return entry.text;
+      const who = entry.owners.map(m => (globalThis.wayonDisplayName?.(m) || m).replace(/[【】「」]/g, '').trim()).join(' & ');
+      return '「' + who + '」' + entry.text;
+    });
+  };
+  const planRowsFor = day => {
+    const raw = (typeof PLAN !== 'undefined' ? PLAN[day] : page.data._plan?.[day]) || [];
+    const consumed = new Set(), rows = [];
+    raw.forEach((p, i) => {
+      if (consumed.has(i)) return;
+      const name = (p[0] || '').replace(/[【】]/g, '').trim(), time = p[1], note = p[4] || '';
+      let matchedGroup = null, matchedIndices = [];
+      for (const g of PLAN_GROUPS) {
+        if (!g.members.includes(name)) continue;
+        const found = [];
+        raw.forEach((q, j) => {
+          if (!consumed.has(j) && q[1] === time && g.members.includes((q[0] || '').replace(/[【】]/g, '').trim())) found.push(j);
+        });
+        if (found.length >= 2) { matchedGroup = g; matchedIndices = found; break; }
+      }
+      if (!matchedGroup && note && /[&＆/／、]/.test(note)) {
+        const found = [];
+        raw.forEach((q, j) => { if (!consumed.has(j) && q[1] === time && q[4] === note) found.push(j); });
+        if (found.length >= 2) matchedIndices = found;
+      }
+      if (matchedIndices.length >= 2) {
+        matchedIndices.forEach(idx => consumed.add(idx));
+        const presentNames = matchedIndices.map(idx => (raw[idx][0] || '').replace(/[【】]/g, '').trim());
+        const groupLabel = matchedGroup && matchedGroup.members.every(m => presentNames.includes(m)) ? matchedGroup.label : presentNames.join(' & ');
+        const groupKey = matchedGroup ? matchedGroup.key : presentNames.join('&');
+        const baseTitle = p[2] || '';
+        const mergedTitle = baseTitle.includes('【') ? baseTitle.replace(/【.*?】/, '【' + groupLabel + '】') : ('【' + groupLabel + '】 ' + baseTitle);
+        rows.push([groupLabel, time, mergedTitle, mergePlanGroupTasks(raw, matchedIndices, presentNames), p[4], {
+          isGroup: true, key: groupKey, members: presentNames,
+          legacyCopyUncertain: matchedIndices.some(idx => !!raw[idx][6]?.legacyCopyUncertain)
+        }]);
+      } else {
+        consumed.add(i);
+        rows.push(p);
+      }
+    });
+    return rows;
+  };
   // The 今天 badges describe today. While another date is open, keep today's last counts.
   const showsToday = () => !page.cur || page.cur === page.today;
   const readCount = m => {
     if (['plan', 'done', 'quiz'].includes(m) && !showsToday()) return;
     // 待催 hides follow-ups that are not yet due; its own count comes from that same filter.
     if (m === 'chasing' && typeof globalThis.wayonChasingDue === 'function') { void countChasing(); return; }
+    if (m === 'plan') {
+      const day = page.today, rows = page.data[day] || [];
+      if (page.data._schedule_status?.[day]?.status === 'error' && !rows.length) { delete left.plan; return; }
+      try {
+        const prows = planRowsFor(day);
+        const copied = prows.filter(p => {
+          const meta = p[5], cardKey = (meta && meta.isGroup) ? meta.key : p[0];
+          const body = typeof ptext === 'function' ? ptext(p) : '';
+          return typeof planCopyState === 'function' && !!planCopyState(cardKey, typeof planFinalText === 'function' ? planFinalText(body) : body, meta, p[6]);
+        }).length;
+        const extra = typeof study !== 'undefined' ? study.stats(day, 'plan') : {total: 0, copied: 0};
+        left.plan = Math.max(0, (prows.length - copied) + (extra.total - extra.copied));
+        return;
+      } catch {}
+    } else if (m === 'done') {
+      const day = page.today, rows = page.data[day] || [];
+      if (page.data._schedule_status?.[day]?.status === 'error' && !rows.length) { delete left.done; return; }
+      const ended = endedOnly('done');
+      if (ended !== undefined) { left.done = ended; return; }
+    } else if (m === 'quiz') {
+      const day = page.today, rows = page.data[day] || [];
+      if (page.data._schedule_status?.[day]?.status === 'error' && !rows.length) { delete left.quiz; return; }
+      const ended = endedOnly('quiz');
+      if (ended !== undefined) { left.quiz = ended; return; }
+      if (typeof qzDay !== 'undefined' && qzDay !== page.today) { delete left.quiz; return; }
+    } else if (m === 'notice') {
+      const nDay = noticeDay() || page.tomorrow;
+      const nRows = (typeof NOTICE !== 'undefined' ? NOTICE[nDay] : page.data._notice?.[nDay]) || [];
+      if (page.data._schedule_status?.[nDay]?.status === 'error' && !nRows.length) { delete left.notice; return; }
+      try {
+        if (typeof noticeCopied === 'function' && typeof ncDay !== 'undefined' && ncDay === nDay) {
+          left.notice = nRows.filter(r => !noticeCopied(r)).length;
+          return;
+        }
+      } catch {}
+    }
+    if (page.mode !== m) return;
     const text = $('#count')?.textContent || '', pair = text.match(/(\d+)\s*\/\s*(\d+)/), people = text.match(/^(\d+)\s*人待催/);
     if (pair) left[m] = Math.max(0, Number(pair[2]) - Number(pair[1]));
     else if (people) left[m] = Number(people[1]);
@@ -196,13 +301,30 @@
       return rows.filter(r => lessonEnded(r[1]) && !get(r[0]).c).length + own;
     } catch { return undefined; }
   }
-  const airconPending = () => {
-    const day = page.tomorrow, api = globalThis.wayonAircon;
+  const airconSaved = day => {
+    try { return JSON.parse(localStorage.getItem('wayon-aircon-' + day) || '{}') || {}; } catch { return {}; }
+  };
+  const airconFor = day => {
+    const api = globalThis.wayonAircon;
     if (!api?.buildRequest || !day) return null;
     const request = api.buildRequest(page.data, day);
-    if (request.status !== 'ready') return null;
-    let saved = {}; try { saved = JSON.parse(localStorage.getItem('wayon-aircon-' + day) || '{}') || {}; } catch {}
-    return {request, copied: saved[request.id]?.signature === request.text};
+    const saved = request.status === 'ready' ? airconSaved(day) : {};
+    return {day, request, copied: request.status === 'ready' && saved[request.id]?.signature === request.text};
+  };
+  const airconNoticeEntry = () => {
+    const target = noticeDay() || page.tomorrow || page.today;
+    const curAir = airconFor(target);
+    if (target === page.tomorrow && (!curAir || curAir.request.status === 'none')) {
+      const todayAir = airconFor(page.today);
+      if (todayAir && todayAir.request.status === 'ready' && !todayAir.copied) return todayAir;
+    }
+    return curAir || (target ? {day: target, request: {status: 'unknown', days: [target], text: ''}, copied: false} : null);
+  };
+  const airconDue = () => {
+    const tAir = airconFor(page.today), mAir = airconFor(page.tomorrow);
+    const tReady = tAir?.request.status === 'ready';
+    const mReady = !tAir?.request.days?.includes(page.tomorrow) && mAir?.request.status === 'ready';
+    return {hasReady: Boolean(tReady || mAir?.request.status === 'ready'), uncopied: (tReady && !tAir.copied ? 1 : 0) + (mReady && !mAir.copied ? 1 : 0)};
   };
   let chasingAsk = 0;
   async function countChasing() {
@@ -215,23 +337,18 @@
     } catch (e) { console.warn('ux chasing count:', e); }
   }
   let probing = false, probed = 0;
-  // Ask each view for its own count once, in one synchronous pass the browser never paints.
+  // Compute every view's count purely from in-memory state without calling page.render().
   function probe() {
     const active = document.activeElement;
     if (probing || !page.mode || page.mode === 'classroom' || document.body.dataset.airconOpen || document.body.dataset.memoOpen
-        || $('dialog[open]') || (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName))) return;
-    const saved = page.mode, y = scrollY; probing = true;
-    // Counting redraws the list; put back what the user had opened afterwards.
-    const shownDetail = $$('#list .ux-assign-detail').map((el, i) => el.hidden ? -1 : i).filter(i => i >= 0);
+        || document.body.dataset.feedbackOpen || $('dialog[open], .vx-overlay') || (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName))) return;
+    probing = true;
     // 待催 is counted by its own rule without drawing the view.
     const views = ['plan', 'done', 'quiz', ...(typeof globalThis.wayonChasingDue === 'function' ? [] : ['chasing']), 'notice'];
-    try { for (const m of views) { page.mode = m; page.render(); readCount(m); } if (views.length < 5) readCount('chasing'); }
+    try { for (const m of views) readCount(m); if (views.length < 5) readCount('chasing'); }
     finally {
-      page.mode = saved; page.render(); probing = false; scrollTo(0, y); probed = Date.now();
-      try {
-        decorateCards(); decorateNotice(); decorateChasing(); reopen();
-        $$('#list .ux-assign-detail').forEach((el, i) => { if (shownDetail.includes(i)) el.hidden = false; });
-      } catch (e) { console.warn('ux restore:', e); }
+      probing = false; probed = Date.now();
+      try { decorateNav(); } catch (e) { console.warn('ux recount:', e); }
     }
   }
 
@@ -241,10 +358,14 @@
     if (!b) { b = make('span', 'ux-badge'); b.setAttribute('aria-hidden', 'true'); button.append(b); }
     const text = n > 99 ? '99+' : String(n);
     if (b.textContent !== text) b.textContent = text;
-    if (n) b.removeAttribute('data-zero'); else b.setAttribute('data-zero', '');
+    if (n) { if (b.hasAttribute('data-zero')) b.removeAttribute('data-zero'); }
+    else if (!b.hasAttribute('data-zero')) b.setAttribute('data-zero', '');
   }
   function label(button, [short, long], count) {
-    if (!$(':scope > .ux-label', button)) { button.append(make('span', 'ux-label', short)); button.classList.add('ux-labelled'); }
+    if (!$(':scope > .ux-label', button)) {
+      for (const c of [...button.childNodes]) if (c.nodeType === 3 && c.textContent.trim()) c.remove();
+      button.append(make('span', 'ux-label', short)); button.classList.add('ux-labelled');
+    }
     const title = long + (count ? '（还有 ' + count + ' 项）' : '');
     if (button.title !== title) button.title = title;
     if (button.getAttribute('aria-label') !== title) button.setAttribute('aria-label', title);
@@ -265,8 +386,8 @@
     : noCloud() || Date.now() - bornAt > 6000);
   function decorateNav() {
     const hold = !settled();
-    const air = airconPending();
-    const noticeLeft = left.notice === undefined && !air ? undefined : (left.notice || 0) + (air && !air.copied ? 1 : 0);
+    const air = airconDue();
+    const noticeLeft = left.notice === undefined && !air.hasReady ? undefined : (left.notice || 0) + air.uncopied;
     const todayLeft = ['plan', 'done', 'quiz', 'chasing'].some(m => left[m] !== undefined)
       ? (left.plan || 0) + (left.quiz || 0) : undefined;   // what is due today; reminders keep their own count
     for (const [id, text] of Object.entries(NAV)) {
@@ -329,36 +450,66 @@
   function decorateNotice() {
     const old = $('#list > .ux-aircon');
     if (page.mode !== 'notice') { old?.remove(); return; }
-    const air = airconPending(), sig = air ? air.request.text + '|' + air.copied : '';
+    const list = $('#list'); if (!list) return;
+    const air = airconNoticeEntry();
+    if (!air) { old?.remove(); return; }
+    const status = air.request.status;
+    const sig = [air.day, status, air.request.text || '', air.copied].join('|');
     if (old?.dataset.sig === sig) return;
-    old?.remove(); if (!air) return;
-    const row = make('div', 'ux-aircon'); row.dataset.sig = sig; if (air.copied) row.dataset.copied = '';
-    const when = (air.request.text.match(/开启时间：(.+)/) || [])[1] || '';
-    row.append(make('b', '', '空调加时申请'), make('span', '', air.request.days.map(md).join('/') + (when ? ' · ' + when : '')));
-    const open = make('button', '', air.copied ? '查看' : '去复制'); open.type = 'button';
-    open.onclick = () => document.getElementById('nav-aircon')?.click();
-    row.append(open); $('#list').prepend(row);
+    old?.remove();
+    const row = make('div', 'ux-aircon'); row.dataset.sig = sig;
+    if (status === 'ready' && air.copied) row.dataset.copied = '';
+    const when = status === 'ready' ? ((air.request.text.match(/开启时间：(.+)/) || [])[1] || '') : '';
+    const summary = status === 'ready'
+      ? air.request.days.map(md).join('/') + (when ? ' · ' + when : '')
+      : status === 'none'
+      ? md(air.day) + ' 无需加时 · 可选其他日期'
+      : md(air.day) + ' 课表待核实 · 可选其他日期';
+    row.append(make('b', '', '空调加时申请'), make('span', '', summary));
+    const open = make('button', '', status === 'ready' && !air.copied ? '去复制' : '查看'); open.type = 'button';
+    open.onclick = () => {
+      if (typeof globalThis.wayonAircon?.open === 'function') globalThis.wayonAircon.open(air.day);
+      else document.getElementById('nav-aircon')?.click();
+    };
+    row.append(open); list.prepend(row);
   }
 
   // ---- reminders: exam already over goes to the bottom, collapsed -------------------
   function decorateChasing() {
     if (page.mode !== 'chasing') return;
     const list = $('#list'); if (!list) return;
-    const past = $$(':scope > .item', list).filter(card => {
+    const past = $$(':scope > .item:not(.folded)', list).filter(card => {
       const date = ($('.head .name', card)?.textContent.match(/考期[：:]\s*(\d{4}-\d{2}-\d{2})/) || [])[1];
       return date && date < page.today;
     });
     let box = $(':scope > .ux-past', list);
-    if (!past.length) { if (box && !$('.item', box)) box.remove(); return; }
-    if (!box) { box = make('details', 'ux-past'); box.append(make('summary')); }
-    for (const card of past) box.append(card);
-    list.append(box);
-    // Keep the visible numbering continuous now that some cards moved.
-    [...$$(':scope > .item', list), ...$$('.item', box)].forEach((card, i) => {
-      const name = $('.head .name', card), text = name?.textContent.replace(/^\d+\.\s*/, (i + 1) + '. ');
-      if (name && name.textContent !== text) name.textContent = text;
+    if (past.length) {
+      if (!box) { box = make('details', 'ux-past'); box.append(make('summary')); }
+      for (const card of past) box.append(card);
+      const stoppedShelf = $(':scope > .chasing-stopped', list);
+      if (stoppedShelf) stoppedShelf.before(box); else list.append(box);
+    } else if (box && !$('.item', box)) {
+      box.remove(); box = null;
+    }
+    if (box) $('summary', box).textContent = '考期已过 · ' + $$('.item', box).length + ' 人（展开查看；仍可复制催交或停止催交）';
+    for (const folded of $$(':scope > .item.folded', list)) {
+      for (const node of folded.childNodes) {
+        if (node.nodeType !== 3) continue;
+        const next = node.textContent.replace(/^\d+\.\s*/, '');
+        if (next !== node.textContent) node.textContent = next;
+        break;
+      }
+    }
+    for (const shelfCard of $$(':scope > .ux-past .item, :scope > .chasing-stopped .item', list)) {
+      const name = $('.head .name', shelfCard), next = name?.textContent.replace(/^\d+\.\s*/, '');
+      if (name && name.textContent !== next) name.textContent = next;
+    }
+    // Keep active chasing cards cleanly numbered 1..N without colliding with folded shelves.
+    $$(':scope > .item:not(.folded)', list).forEach((card, i) => {
+      const name = $('.head .name', card); if (!name) return;
+      const text = (i + 1) + '. ' + name.textContent.replace(/^\d+\.\s*/, '');
+      if (name.textContent !== text) name.textContent = text;
     });
-    $('summary', box).textContent = '考期已过 · ' + $$('.item', box).length + ' 人（展开查看；仍可复制催交或停止催交）';
   }
 
   // ---- the wordmark (owner request 2026-11-11): hand-drawn "Wayon" (capital W) in the style of the owner's leo mark.
@@ -412,10 +563,78 @@
 
   // ---- one page about one student --------------------------------------------------
   let dialog = null;
-  function studentPage(raw) {
+  async function admitChasingDetails(details, policy) {
+    const activeFrom = '2026-10-25';
+    const proofs = new Set(policy?.schema === 1 && policy.active_from === activeFrom && Array.isArray(policy.tokens)
+      ? policy.tokens.filter(x => /^[a-f0-9]{64}$/.test(x)) : []);
+    const out = [];
+    for (const item of details || []) {
+      const date = String(item.date || ''), id = String(item.id || '');
+      const stamp = new Date(date + 'T00:00:00Z');
+      let allowed = /^\d{4}-\d{2}-\d{2}$/.test(date) && id && Number.isFinite(stamp.getTime()) && stamp.toISOString().slice(0, 10) === date && date < activeFrom;
+      if (!allowed && /^\d{4}-\d{2}-\d{2}$/.test(date) && id && proofs.size && globalThis.crypto?.subtle?.digest) {
+        const digest = await globalThis.crypto.subtle.digest('SHA-256', new TextEncoder().encode('wayon-reminder-v1:' + date + ':' + id));
+        allowed = proofs.has([...new Uint8Array(digest)].map(x => x.toString(16).padStart(2, '0')).join(''));
+      }
+      if (allowed) out.push(item);
+    }
+    return out;
+  }
+  async function studentPage(raw) {
     const names = members(raw); if (!names.length) return;
     const data = page.data, mine = v => String(v || '').split(/[&＆/／、]/).some(n => names.includes(shown(n)));
     dialog ||= (() => { const d = make('dialog'); d.id = 'ux-student'; d.addEventListener('click', e => { if (e.target === d) d.close(); }); document.body.append(d); return d; })();
+    const dayTaskVisible = (day, name, t, idx) => {
+      if (day === page.cur && typeof taskVisible === 'function') return taskVisible(name, t, idx);
+      const lbl = typeof t === 'string' ? t : t[0];
+      if (lbl !== '课堂生词抽背') return true;
+      const sessions = (data._sess?.[day] || []).filter(s => String(s[0] || '').split(/[&＆/／、]/).some(n => shown(n) === shown(name) || clean(n) === clean(name)));
+      return !sessions.length || sessions.some(s => s[4] !== '线上');
+    };
+    const days = Object.keys(data).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
+    const tasks = [];
+    for (const day of days) {
+      for (const row of data[day] || []) {
+        if (!mine(row[0])) continue;
+        let marks = {};
+        try {
+          marks = (day === page.cur && typeof st !== 'undefined' && st?.[row[0]])
+            ? st[row[0]]
+            : ((JSON.parse(localStorage.getItem('wayon-done-' + day) || '{}') || {})[row[0]] || {});
+        } catch {}
+        const own = Array.isArray(marks.tk) ? marks.tk.map(t => [t, '', '']) : row[3] || [];
+        own.forEach((t, i) => {
+          if (!dayTaskVisible(day, row[0], t, i)) return;
+          const mark = (marks.m || {})[i] ?? t[1];
+          tasks.push([(day === page.today ? '今天 ' : md(day) + ' ') + (typeof t === 'string' ? t : t[0]), mark === 'ok' ? '✅ 完成' : mark === 'no' ? '❌ 未完成' : day > page.today ? '' : '未标', mark === 'ok' ? 'ok' : mark === 'no' ? 'bad' : '']);
+        });
+      }
+      if (typeof study !== 'undefined' && typeof study.cards === 'function') {
+        for (const card of study.cards(day)) {
+          if (!mine(card.studentName)) continue;
+          for (const t of card.tasks || []) {
+            tasks.push([(day === page.today ? '今天 ' : md(day) + ' ') + '（自习）' + t.text, t.mark === 'ok' ? '✅ 完成' : t.mark === 'no' ? '❌ 未完成' : day > page.today ? '' : '未标', t.mark === 'ok' ? 'ok' : t.mark === 'no' ? 'bad' : '']);
+          }
+        }
+      }
+    }
+    const system = [];
+    for (const day of days) for (const line of assignLines(names, day))
+      system.push([(day === page.today ? '今天 ' : md(day) + ' ') + line.text + (line.details.length ? '（' + line.details.join('；') + '）' : ''), STATE[line.key][0], STATE[line.key][1]]);
+    const owed = [];
+    const mergedChasing = typeof chasingRows === 'function' ? chasingRows(page.chasing || []) : (page.chasing || []);
+    for (const row of mergedChasing) {
+      if (!mine(row.name) && !(row.chasing_aliases || []).some(mine)) continue;
+      const stopped = typeof chasingStopIds === 'function' ? chasingStopIds(row) : (row.stopped_ids || []).map(String);
+      const done = typeof chasingDoneIds === 'function' ? chasingDoneIds(row) : (row.teacher_completed_ids || []).map(String);
+      const rawDetails = (row.uncompleted_details || []).filter(d => !stopped.includes(String(d.id)) && !done.includes(String(d.id)));
+      const admitted = await admitChasingDetails(rawDetails, data._reminder_admission);
+      const items = typeof chasingDisplayItems === 'function' ? chasingDisplayItems(admitted) : admitted;
+      for (const d of items) owed.push([d.title || '', (d.date || row.prev_date || '') + ' 布置', '']);
+    }
+    const lessons = [];
+    for (const day of Object.keys(data._sess || {}).sort()) for (const s of data._sess[day] || [])
+      if (mine(s[0])) lessons.push([(day === page.today ? '今天' : day === page.tomorrow ? '明天' : md(day)) + ' ' + s[1] + ' · ' + (s[2] || '') + (s[3] ? ' · ' + s[3] : ''), s[4] || '', '']);
     dialog.replaceChildren();
     const head = make('div', 'ux-st-head'), close = make('button', '', '×'); close.type = 'button'; close.setAttribute('aria-label', '关闭'); close.onclick = () => dialog.close();
     head.append(make('h2', '', names.join(' & ')), close);
@@ -425,26 +644,9 @@
       if (!rows.length) { body.append(make('div', 'ux-st-empty', empty)); return; }
       for (const [main, side, kind] of rows) { const r = make('div', 'ux-st-row'); r.append(make('span', '', main)); if (side) { const e = make(kind ? 'em' : 'small', '', side); if (kind) e.dataset.kind = kind; r.append(e); } body.append(r); }
     };
-    const days = Object.keys(data).filter(k => /^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
-    const tasks = [];
-    for (const day of days) for (const row of data[day] || []) {
-      if (!mine(row[0])) continue;
-      let marks = {}; try { marks = (JSON.parse(localStorage.getItem('wayon-done-' + day) || '{}') || {})[row[0]] || {}; } catch {}
-      const own = Array.isArray(marks.tk) ? marks.tk.map(t => [t, '', '']) : row[3] || [];
-      own.forEach((t, i) => { const mark = (marks.m || {})[i] ?? t[1]; tasks.push([(day === page.today ? '今天 ' : md(day) + ' ') + (typeof t === 'string' ? t : t[0]), mark === 'ok' ? '✅ 完成' : mark === 'no' ? '❌ 未完成' : day > page.today ? '' : '未标', mark === 'ok' ? 'ok' : mark === 'no' ? 'bad' : '']); });
-    }
     section('任务与完成情况', tasks, '页面里这几天没有这位学生的任务。');
-    const system = [];
-    for (const day of days) for (const line of assignLines(names, day))
-      system.push([(day === page.today ? '今天 ' : md(day) + ' ') + line.text + (line.details.length ? '（' + line.details.join('；') + '）' : ''), STATE[line.key][0], STATE[line.key][1]]);
     section('系统作业布置', system, '这几天没有需要系统布置的作业。');
-    const owed = [];
-    for (const row of page.chasing || []) if (mine(row.name)) for (const d of row.uncompleted_details || (row.uncompleted || []).map(title => ({title})))
-      owed.push([d.title || '', (d.date || row.prev_date || '') + ' 布置', '']);
     section('欠交作业', owed, '没有欠交。');
-    const lessons = [];
-    for (const day of Object.keys(data._sess || {}).sort()) for (const s of data._sess[day] || [])
-      if (mine(s[0])) lessons.push([(day === page.today ? '今天' : day === page.tomorrow ? '明天' : md(day)) + ' ' + s[1] + ' · ' + (s[2] || '') + (s[3] ? ' · ' + s[3] : ''), s[4] || '', '']);
     section('近期课程', lessons.reverse(), '近期课表里没有这位学生的课。');
     body.append(make('div', 'ux-st-note', '只汇总本页面已有的数据：任务为昨天到明天，课程为最近一周；完成标记取自本机记录。'));
     dialog.append(head, body);
@@ -452,7 +654,7 @@
   }
   document.addEventListener('click', event => {
     const name = event.target.closest?.('#list .item .head .name');
-    if (name && !event.target.closest('button,a,input,textarea,summary')) { studentPage(name.textContent); return; }
+    if (name && !event.target.closest('button,a,input,textarea,summary')) { void studentPage(name.textContent); return; }
   });
   // A task delete sits right beside the completion mark: ask first.
   document.addEventListener('click', event => {
@@ -487,7 +689,7 @@
     if (probing) return;
     // The cloud copy has just been applied: count every view once on it, then let the numbers show.
     if (!cloudCounted && cloudReady()) { readyAt ||= Date.now(); if (cloudComplete()) { probe(); cloudCounted = probed > 0 && Date.now() - probed < 50; } }
-    if (page.mode && !document.body.dataset.airconOpen && !document.body.dataset.memoOpen) readCount(page.mode);
+    if (page.mode && !document.body.dataset.airconOpen && !document.body.dataset.memoOpen && !document.body.dataset.feedbackOpen) readCount(page.mode);
     try { decorateNav(); decorateCards(); decorateNotice(); decorateChasing(); reopen(); brandMark(); } catch (e) { console.warn('ux:', e); }
   }
   const schedule = () => { if (!queued && !probing) { queued = true; requestAnimationFrame(apply); } };
@@ -498,7 +700,14 @@
     let recount = 0;
     ['pointerdown', 'keydown', 'input'].forEach(t => document.addEventListener(t, () => { lastUser = Date.now(); }, true));
     const inList = n => (n.nodeType === 1 ? n : n.parentElement)?.closest?.('#list');
+    const inNav = n => (n.nodeType === 1 ? n : n.parentElement)?.closest?.('#tabs, #subtabs, .sidebar-footer');
     new MutationObserver(records => {
+      if (records.some(r => inNav(r.target))) {
+        try {
+          if (page.mode && !document.body.dataset.airconOpen && !document.body.dataset.memoOpen && !document.body.dataset.feedbackOpen) readCount(page.mode);
+          decorateNav();
+        } catch (e) { console.warn('ux nav:', e); }
+      }
       schedule();
       if (probing || Date.now() - probed < 1000 || Date.now() - lastUser < 800 || !records.some(r => inList(r.target))) return;
       clearTimeout(recount);

@@ -5,13 +5,19 @@
   globalThis.wayonMemo = true;
   const CACHE = 'wayon-memos-v1', GONE = 'wayon-memos-deleted-v1';
   const make = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; };
-  const today = () => new Date().toLocaleDateString('en-CA', {timeZone: 'Asia/Shanghai'});
+  const today = () => {
+    const parts = new Intl.DateTimeFormat('en-CA', {timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit'}).formatToParts(new Date());
+    const get = t => parts.find(p => p.type === t)?.value || '';
+    return `${get('year')}-${get('month')}-${get('day')}`;
+  };
   const shift = (d, n) => { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); };
   const uuid = () => globalThis.crypto?.randomUUID ? crypto.randomUUID()
     : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => { const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 3 | 8)).toString(16); });
   const read = (k, fallback) => { try { const v = JSON.parse(localStorage.getItem(k) || 'null'); return v ?? fallback; } catch { return fallback; } };
   const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
-  let items = read(CACHE, []), gone = read(GONE, []), open = false, root = null, cloudState = 'local', busy = false, showDone = false;
+  let items = read(CACHE, []), gone = read(GONE, []), open = false, root = null, cloudState = 'local', busy = false, resyncNeeded = false, showDone = false;
+  let localRev = items.reduce((mx, m) => Math.max(mx, Number(m?.rev) || 0), 0);
+  let pointerActive = false, renderDeferred = false, draftText = '', draftDue = '', authBoundClient = null;
   const persist = () => { write(CACHE, items); write(GONE, gone); };
   const client = () => globalThis.wayonSupabaseClient?.client || null;
   const FIELDS = 'id,text,due_date,done,done_at,created_at,updated_at';
@@ -19,36 +25,75 @@
 
   // Cloud: push local changes first (upsert by id, then deletions), then read the owner's rows back.
   async function sync() {
-    const c = client(); if (!c || busy) { if (!c) setState('local'); return; }
-    busy = true;
+    const c = client();
+    if (!c) { setState('local'); return; }
+    if (busy) { resyncNeeded = true; return; }
+    busy = true; resyncNeeded = false;
+    let ok = false;
     try {
       const {data: session} = await c.auth.getSession();
       if (!session?.session) { setState('signedout'); return; }
-      const dirty = items.filter(m => m.dirty);
-      if (dirty.length) {
-        const {error} = await c.from('wayon_memos').upsert(dirty.map(row), {onConflict: 'id'});
+      const dirtySnap = items.filter(m => m.dirty).map(m => ({id: m.id, rev: m.rev || 0, row: row(m)}));
+      if (dirtySnap.length) {
+        const {error} = await c.from('wayon_memos').upsert(dirtySnap.map(d => d.row), {onConflict: 'id'});
         if (error) throw error;
+        for (const d of dirtySnap) {
+          const cur = items.find(m => m.id === d.id);
+          if (cur && (cur.rev || 0) === d.rev) delete cur.dirty;
+        }
       }
-      if (gone.length) {
-        const {error} = await c.from('wayon_memos').delete().in('id', gone);
+      const goneSnap = [...new Set(gone)];
+      if (goneSnap.length) {
+        const {error} = await c.from('wayon_memos').delete().in('id', goneSnap);
         if (error) throw error;
-        gone = [];
+        const deletedSet = new Set(goneSnap);
+        gone = gone.filter(id => !deletedSet.has(id));
       }
       const {data, error} = await c.from('wayon_memos').select(FIELDS).order('created_at', {ascending: true});
       if (error) throw error;
-      const pending = items.filter(m => m.dirty && !data.some(r => r.id === m.id));
-      items = [...data.map(r => ({...r})), ...pending];
-      persist(); setState('cloud');
+      const goneSet = new Set(gone);
+      const localById = new Map(items.map(m => [m.id, m]));
+      const merged = [], seenIds = new Set();
+      for (const r of (data || [])) {
+        if (goneSet.has(r.id)) continue;
+        seenIds.add(r.id);
+        const local = localById.get(r.id);
+        if (local?.dirty) merged.push({...r, ...local, dirty: true});
+        else merged.push({...r});
+      }
+      for (const m of items) {
+        if (m.dirty && !seenIds.has(m.id) && !goneSet.has(m.id)) merged.push(m);
+      }
+      items = merged;
+      persist();
+      const stillDirty = items.some(m => m.dirty) || gone.length > 0;
+      if (stillDirty) resyncNeeded = true;
+      else setState('cloud');
+      ok = true;
     } catch (e) {
       const missing = /wayon_memos|PGRST205|42P01|does not exist|schema cache/i.test(String(e?.message || e?.code || e));
       setState(missing ? 'notable' : 'error', e);
-    } finally { busy = false; if (open) render(); }
+    } finally {
+      busy = false;
+      if (open) { if (pointerActive) renderDeferred = true; else render(); }
+      if (ok && resyncNeeded && client()) { resyncNeeded = false; void sync(); }
+    }
   }
-  function setState(s, err) { cloudState = s; if (err) console.warn('memo sync:', err); if (open) render(); }
-  function change(mutator) { mutator(); persist(); render(); void sync(); }
-  const add = (text, due) => change(() => items.push({id: uuid(), text, due_date: due || null, done: false, done_at: null, created_at: new Date().toISOString(), dirty: true}));
-  const update = (id, patch) => change(() => { const m = items.find(x => x.id === id); if (m) Object.assign(m, patch, {dirty: true}); });
-  const remove = id => change(() => { const m = items.find(x => x.id === id); items = items.filter(x => x.id !== id); if (m && !(m.dirty && !m.updated_at)) gone.push(id); });
+  function setState(s, err) { cloudState = s; if (err) console.warn('memo sync:', err); if (open) { if (pointerActive) renderDeferred = true; else render(); } }
+  function change(mutator, {deferRender = false} = {}) {
+    mutator();
+    persist();
+    if (deferRender && pointerActive) renderDeferred = true;
+    else { renderDeferred = false; render(); }
+    void sync();
+  }
+  const add = (text, due) => change(() => items.push({id: uuid(), text, due_date: due || null, done: false, done_at: null, created_at: new Date().toISOString(), dirty: true, rev: ++localRev}));
+  const update = (id, patch, opts) => change(() => { const m = items.find(x => x.id === id); if (m) Object.assign(m, patch, {dirty: true, rev: ++localRev}); }, opts);
+  const remove = id => change(() => {
+    const m = items.find(x => x.id === id);
+    items = items.filter(x => x.id !== id);
+    if ((!m || m.updated_at || busy) && !gone.includes(id)) gone.push(id);
+  });
 
   const style = make('style'); style.id = 'wayon-memo-style'; style.textContent = `
     #nav-memo:before{display:none!important}#nav-memo svg{width:19px;height:19px;flex:none}
@@ -102,13 +147,36 @@
     const text = make('textarea', 'memo-text'); text.rows = 1; text.value = m.text; text.setAttribute('aria-label', '备忘内容');
     text.oninput = () => grow(text);
     text.onkeydown = e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); text.blur(); } if (e.key === 'Escape') { text.value = m.text; text.blur(); } };
-    text.onblur = () => { const v = text.value.trim(); if (!v) { text.value = m.text; return; } if (v !== m.text) update(m.id, {text: v}); };
+    text.onblur = () => { const v = text.value.trim(); if (!v) { text.value = m.text; grow(text); return; } if (v !== m.text) update(m.id, {text: v}, {deferRender: true}); };
     const due = dueLabel(m.due_date), badge = make('button', 'memo-due ' + due.cls, due.text); badge.type = 'button';
     badge.title = m.due_date ? '截止 ' + m.due_date + '（点一下修改）' : '添加截止日期';
     badge.onclick = () => {
       const picker = make('input'); picker.type = 'date'; picker.value = m.due_date || ''; picker.setAttribute('aria-label', '截止日期');
-      const done = () => { const v = picker.value || null; if (v !== (m.due_date || null)) update(m.id, {due_date: v}); else render(); };
-      picker.onchange = done; picker.onblur = done; badge.replaceWith(picker); picker.focus(); try { picker.showPicker?.(); } catch {}
+      let committed = false;
+      const commitDue = () => {
+        if (committed) return;
+        const v = picker.value || null;
+        if (v && !/^[1-9]\d{3}-\d{2}-\d{2}$/.test(v)) return;
+        committed = true;
+        if (document.activeElement === picker) picker.blur();
+        if (v !== (m.due_date || null)) update(m.id, {due_date: v}); else render();
+      };
+      picker.onchange = () => {
+        const v = picker.value || '';
+        if (v && !/^[2-9]\d{3}-\d{2}-\d{2}$/.test(v)) return;
+        commitDue();
+      };
+      picker.onblur = () => {
+        if (committed) return;
+        committed = true;
+        const v = picker.value && /^[1-9]\d{3}-\d{2}-\d{2}$/.test(picker.value) ? picker.value : null;
+        if (v !== (m.due_date || null)) update(m.id, {due_date: v}); else render();
+      };
+      picker.onkeydown = e => {
+        if (e.key === 'Escape') { committed = true; picker.blur(); render(); }
+        if (e.key === 'Enter') { e.preventDefault(); commitDue(); }
+      };
+      badge.replaceWith(picker); picker.focus(); try { picker.showPicker?.(); } catch {}
     };
     const del = make('button', 'memo-del', '×'); del.type = 'button'; del.setAttribute('aria-label', '删除：' + m.text);
     del.onclick = () => { if (confirm('删除这条备忘？\n' + m.text)) remove(m.id); };
@@ -118,8 +186,15 @@
   }
   function render() {
     if (!root) return;
-    const active = document.activeElement, editing = active && root.contains(active) && active.matches('.memo-text,input[type=date]');
-    if (editing) return;   // never rebuild under the cursor; the next change re-renders
+    const active = document.activeElement;
+    const editing = active && root.contains(active) && active.matches('.memo-item .memo-text, .memo-item input[type=date]');
+    if (editing) return;   // never rebuild under an active row editor; the next change re-renders
+    const liveAddText = root.querySelector('.memo-add input[type=text]');
+    const liveAddDate = root.querySelector('.memo-add input[type=date]');
+    if (liveAddText) draftText = liveAddText.value;
+    if (liveAddDate) draftDue = liveAddDate.value;
+    const addTextFocused = active && active === liveAddText;
+    const selStart = addTextFocused ? active.selectionStart : null, selEnd = addTextFocused ? active.selectionEnd : null;
     root.textContent = '';
     const todo = items.filter(m => !m.done).sort((a, b) => (a.due_date || '9999') .localeCompare(b.due_date || '9999') || String(a.created_at).localeCompare(String(b.created_at)));
     const finished = items.filter(m => m.done).sort((a, b) => String(b.done_at || '').localeCompare(String(a.done_at || '')));
@@ -129,9 +204,23 @@
     const [msg, cls] = states[cloudState] || states.local; head.append(make('span', 'memo-state ' + cls, msg)); root.append(head);
     const form = make('form', 'memo-add'), input = make('input'), date = make('input'), btn = make('button', '', '添加');
     input.type = 'text'; input.placeholder = '需要跟进的事…（回车添加）'; input.maxLength = 1000; input.setAttribute('aria-label', '新备忘');
+    input.value = draftText; input.oninput = () => { draftText = input.value; };
     date.type = 'date'; date.setAttribute('aria-label', '截止日期（可选）'); date.title = '截止日期（可选）'; btn.type = 'submit';
-    form.onsubmit = e => { e.preventDefault(); const v = input.value.trim(); if (!v) { input.focus(); return; } add(v, date.value); requestAnimationFrame(() => root.querySelector('.memo-add input[type=text]')?.focus()); };
+    date.value = draftDue; date.oninput = date.onchange = () => { draftDue = date.value; };
+    form.onsubmit = e => {
+      e.preventDefault();
+      const v = input.value.trim(), dueVal = date.value;
+      if (!v) { input.focus(); return; }
+      draftText = ''; draftDue = ''; input.value = ''; date.value = '';
+      if (document.activeElement === date) date.blur();
+      add(v, dueVal);
+      requestAnimationFrame(() => root.querySelector('.memo-add input[type=text]')?.focus());
+    };
     form.append(input, date, btn); root.append(form);
+    if (addTextFocused) {
+      input.focus({preventScroll: true});
+      if (typeof selStart === 'number') try { input.setSelectionRange(selStart, selEnd); } catch {}
+    }
     if (!todo.length && !finished.length) root.append(make('div', 'memo-empty', '还没有备忘。把需要跟进的事写在上面，完成后点圆圈勾掉。'));
     const list = make('div', 'memo-list'); todo.forEach(m => list.append(itemRow(m))); root.append(list);
     if (finished.length) {
@@ -157,14 +246,32 @@
       tabs.append(b);
     }
   }
+  function bindAuth() {
+    const c = client();
+    if (!c || authBoundClient === c) return !!c;
+    authBoundClient = c;
+    c.auth?.onAuthStateChange?.(() => void sync());
+    return true;
+  }
   function start() {
     mount();
+    const clearPointer = () => {
+      if (!pointerActive && !renderDeferred) return;
+      pointerActive = false;
+      if (renderDeferred) { renderDeferred = false; setTimeout(() => { if (open) render(); }, 0); }
+    };
+    document.addEventListener('pointerdown', () => { pointerActive = true; }, true);
+    document.addEventListener('pointerup', clearPointer, true);
+    document.addEventListener('pointercancel', clearPointer, true);
+    addEventListener('blur', clearPointer);
     document.addEventListener('click', e => { const nav = e.target.closest?.('#tabs button'); if (open && nav && nav.id !== 'nav-memo') close(); }, true);
     new MutationObserver(mount).observe(document.body, {childList: true, subtree: true});
-    // The workspace publishes its Supabase client after login; sync once it appears and on focus/online.
-    let tries = 0; const wait = setInterval(() => { if (client() || ++tries > 60) { clearInterval(wait); void sync(); } }, 1000);
-    addEventListener('focus', () => void sync()); addEventListener('online', () => void sync());
-    client()?.auth?.onAuthStateChange?.(() => void sync());
+    // The workspace publishes its Supabase client after login; sync once it appears and on auth/focus/online.
+    let tries = 0; const wait = setInterval(() => { if (bindAuth() || ++tries > 60) { clearInterval(wait); void sync(); } }, 1000);
+    addEventListener('wayon-refresh-ready', () => { bindAuth(); void sync(); });
+    addEventListener('focus', () => { bindAuth(); void sync(); });
+    addEventListener('online', () => { bindAuth(); void sync(); });
+    if (bindAuth()) void sync();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once: true}); else start();
 })();

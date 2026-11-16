@@ -12,6 +12,7 @@ export const SYSTEMS = {
   toefl: "TOEFL",
   sat: "SAT",
   ability: "Ability",
+  school: "校内",
   other: "Other",
 };
 const re = (k) => new RegExp(RULE_SPEC[k], "i");

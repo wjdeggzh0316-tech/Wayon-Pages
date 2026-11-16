@@ -47,7 +47,7 @@ pre{margin:0;background:var(--code-bg);border-radius:6px;padding:10px 12px;font-
     <div>
       <h1>明日课程提醒 · <span id="d"></span></h1>
       <div class="sub">点「复制」后卡片变绿并记下时间。</div>
-      <div class="sub">📌 课程通知已并入任务清单（第四个页签「明日课程通知」）：<a href="https://claude.ai/artifact/PCoRATLBtRCTnS5XHyuYDy" target="_blank" rel="noopener">打开任务清单</a></div>
+      <div class="sub">📌 课程通知已并入工作台「通知」板块：<a href="./index.html">打开工作台</a></div>
       <div class="sub" id="sync"></div>
     </div>
     <div class="bar">
@@ -67,6 +67,38 @@ try { st = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) {}
 const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e) {} push(); };
 const list = document.getElementById("list");
 document.getElementById("d").textContent = DATE;
+function pureName(value){
+  let text = String(value || "").trim().replace(/（自习）|\(自习\)/g, "").trim();
+  const head = text.match(/^((?:\d+[.、．]\s*)?)(?:【([^】]+)】|「([^」]+)」|\[([^\]]+)\])(?=\s*(?:$|[-－—]?\s*(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语|高中|初中|小学|1\s*v\s*1|一对一|1对1)))/i);
+  if (head) text = head[1] + (head[2] || head[3] || head[4]);
+  return text.replace(/[【】「」]/g, "").trim().replace(/(?:[-－—]\s*)?(?:(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语)?\s*(?:1\s*v\s*1|一对一|1对1)(?:课程|班)?|高中同步课程|初中同步课程|小学同步课程|英语能力提升课程|(?:雅思|托福|SAT|GRE|英语)(?:基础|强化|冲刺|提高|进阶)?(?:课程|班))$/i, "").replace(/\s*[-－—]\s*(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语|高中|语法).*$/i, "").trim();
+}
+function noticeText(body, rawKey){
+  const raw = String(rawKey || "").trim();
+  const bracket = raw.match(/^(?:【([^】]+)】|「([^」]+)」|\[([^\]]+)\])\s*(?:[-－—]?\s*(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语|高中|初中|小学|1\s*v\s*1|一对一|1对1))/i);
+  const person = bracket && (bracket[1] || bracket[2] || bracket[3]);
+  return String(body || "").split("\n").map((line, index) => {
+    if (index === 0) line = line.replace(/【((?:【[^】]*】|[^【】])+)】/, (_, n) => n === "明日课程提醒" ? "【明日课程提醒】" : "【" + pureName(n) + "】");
+    return line.replace(/^(\s*学生[：:]\s*)(.+)$/, (_, prefix, n) => {
+      const d = pureName(n);
+      if (person && d.startsWith(person) && /^(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语)$/i.test(d.slice(person.length))) return prefix + person;
+      return prefix + d;
+    });
+  }).join("\n");
+}
+function copyNoticeText(value, ok, fail){
+  let copied = false;
+  try {
+    const tmp = document.createElement("textarea");
+    tmp.value = value; tmp.setAttribute("readonly", ""); tmp.style.position = "fixed"; tmp.style.left = "-9999px";
+    document.body.append(tmp); tmp.focus(); tmp.select();
+    copied = document.execCommand("copy") === true;
+    tmp.remove();
+  } catch(e) { copied = false; }
+  if (copied) ok();
+  else if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) navigator.clipboard.writeText(value).then(ok, fail);
+  else fail();
+}
 function render(){
   list.textContent = "";
   let n = 0;
@@ -74,17 +106,18 @@ function render(){
     const done = st[r[0]]; if (done) n++;
     const el = document.createElement("div"); el.className = "item" + (done ? " done" : "");
     const head = document.createElement("div"); head.className = "head";
-    const name = document.createElement("div"); name.className = "name"; name.textContent = (i+1) + ".【" + r[0] + "】";
+    const name = document.createElement("div"); name.className = "name"; name.textContent = (i+1) + ". " + pureName(r[0]);
     const time = document.createElement("div"); time.className = "time"; time.textContent = r[1];
     head.append(name, time);
     if (done){ const s = document.createElement("div"); s.className = "state"; s.textContent = "✓ 已复制 " + done; head.append(s); }
-    const pre = document.createElement("pre"); pre.textContent = r[2];
+    const bodyText = noticeText(r[2], r[0]);
+    const pre = document.createElement("pre"); pre.textContent = bodyText;
     const b = document.createElement("button"); b.type = "button"; b.className = "copy"; b.id = "copy-" + i;
     b.textContent = done ? "再复制一次" : "复制";
     b.onclick = () => {
-      const mark = () => { st[r[0]] = new Date().toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit"}); save(); render(); };
+      const mark = () => { st[r[0]] = new Date().toLocaleTimeString("zh-CN",{timeZone:"Asia/Shanghai",hour12:false,hour:"2-digit",minute:"2-digit"}); save(); render(); };
       const sel = () => { const g = getSelection(), rg = document.createRange(); rg.selectNodeContents(pre); g.removeAllRanges(); g.addRange(rg); b.textContent = "已选中，按 ⌘C 复制"; };
-      try { navigator.clipboard.writeText(r[2]).then(mark, sel); } catch(e) { sel(); }
+      copyNoticeText(bodyText, mark, sel);
     };
     head.append(b);
     if (done){ const u = document.createElement("button"); u.type = "button"; u.className = "undo"; u.textContent = "撤销"; u.onclick = () => { delete st[r[0]]; save(); render(); }; head.append(u); }
@@ -126,4 +159,4 @@ if (typeof claude !== "undefined" && claude && claude.use) {
   }, () => {});
 }
 </script>
-<!--WAYON-SCHEDULE-HEALTH--><div role="status" style="padding:8px;color:#854d0e;background:#fef3c7;font-size:13px">2026-11-17 课表核对时间：2026-11-16T11:04:25.802530+08:00</div><!--/WAYON-SCHEDULE-HEALTH-->
+<!--WAYON-SCHEDULE-HEALTH--><div role="status" style="padding:8px;color:#854d0e;background:#fef3c7;font-size:13px">2026-11-17 课表核对时间：2026-11-16T17:04:45.937132+08:00</div><!--/WAYON-SCHEDULE-HEALTH-->
