@@ -1,4 +1,4 @@
-import { clone, clean, todayShanghai, inspectTask, taskLines, manualTask, setManual, validateDraft, publicData } from './rules-model.mjs?v=20261117-01';
+import { clone, clean, todayShanghai, inspectTask, taskLines, manualTask, setManual, validateDraft, publicData } from './rules-model.mjs?v=20261118-01';
 import { canonical, saveCatalog } from './rules-store.mjs?v=20261111-studio4';
 import { buildRuleEntities, entityStatus, setEntityStatus, ruleEntityDisplayName } from './rules-entities.mjs?v=20261111-studio4';
 import { STYLE } from './rules-studio-style.mjs?v=20261111-studio4';
