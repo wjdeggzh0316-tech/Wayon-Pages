@@ -15,7 +15,7 @@
       const response=await fetch('./workspace-source.html?release='+Date.now(),{cache:'no-store'});
       if(!response.ok)throw Error('PAGE_UNAVAILABLE');
       const source=await response.text();
-      const stamp='20261117-01';
+      const stamp='20261118-06';
       const pattern=/import\(\s*(['"])\.\/checks-sync(?:-\d{8}-\d{2})?\.mjs(?:\?[^'"]*)?\1\s*\)/g;
       let replacements=0;
       let next=source.replace(pattern,()=>{replacements++;return "import('./checks-sync-20261024-02.mjs?v="+stamp+"')";});
