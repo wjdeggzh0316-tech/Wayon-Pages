@@ -29,38 +29,69 @@
   const normPos = p => { const x = String(p || '').trim().replace(/\.$/, '').replace(/\s+/g, '').replace(/\./g, ''); return ({j: 'adj', a: 'adj', ad: 'adv', pp: 'phr'})[x] || x; };
 
   // ---------- Feedback parser (keep in step with Manager/vocab_import.py) ----------
-  const POS = '(?:n|v|vt|vi|adj|adv|j|prep|pp|conj|pron|phr|num|int|aux|art|abbr)(?:\\.?\\s*/\\s*(?:n|v|vt|vi|adj|adv|j|prep|pp|conj|pron))*\\.?';
-  const WORD_LINE = new RegExp("^\\s*(?:[-–•·*]\\s*|\\d{1,3}[.、)）]\\s*|[‘'’]\\s*)?(?<word>[A-Za-z][A-Za-z'‘’\\-/().=,…&?!\\s]{0,60}?)\\s*(?<pos>\\b" + POS +
-    "(?=[\\s\\u4e00-\\u9fff,，;；(（《〈「『]|$))?\\s*[,，:：]?\\s*(?<meaning>[\\u4e00-\\u9fff（(“\"…《〈「『].*)$");
-  const SUB_LINE = /^\s*[-–•·]\s+/, NUMBERED = /^\s*\d{1,3}[.、)）]\s*/;
+  const IPA_CHARS = 'əˈˌɪʃʊʌæɑɒɔɜːθðŋʒɡɛɾ';
+  const IPA_RE = new RegExp(
+    '\\s*/(?=[^/\\n]*[' + IPA_CHARS + '])[^/\\n]{1,50}/'
+    + '|\\s*\\[(?=[^\\]\\n]*[' + IPA_CHARS + '])[^\\]\\n]{1,50}\\]'
+    + "|\\s+/[A-Za-z.'\\-]{2,24}/(?=\\s*(?:\\(|（|\\[|(?<![A-Za-z])(?:n|v|vt|vi|adj|adv|j|prep|pp|conj|pron|phr)\\.?[\\s\\u4e00-\\u9fff]|[\\u4e00-\\u9fff]))",
+    'g'
+  );
+  const stripIpa = line => (line.includes('/') || line.includes('[')) ? line.replace(IPA_RE, '').replace(/\s{2,}/g, ' ').trim() : line;
+  const normBody = body => String(body || '')
+    .replace(/\r\n?/g, '\n').replace(/[\u2028\u2029]/g, '\n')
+    .replace(/\u00a0/g, ' ').replace(/\u2011/g, '-')
+    .replace(/[\u2002-\u200a\x00-\x08\x0b-\x1f\x7f]/g, ' ')
+    .replace(/[\u200b-\u200d\ufeff]/g, '');
+  const POS_CORE = '(?:n|v|vt|vi|adj|adv|j|prep|pp|conj|pron|phr|num|int|aux|art|abbr)(?:\\.?\\s*/\\s*(?:n|v|vt|vi|adj|adv|j|prep|pp|conj|pron))*\\.?';
+  const POS = '(?:\\(\\s*' + POS_CORE + '\\s*\\)|（\\s*' + POS_CORE + '\\s*）|(?<![A-Za-z])' + POS_CORE + ')';
+  const GRAMMAR_TAG = '(?:\\s*(?:[\\[【(（](?:U|C|T|I|pl|sing|cn|un|C/U|U/C|可数|不可数)[\\]】)）]))*';
+  const WORD_LINE = new RegExp('^\\s*(?:[-–•·*]\\s*|\\d{1,3}[.、)）]\\s*|[‘\'’]\\s*)?(?<word>[A-Za-z][A-Za-z\'‘’\\-/().=,…&?!\\s^]{0,95}?)\\s*(?<pos>' + POS +
+    '(?=[\\s\\u4e00-\\u9fff,，;；(（\\[【《〈「『]|$))?' + GRAMMAR_TAG + '\\s*[,，:：]?\\s*(?<meaning>(?:[\\[【](?:U|C|T|I|pl|sing|cn|un|C/U|U/C|可数|不可数)[\\]】]\\s*)?[\\u4e00-\\u9fff（(“"…《〈「『].*)$');
+  const SUB_LINE = /^\s*[-–•·]\s+/, NUMBERED = /^\s*(?:\d{1,3}[.、)）]|[一二三四五六七八九十百]+[、.．])\s*/;
   const WRONG = /❌\s*(拼写?|意思|发音|音)?/g;
-  const SECTION_END = /^\s*(?:📌|📚|🙋|👨|【用法】|【纠错】|【发音】|【句子|课后作业|\d️⃣|作业[:：]|📝课后)/u;
-  const TRAILING_POS = /^(.*?[A-Za-z].*?)\s+(n|v|vt|vi|adj|adv|j|prep|pp|conj|pron|phr|ad)\.?(?:\s+(.*))?$/;
+  const SECTION_END = /^\s*(?:📌|📚|🙋|👨|🌟|⚠|💡|【用法】|【纠错】|【发音】|【句子|课后作业|\d️⃣|作业[:：]|📝课后)/u;
+  const SECTION_HEADER = /^(?:【|\[)?(词汇句子补充|词汇补充|核心词汇|重点词汇|核心生词|重点生词|重要词汇|课堂核心生词|课堂重点生词|课堂生词|其他重点词|其它重点词|重点单词|高频词汇|高频词|单词积累|词汇积累|单词短语背诵|词汇与表达|词汇|生词|单词|用法|固定搭配|同义替换|同意替换|同义词|近义词|一词多义|熟词生义|多义词|句子背诵|背诵句子|句型背诵|高分句型|方位词|Vocabulary\s*(?:&|and)\s*Expressions?|Key\s*Words?|Vocabulary|Words)(?:】|\])?\s*[:：]?$/i;
+  const STRICT_META_SECTION = /^(?:课后(?:作业|练习|任务)|今日作业|今天作业|本次(?:课后)?作业|作业与要求|作业和要求|作业|课堂内容|教学内容|课程内容|授课内容|结课报告.*|结课反馈|写作结课反馈|阅读结课反馈|听力结课反馈|口语结课反馈|考试复盘|高频语法避坑|语法重点|语法难点|语法知识|语法总结|句型语法知识点|语法|核心审题.*|审题|两段分工|段落训练|段落结构|考场时间.*|课堂要点|练习建议|写作技巧|写作原则|发音|听写|纠错|纠音)\s*[:：]?$/;
+  const SOFT_META_SECTION = /^(?:课堂反馈|课堂状态|课堂表现|课堂评价|课堂建议|提升建议|学习建议|问题总结|目前问题|当前问题|描写技巧)\s*[:：]?$/;
+  const ENTRY_QUIZ_HEAD = /^(?:入门考|课前测|词汇检测)\s*[:：]?$/;
+  const DOC_META_TITLE = /结课报告|结课反馈|考试复盘/;
+  const GRAMMAR_HEAD = /高频语法|语法重点|语法难点|语法知识|语法总结|句型语法|^语法[:：]?$/;
+  const NOT_VOCAB_HEAD = /抽查|检测|复习|背诵|默写|巩固|打卡|完成|错题|练习|整理|词测|影响|问题|不足|抽背|作业|任务/;
+  const LABELLED_COLON = /^(?<zh>[\u4e00-\u9fff][^:：A-Za-z]{0,12})[:：]\s*(?<en>[A-Za-z].*)$/u;
+  const LABELLED_HYPHEN = /^(?<zh>[\u4e00-\u9fff]{1,8})\s*[-–—]\s*(?<en>[A-Za-z].*)$/u;
+  const NON_WORD_ZH_LABEL = /^(?:不要只?写|比如|例如|注意|首|尾|题目|篇目|链接|开头|结尾|结构|要求|提交物?|主题|练习|作业|建议|写作建议|提升建议|学习建议|练习建议|目标|正确率|估分|第.+[步阶段篇])(?:$|[:：\s])|专项练习|真题练习|文章精读|解题训练|做题/;
+  const PROSE_EVAL_HINT = /^(?:同学|在发言|表现不?俗|词汇量(?:较|不足|不够|不错|好)|优势没|容易没|写作框架|核心解题|不是并列|无被动|部分我们|非学术背景|学术背景|专项训练)|课堂状态|模仿能力|注意力没集中|短板|评分标准|解题思路|框架回顾|写作练习|过去进行时|现在完成时|一般过去时|背景\s*[（(]\d+\s*sec/;
+  const cleanPos = p => String(p || '').replace(/[\s.()（）]+/g, '');
+  const TRAILING_POS = /^(.*?[A-Za-z].*?)\s+([\(（]?(?:n|v|vt|vi|adj|adv|j|prep|pp|conj|pron|phr|ad)\.?[\)）]?)(?:\s+(.*))?$/;
   const DANGLING_POS = /^(.*?[A-Za-z].*?\s(?:n|v|vt|vi|adj|adv|j|prep|pp|conj|pron|phr|ad))\.?\s*\/$/;   // "repair v/" — a slash with nothing after it
   const PLUS_TAIL = /^([\u4e00-\u9fff]{1,6})(?:\s+(?![\/／])(.*))?$/;   // "it's a shame that+" + "句子 ...很可惜": 句子 belongs to the pattern
   function splitPos(word, pos, meaning) {   // same rule as split_pos in Manager/vocab_import.py
     word = word.replace(DANGLING_POS, '$1');
     const plus = /[+＋]$/.test(word) && PLUS_TAIL.exec(meaning || '');
     if (plus) { word += plus[1]; meaning = plus[2] || ''; }
-    const m = TRAILING_POS.exec(word); if (!m) return {word, pos, meaning, extra: ''};
-    const rest = (m[3] || '').trim(); pos = pos || m[2];
+    const m = TRAILING_POS.exec(word); if (!m) return {word, pos: cleanPos(pos), meaning, extra: ''};
+    const rest = (m[3] || '').trim(); pos = cleanPos(pos) || cleanPos(m[2]);
     if ('/=(（'.includes(rest[0] || 'x')) return {word: m[1].trim(), pos, meaning, extra: rest};
     return {word: m[1].trim(), pos, meaning: (rest ? rest + ' ' : '') + meaning, extra: ''};
   }
   function feedbackHeading(line) {
     return line.trim().replace(/^[^\w\u4e00-\u9fff【\[]+/u, '')
-      .replace(/^(?:\d\uFE0F?\u20E3|\d+[.、)）])\s*/u, '')
+      .replace(/^(?:\d\uFE0F?\u20E3|[①②③④⑤⑥⑦⑧⑨⑩]|[一二三四五六七八九十百]+[、.．]|\d+[.、)）])\s*/u, '')
       .replace(/^[^\w\u4e00-\u9fff【\[]+/u, '');
   }
-  const PHRASE_SECTION = /搭配|短语|词组|句型|句式|表达|结构|介词|动词用法|固定/;
-  function feedbackSection(line) {   // same rules as feedback_section in Manager/vocab_import.py
+  const PHRASE_SECTION = /搭配|短语|词组|句型|句式|表达|结构|介词|动词用法|固定|方位词/;
+  function feedbackSection(line, inGrammar = false) {   // same rules as feedback_section in Manager/vocab_import.py
     const title = feedbackHeading(line);
-    const m = /^(?:【|\[)?(词汇句子补充|词汇补充|词汇|生词|单词|用法|固定搭配|同义替换|同意替换|同义词|近义词|一词多义|熟词生义|多义词|句子背诵|背诵句子|句型背诵)(?:】|\])?\s*[:：]?$/.exec(title);
+    const m = SECTION_HEADER.exec(title);
     const label = m ? m[1] : title.replace(/^[【\[]|[】\]]?\s*[:：]?$/g, '');
     const plainHeading = /^[\u4e00-\u9fff0-9]{2,12}\s*[:：]?$/.test(title);   // 「五大类邮件句型库」 without brackets
-    if (!m && !((/^[【\[][^】\]]{1,12}[】\]]\s*[:：]?$/.test(title) || plainHeading) && PHRASE_SECTION.test(label))) return '';
-    if (PHRASE_SECTION.test(label) && !/词汇|生词|单词/.test(label)) return '搭配';   // every English line is an item, with or without a Chinese meaning
-    if (/词汇|生词|单词/.test(label)) return '词汇';
+    const bracketHeading = /^[【\[][^】\]]{1,12}[】\]]\s*[:：]?$/.test(title);
+    if (!m) {
+      if (!((bracketHeading || (plainHeading && !inGrammar)) && PHRASE_SECTION.test(label))) return '';
+      if (inGrammar && NUMBERED.test(line) && !bracketHeading) return '';
+    }
+    if (PHRASE_SECTION.test(label) && !/词汇|生词|单词|Vocabulary|Words/i.test(label)) return '搭配';   // every English line is an item, with or without a Chinese meaning
+    if (/词汇|生词|单词|重点词|Vocabulary|Words/i.test(label)) return '词汇';
     if (/同[义意]|近义/.test(label)) return '同义替换';
     if (/多义|熟词/.test(label)) return '一词多义';
     if (/句/.test(label)) return '句子背诵';
@@ -120,77 +151,145 @@
     const out = []; let inside = false, i = 0;
     const isBare = x => x.trim() && BARE_LINE.test(x) && x.split(/\s+/).filter(Boolean).length <= 8 && !x.includes('http') && !/^\s*(?:[A-Z]\d+|C\d+T\d+)/.test(x);
     while (i < lines.length) {
-      const line = lines[i], text = line.trim();
-      if (feedbackSection(line) || (/词汇|生词|单词/.test(line) && (line.replace(/[^\w一-鿿]/g, '').length <= 12 || /比如|例如|以下|如下|[:：]\s*$/.test(line)) && !WORD_LINE.test(line))) inside = true;
+      const line = lines[i], text = line.trim(), title = feedbackHeading(line);
+      if (feedbackSection(line) || (/词汇|生词|单词/.test(line) && !NOT_VOCAB_HEAD.test(line) && (line.replace(/[^\w\u4e00-\u9fff]/g, '').length <= 12 || /比如|例如|以下|如下|[:：]\s*$/.test(line)) && !WORD_LINE.test(stripIpa(line)))) inside = true;
       else if (/^\s*[【\[][^】\]]+[】\]]\s*[:：]?\s*$/.test(line)) inside = true;
-      else if (SECTION_END.test(line) || (text && /^课后(?:作业|练习|任务)\s*[:：]?$/.test(feedbackHeading(line)))) inside = false;
+      else if (SECTION_END.test(line) || STRICT_META_SECTION.test(title) || (text && /^课后(?:作业|练习|任务)\s*[:：]?$/.test(title))) inside = false;
       let j = i; while (j < lines.length && isBare(lines[j])) j++;
       const before = lines.slice(Math.max(0, i - 3), i).reverse().find(x => x.trim()) || '';
-      if (!inside && j - i >= 3 && (i === 0 || !lines[i - 1].trim() || !BARE_LINE.test(lines[i - 1])) && (j - i >= 6 || /词|vocab|words/i.test(before))) {
+      if (!inside && j - i >= 3 && (i === 0 || !lines[i - 1].trim() || !BARE_LINE.test(lines[i - 1])) && (j - i >= 6 || /词|生字|vocab|words/i.test(before))) {
         out.push('词汇', ...lines.slice(i, j), ''); i = j; continue;
       }
       out.push(line); i++;
     }
     return out;
   }
+  function splitMultiItems(line, allowZhFirst = false) {
+    const inlineM = /^\s*(?:[-–•·*]\s*)?[\u4e00-\u9fff]{2,10}[:：]\s*([A-Za-z].*)$/.exec(line);
+    if (inlineM && inlineM[1].includes('、')) {
+      const cparts = inlineM[1].split('、').map(x => x.replace(/(?:等|等等)\s*$/, '').trim());
+      if (cparts.length >= 2 && cparts.every(x => WORD_LINE.test(stripIpa(x)))) return cparts;
+    }
+    if (!line.includes(';') && !line.includes('；')) return [line];
+    const parts = []; let depth = 0, start = 0;
+    for (let idx = 0; idx < line.length; idx++) {
+      const ch = line[idx];
+      if ('(（[【'.includes(ch)) depth++;
+      else if (')）]】'.includes(ch) && depth > 0) depth--;
+      else if ((ch === ';' || ch === '；') && depth === 0) { const s = line.slice(start, idx).trim(); if (s) parts.push(s); start = idx + 1; }
+    }
+    const tail = line.slice(start).trim(); if (tail) parts.push(tail);
+    if (parts.length < 2) return [line];
+    const isPair = seg => {
+      const s = stripIpa(seg);
+      if (/^\s*(?:n|v|vt|vi|adj|adv|j|prep|pp|conj|pron)\.?\s*(?:[\u4e00-\u9fff]|$)/.test(s)) return false;
+      if (/^\s*[A-Za-z\-]+\s*（(?:单数|复数|过去式|过去分词|现在分词|比较级|最高级|简称|abbr\.?)）\s*$/.test(s)) return false;
+      const m = WORD_LINE.exec(s);
+      if (m) {
+        const wd = m.groups.word.replace(/\s+/g, ' ').replace(/^[\s\-–,.，:：'‘’]+|[\s\-–,.，:：'‘’]+$/g, '');
+        if (m.groups.pos || wd.split(' ').length >= 2 || (m.groups.meaning.match(/[\u4e00-\u9fff]/g) || []).length >= 2) return true;
+      }
+      if (allowZhFirst) {
+        const m2 = LABELLED_COLON.exec(s) || LABELLED_HYPHEN.exec(s);
+        if (m2 && !NON_WORD_ZH_LABEL.test(m2.groups.zh.trim())) return true;
+      }
+      return false;
+    };
+    if (parts.filter(isPair).length >= 2) {
+      const merged = [];
+      for (const p of parts) {
+        if (!isPair(p) && merged.length && /^[A-Za-z]/.test(p) && !/[\u4e00-\u9fff]/.test(p)) merged[merged.length - 1] += ' / ' + p;
+        else if (isPair(p)) merged.push(p);
+        else return [line];
+      }
+      return merged;
+    }
+    return [line];
+  }
   function parseFeedback(body) {
-    const words = []; let parent = null, numbered = false, inVocab = false, section = '', heading = '', plain = 0, dashed = false;
+    const cleanText = normBody(body);
+    const words = []; let parent = null, inVocab = false, strictMeta = false, softMeta = false, inGrammar = false, inEntryQuiz = false;
+    let section = '', heading = '', plain = 0, dashed = false;
+    const firstNonEmpty = cleanText.split('\n').find(l => l.trim())?.trim() || '';
+    if (DOC_META_TITLE.test(firstNonEmpty)) strictMeta = true;
     const add = (item, raw) => {
       if (section) item.extra = META_PREFIX + JSON.stringify({section, heading, line: raw.trim().replace(WRONG, '').replace(/✅|✔️|✔|⭕️?|◯|○/g, '').trimEnd(), word: item.word, pos: item.pos || '', meaning: item.meaning || '', notes: item.extra ? [item.extra] : []});
       words.push(item); return item;
     };
-    for (const raw of markBareLists(String(body || '').replace(/[\x00-\x08\x0b-\x1f\x7f]/g, ' ').split('\n'))) {   // control characters count as spaces, as in Python
+    const itemPrefix = /^\s*(?:(?:\d\uFE0F?\u20E3|\d+[.、)）])\s*|[-–•·*]\s*)/u;
+    for (const raw of markBareLists(cleanText.split('\n'))) {
       let line = raw.replace(/\s+$/, '');
       if (!line.trim()) continue;
-      const header = feedbackSection(line);
-      if (header) { section = header; heading = line.trim(); parent = null; numbered = false; inVocab = section === '词汇'; plain = 0; dashed = false; continue; }
-      if (/^课后(?:作业|练习|任务)\s*[:：]?$/.test(feedbackHeading(line))) { section = ''; parent = null; inVocab = numbered = false; continue; }
-      if (/^\s*【[^】]+】\s*$/.test(line)) { section = ''; parent = null; inVocab = numbered = false; continue; }
+      const title = feedbackHeading(line), header = feedbackSection(line, inGrammar);
+      if (header) { section = header; heading = line.trim(); parent = null; inVocab = section === '词汇'; strictMeta = softMeta = inGrammar = inEntryQuiz = false; plain = 0; dashed = false; continue; }
+      if (ENTRY_QUIZ_HEAD.test(title)) { inEntryQuiz = true; strictMeta = softMeta = false; continue; }
+      if (inEntryQuiz && NUMBERED.test(line)) { inEntryQuiz = false; strictMeta = true; }
+      if (STRICT_META_SECTION.test(title) || /^课后(?:作业|练习|任务)\s*[:：]?$/.test(title)) { section = ''; parent = null; inVocab = inEntryQuiz = softMeta = false; strictMeta = true; inGrammar = GRAMMAR_HEAD.test(title); continue; }
+      if (SOFT_META_SECTION.test(title)) { section = ''; parent = null; inVocab = inEntryQuiz = strictMeta = inGrammar = false; softMeta = true; continue; }
+      if (/^\s*【[^】]+】\s*$/.test(line)) { section = ''; parent = null; inVocab = inEntryQuiz = false; strictMeta = /发音|听写|纠错|结课|作业|语法/.test(line); inGrammar = GRAMMAR_HEAD.test(line); continue; }
+      if (SECTION_END.test(line) && !(section && /^[A-Za-z]/.test(line.replace(itemPrefix, '').trim()))) { section = ''; parent = null; inVocab = inEntryQuiz = false; softMeta = true; inGrammar = GRAMMAR_HEAD.test(title); continue; }
+      if (/词汇|生词|单词/.test(line) && !NOT_VOCAB_HEAD.test(line) && (line.replace(/[^\w\u4e00-\u9fff]/g, '').length <= 12 || /比如|例如|以下|如下|[:：]\s*$/.test(line)) && !WORD_LINE.test(stripIpa(line))) { section = '词汇'; heading = line.trim(); inVocab = true; strictMeta = softMeta = inGrammar = inEntryQuiz = false; plain = 0; dashed = false; continue; }   // a heading, or a sentence that introduces a list — not one that merely mentions 单词
       // "-looking j.看上去…样的" in a list without dash bullets is a suffix, not a bullet: keep its hyphen.
       const suffix = section === '词汇' && plain > 0 && !dashed && /^\s*-[a-z]{2,}/.test(line);
       if (section) { if (/^\s*[-–•·*]/.test(line) && !suffix) dashed = true; else plain++; }
-      const entry = section ? line.replace(/^\s*(?:(?:\d\uFE0F?\u20E3|\d+[.、)）])\s*|[-–•·*]\s*)/u, '').trim() : line;
-      const labelled = section === '搭配' && /^([\u4e00-\u9fff][^:：A-Za-z]{0,10})[:：]\s*([A-Za-z].*)$/u.exec(entry);
-      if (labelled) { parent = add({word: labelled[2].trim().replace(/[\s.…；;]+$/, '') || labelled[2].trim(), pos: '', meaning: labelled[1].trim(), extra: '', wrong: /❌/.test(entry)}, raw); continue; }   // 「感谢信：I am writing…」
-      if (SECTION_END.test(line) && !(section && /^[A-Za-z]/.test(entry))) { section = ''; parent = null; inVocab = false; continue; }
-      if (section && /^[A-Za-z]/.test(entry) && !entry.includes('http')) {
-        if (section === '用法' && !WORD_LINE.test(entry)) { if (parent) appendEntryNote(parent, entry); continue; }
-        if (section === '同义替换' || section === '句子背诵' || section === '搭配') {
-          const clean = entry.replace(WRONG, '').replace(/✅|✔️|✔|⭕️?|◯|○/g, '').replace(/\s+/g, ' ').trim(), cut = clean.search(/[《〈「『【]*[\u4e00-\u9fff]/);
-          let word = cut >= 0 ? clean.slice(0, cut).trim() : clean, meaning = cut >= 0 ? clean.slice(cut) : '', pos = '';
-          if (section === '搭配' && /^(?:或者?|和|及|\+)\s*[A-Za-z+]/.test(meaning)) { word = clean; meaning = ''; }   // "inform sb. of sth.或者that + 句子" is one pattern
-          if (section !== '句子背诵') { word = word.replace(/[\s.…:：]+$/, ''); const sp = splitPos(word, '', meaning); word = sp.word; pos = sp.pos || ''; meaning = sp.meaning; }   // whole sentences keep their full stop
-          parent = add({word, pos, meaning, extra: '', wrong: /❌/.test(entry)}, raw);
+      const entry = section ? line.replace(itemPrefix, '').trim() : line;
+      const pieces = (section === '搭配' || section === '词汇' || (!strictMeta && !softMeta)) ? splitMultiItems(entry, section === '搭配' || section === '词汇') : [entry];
+      const multi = pieces.length > 1;
+      for (const rawPiece of pieces) {
+        const piece = section ? rawPiece.replace(itemPrefix, '').trim() : rawPiece.trim();
+        const pieceRaw = multi ? rawPiece : raw;
+        const labelled = (section === '搭配' || section === '词汇') && (LABELLED_COLON.exec(piece) || LABELLED_HYPHEN.exec(piece));
+        if (labelled && !NON_WORD_ZH_LABEL.test(labelled.groups.zh.trim())) {
+          const en = labelled.groups.en.trim().replace(/[\s.…；;]+$/, '') || labelled.groups.en.trim();
+          if (!/^(?:[A-Z]\d+|C\d+T\d+)/.test(en)) { parent = add({word: en, pos: '', meaning: labelled.groups.zh.trim(), extra: '', wrong: /❌/.test(piece)}, pieceRaw); continue; }
+        }
+        if (section && /^[A-Za-z]/.test(piece) && !piece.includes('http')) {
+          if (section === '用法' && !WORD_LINE.test(stripIpa(piece))) { if (parent) appendEntryNote(parent, piece); continue; }
+          if (section === '同义替换' || section === '句子背诵' || section === '搭配') {
+            const clean = piece.replace(WRONG, '').replace(/✅|✔️|✔|⭕️?|◯|○/g, '').replace(/\s+/g, ' ').trim();
+            if (section === '句子背诵' && clean.split(' ').filter(Boolean).length < 2 && !/[.?!…\u4e00-\u9fff]/.test(clean)) continue;
+            const cut = clean.search(/[（(《〈「『【]*[\u4e00-\u9fff]/);
+            let word = cut >= 0 ? clean.slice(0, cut).trim() : clean, meaning = cut >= 0 ? clean.slice(cut) : '', pos = '';
+            if (section === '搭配' && /^(?:或者?|和|及|\+)\s*[A-Za-z+]/.test(meaning)) { word = clean; meaning = ''; }   // "inform sb. of sth.或者that + 句子" is one pattern
+            if (section !== '句子背诵') { word = word.replace(/[\s.…:：]+$/, ''); const sp = splitPos(word, '', meaning); word = sp.word; pos = sp.pos || ''; meaning = sp.meaning; }   // whole sentences keep their full stop
+            parent = add({word, pos, meaning, extra: '', wrong: /❌/.test(piece)}, pieceRaw);
+            continue;
+          }
+        }
+        const candidate = stripIpa(piece);
+        const loose = inVocab && /^\s*(?:[-–•·*]\s*|\d{1,3}[.、)）]\s*)?([A-Za-z].*)$/.exec(candidate);
+        if (loose && !(WORD_LINE.test(candidate) && /[\u4e00-\u9fff]/.test(candidate))) {
+          // Inside a vocabulary section every English line is a word (same rule as vocab_import.py).
+          const text = loose[1].replace(/❌\s*(?:拼写?|意思|发音|音)?|✅|✔️|✔|⭕️?|◯|○/g, ' ').trim();
+          if (text.includes('___') || /,\s*[A-Z]\.$/.test(text) || (text.includes('; ') && !/[\u4e00-\u9fff]/.test(text))) continue;
+          const cut = text.search(/[（(《〈「『【]*[\u4e00-\u9fff]/);
+          let word = cut >= 0 ? text.slice(0, cut) : text.split('=')[0], meaning = cut >= 0 ? text.slice(cut) : (text.includes('=') ? '= ' + text.split('=').slice(1).join('=').trim() : '');
+          word = word.replace(/\s+/g, ' ').replace(/^[\s\-–,.，:：^]+|[\s\-–,.，:：^]+$/g, '');
+          if (word && word.split(' ').length <= 8 && /[A-Za-z]{2}/.test(word) && !/^(?:[A-Z]\d+|C\d+T\d+)/.test(word)) { const sp = splitPos(word, '', meaning.replace(WRONG, '').replace(/✅|✔️|✔|⭕️?|◯|○/g, '').trim()); parent = add({word: (suffix ? '-' : '') + sp.word, pos: sp.pos || '', meaning: sp.meaning, extra: sp.extra || '', wrong: /❌/.test(piece)}, pieceRaw); }
           continue;
         }
-        line = entry;
+        if (candidate.includes('http') || candidate.length > 160) { parent = null; continue; }
+        const m = WORD_LINE.exec(candidate);
+        if (!m) { if (!SUB_LINE.test(candidate)) parent = null; continue; }
+        const word = m.groups.word.replace(/\s*\^\s*/g, ' ').replace(/\s+/g, ' ').replace(/^[\s\-–,.，:：'‘’]+|[\s\-–,.，:：'‘’]+$/g, '');
+        const maxWords = section === '搭配' ? 12 : (section || inVocab) ? 8 : 7;
+        if (!word || word.split(' ').length > maxWords || !/[A-Za-z]{2}/.test(word) || /^(?:[A-Z]\d+|C\d+T\d+)/.test(word)) continue;
+        const meaning = m.groups.meaning.replace(WRONG, '').replace(/✅|✔️|✔|⭕️?|◯|○/g, '').replace(/\s+/g, ' ').replace(/^[\s;；,，]+|[\s;；,，]+$/g, '');
+        if (!meaning || !/[\u4e00-\u9fff]/.test(meaning)) continue;
+        const wrong = [...piece.matchAll(WRONG)].length > 0;
+        const split = splitPos(word, cleanPos(m.groups.pos), meaning);
+        const second = split.pos && /^(.*?[\u4e00-\u9fff].*?)[\s；;，,]*(?<![A-Za-z])(n|v|vt|vi|adj|j|adv|prep)\.\s*(\S.*)$/.exec(split.meaning || '');   // "特点 v.以…为特点"
+        if (second) { const p2 = second[2] === 'j' ? 'adj' : second[2]; split.pos = split.pos + '/' + p2; split.meaning = second[1].trim() + '；' + p2 + '. ' + second[3].trim(); }
+        if (PROSE_EVAL_HINT.test(split.meaning)) continue;
+        if (!section && !inVocab && !split.pos) {
+          if (strictMeta) continue;
+          const isExplain = /^(?:表示|相当于|意思是|可[以]?理解|区分|注意)/.test(split.meaning);
+          if ((!isExplain && /。/.test(split.meaning)) || ((split.meaning.match(/[\u4e00-\u9fff]/g) || []).length >= 14 && /[。！!?]$/.test(split.meaning))) continue;
+        }
+        if (suffix) split.word = '-' + split.word;
+        const item = {...split, wrong};
+        parent = add(item, pieceRaw);
       }
-      if (line.includes('http') || line.length > 160) { parent = null; continue; }
-      if (/词汇|生词|单词/.test(line) && (line.replace(/[^\w\u4e00-\u9fff]/g, '').length <= 12 || /比如|例如|以下|如下|[:：]\s*$/.test(line)) && !WORD_LINE.test(line)) { section = '词汇'; heading = line.trim(); inVocab = true; continue; }   // a heading, or a sentence that introduces a list — not one that merely mentions 单词
-      const loose = inVocab && /^\s*(?:[-–•·*]\s*|\d{1,3}[.、)）]\s*)?([A-Za-z].*)$/.exec(line);
-      if (loose && !(WORD_LINE.test(line) && /[\u4e00-\u9fff]/.test(line))) {
-        // Inside a vocabulary section every English line is a word (same rule as vocab_import.py).
-        const text = loose[1].replace(/❌\s*(?:拼写?|意思|发音|音)?|✅|✔️|✔|⭕️?|◯|○/g, ' ').trim(), cut = text.search(/[《〈「『【]*[\u4e00-\u9fff]/);
-        let word = cut >= 0 ? text.slice(0, cut) : text.split('=')[0], meaning = cut >= 0 ? text.slice(cut) : (text.includes('=') ? '= ' + text.split('=').slice(1).join('=').trim() : '');
-        word = word.replace(/\s+/g, ' ').replace(/^[\s\-–,.，:：]+|[\s\-–,.，:：]+$/g, '');
-        if (word && word.split(' ').length <= 8 && /[A-Za-z]{2}/.test(word) && !/^(?:[A-Z]\d+|C\d+T\d+)/.test(word)) { const sp = splitPos(word, '', meaning.replace(WRONG, '').replace(/✅|✔️|✔|⭕️?|◯|○/g, '').trim()); parent = add({word: (suffix ? '-' : '') + sp.word, pos: sp.pos || '', meaning: sp.meaning, extra: sp.extra || '', wrong: /❌/.test(line)}, raw); }
-        continue;
-      }
-      const m = WORD_LINE.exec(line);
-      if (!m) { if (!SUB_LINE.test(line)) parent = null; continue; }
-      const word = m.groups.word.replace(/\s+/g, ' ').replace(/^[\s\-–,.，:：'‘’]+|[\s\-–,.，:：'‘’]+$/g, '');
-      if (!word || word.split(' ').length > 7 || !/[A-Za-z]{2}/.test(word) || /^(?:[A-Z]\d+|C\d+T\d+)/.test(word)) continue;
-      const meaning = m.groups.meaning.replace(WRONG, '').replace(/✅|✔️|✔|⭕️?|◯|○/g, '').replace(/\s+/g, ' ').replace(/^[\s;；,，]+|[\s;；,，]+$/g, '');
-      if (!meaning || !/[\u4e00-\u9fff]/.test(meaning)) continue;
-      const wrong = [...line.matchAll(WRONG)].length > 0;
-      if (NUMBERED.test(line)) numbered = true;
-      if (SUB_LINE.test(line) && numbered && parent) { appendEntryNote(parent, word + ' ' + meaning); continue; }
-      const split = splitPos(word, (m.groups.pos || '').replace(/[\s.]+/g, ''), meaning);
-      const second = split.pos && /^(.*?[\u4e00-\u9fff].*?)[\s；;，,]*\b(n|v|vt|vi|adj|j|adv|prep)\.\s*(\S.*)$/.exec(split.meaning || '');   // "特点 v.以…为特点"
-      if (second) { const p2 = second[2] === 'j' ? 'adj' : second[2]; split.pos = split.pos + '/' + p2; split.meaning = second[1].trim() + '；' + p2 + '. ' + second[3].trim(); }
-      if (suffix) split.word = '-' + split.word;
-      const item = {...split, wrong};
-      parent = add(item, raw);
     }
     const unique = new Map();
     words.forEach(item => {
@@ -253,7 +352,7 @@
     const byWord = new Map(parsed.map(w => [wordKey(w.word), w]));
     return custom.map(w => ({...w, extra: w.extra || byWord.get(wordKey(w.word))?.extra || ''}));
   }
-  const wordKey = word => String(word || '').trim().toLowerCase();
+  const wordKey = word => String(word || '').replace(/\u00a0/g, ' ').replace(/\u2011/g, '-').trim().toLowerCase();
   // Database rows have no word-position field. Recover each lesson's order from
   // its feedback (or edited word list), keeping other lessons and free words in place.
   // A word saved under an older reading of the same feedback line ("repair v/" from "repair v/ 修复") is the same word.
@@ -1859,7 +1958,7 @@
       last.foot.append(btn('fb-btn pri', '复制结果', async () => { try { await navigator.clipboard.writeText(resultText(previousResult.value.payload)); flash('已复制'); } catch { flash('复制失败，请手动选中文字复制', true); } }), btn('fb-btn', '关闭', last.close));
     }));
     actions.append(btn('', '选词', () => openPicker(student, learners, items, keep)));
-    if (phase === '课前') actions.append(btn('', '推荐', async () => { try { const lib = await vocabFor(learners); (await recommend(lib, learners, day, todaysCourse(student))).forEach(r => { if (!items.some(x => x.word.toLowerCase() === r.word.toLowerCase())) items.push(fromRow(r, r._from)); }); await materializeItems(items); keep(); } catch (e) { flash('推荐未能保存：' + (e.message || e), true); } }, '推荐：今天这门课上一节的全部生词，再补错过的和到期复习的'));
+    if (phase === '课前') actions.append(btn('', '推荐', async () => { try { const lib = await vocabFor(learners); (await recommend(lib, learners, day, todaysCourse(student))).forEach(r => { if (!items.some(x => wordKey(x.word) === wordKey(r.word))) items.push(fromRow(r, r._from)); }); await materializeItems(items); keep(); } catch (e) { flash('推荐未能保存：' + (e.message || e), true); } }, '推荐：今天这门课上一节的全部生词，再补错过的和到期复习的'));
     if (phase === '课后') actions.append(btn('', '本节全部内容', async () => {
       try {
         const lib = await vocabFor(learners);
@@ -1973,8 +2072,8 @@
     const want = course ? subjectOf(course) : '';
     const prev = (want && before.find(l => subjectOf(l.subject) === want)) || before[0];   // the last lesson of today's subject first
     const last = prev ? await rowsForLesson(prev, lib) : [];
-    const seen = new Set(last.map(r => r.id));
-    const rest = lib.filter(r => !seen.has(r.id) && (r.last_result === 'wrong' || (r.due_date && r.due_date <= day)))
+    const seen = new Set(last.map(r => r.id)), seenWords = new Set(last.map(r => wordKey(r.word)));
+    const rest = lib.filter(r => !seen.has(r.id) && !seenWords.has(wordKey(r.word)) && (r.last_result === 'wrong' || (r.due_date && r.due_date <= day)))
       .sort((a, b) => (a.last_result === 'wrong' ? 0 : 1) - (b.last_result === 'wrong' ? 0 : 1) || (b.wrong_count || 0) - (a.wrong_count || 0));
     return [...last.map(r => ({...r, _from: prev.id})), ...rest].slice(0, Math.max(limit, last.length));
   }
