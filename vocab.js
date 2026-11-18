@@ -692,6 +692,25 @@
     const shown = globalThis.wayonDisplayName?.(s);
     return plainName(stripCourseSuffix(shown || s) || shown || s);
   };
+  const PERSON_ALIAS_GROUPS = [
+    ['卢泰戈', 'Tiger', '泰戈'],
+    ['郭璟', 'Jack', 'guojing'],
+    ['叶雅蕙', 'Amber'],
+    ['徐畅', 'Amy'],
+    ['吴洋亿', 'George'],
+    ['何昊隆', 'Dino'],
+    ['Iven', 'Ivan'],
+    ['李洪睿', '朱洪睿', 'John'],
+    ['胡博文', 'Ares'],
+    ['陈昭卓', 'James'],
+    ['丁嘉宝', '嘉宝'],
+    ['聂彦如', '彦如'],
+    ['陈书进', '书进'],
+    ['潘韬薄', '韬薄'],
+    ['陈芊妤', '芊妤'],
+    ['朱宸萱', '宸萱'],
+    ['陈雨轩', '雨轩'],
+  ];
   function expandPersonAliases(raw) {
     const base = stripCourseSuffix(raw);
     const out = new Set();
@@ -702,8 +721,139 @@
     }
     const zh = base.replace(/[A-Za-z0-9_.\-\s'’]+/g, '').trim();
     if (zh.length >= 2) add(zh);
+    const curLower = new Set([...out].map(x => x.toLowerCase()));
+    for (const grp of PERSON_ALIAS_GROUPS) {
+      if (grp.some(g => curLower.has(g.toLowerCase()))) grp.forEach(add);
+    }
     return [...out];
   }
+  const PY_BOUNDARIES = [
+    ['a', '阿'], ['b', '八'], ['c', '嚓'], ['d', '哒'], ['e', '妸'], ['f', '发'], ['g', '旮'],
+    ['h', '哈'], ['j', '讥'], ['k', '咔'], ['l', '垃'], ['m', '妈'], ['n', '拿'], ['o', '噢'],
+    ['p', '啪'], ['q', '期'], ['r', '然'], ['s', '撒'], ['t', '塌'], ['w', '挖'], ['x', '昔'],
+    ['y', '压'], ['z', '匝']
+  ];
+  const PY_POLY = { 曾: 'z', 沈: 's', 仇: 'q', 单: 's', 查: 'z', 解: 'x', 区: 'o', 覃: 'q', 翟: 'z', 褚: 'c', 朴: 'p', 阚: 'k', 缪: 'm', 盛: 's', 藏: 'z' };
+  let pyCollator;
+  function pyCharInitial(ch) {
+    if (PY_POLY[ch]) return PY_POLY[ch];
+    if (!/[\u4e00-\u9fff]/.test(ch)) return '';
+    if (pyCollator === undefined) {
+      try { pyCollator = new Intl.Collator('zh-CN-u-co-pinyin'); } catch { pyCollator = null; }
+    }
+    if (!pyCollator || pyCollator.compare(ch, PY_BOUNDARIES[0][1]) < 0) return '';
+    for (let i = PY_BOUNDARIES.length - 1; i >= 0; i--) {
+      if (pyCollator.compare(ch, PY_BOUNDARIES[i][1]) >= 0) return PY_BOUNDARIES[i][0];
+    }
+    return '';
+  }
+  const normSearch = v => String(v ?? '').normalize('NFKC').toLowerCase().trim();
+  function pinyinInitials(v) {
+    let out = '';
+    for (const ch of normSearch(v)) {
+      if (/[a-z0-9]/.test(ch)) out += ch;
+      else out += pyCharInitial(ch);
+    }
+    return out;
+  }
+  function buildDataAliasMap() {
+    const map = new Map();
+    const link = tokens => {
+      const clean = [...new Set(tokens.map(normSearch).filter(Boolean))];
+      if (clean.length < 2) return;
+      for (const a of clean) {
+        let s = map.get(a);
+        if (!s) { s = new Set(); map.set(a, s); }
+        for (const b of clean) if (b !== a) s.add(b);
+      }
+    };
+    PERSON_ALIAS_GROUPS.forEach(link);
+    try {
+      const raw = pageData();
+      const visit = v => {
+        if (typeof v !== 'string' || !v.trim() || parts(v).length !== 1) return;
+        link(expandPersonAliases(v));
+      };
+      for (const [k, val] of Object.entries(raw || {})) {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(k) && Array.isArray(val)) val.forEach(r => { visit(r?.[0]); visit(r?.[4]); });
+      }
+      Object.values(raw?._plan || {}).forEach(arr => Array.isArray(arr) && arr.forEach(r => { visit(r?.[0]); visit(r?.[4]); }));
+      Object.values(raw?._notice || {}).forEach(arr => Array.isArray(arr) && arr.forEach(r => visit(r?.[0])));
+      (raw?._chasing || []).forEach(r => { visit(r?.name); visit(r?.task_title); });
+    } catch {}
+    return map;
+  }
+  function buildLearnerSearchEntry(label, extraTexts = [], aliasMap = null) {
+    const map = aliasMap || buildDataAliasMap();
+    const primary = new Set(), all = new Set();
+    const pushToken = (tok, isPrimary = false) => {
+      const n = normSearch(tok);
+      if (!n) return;
+      all.add(n);
+      const py = pinyinInitials(n);
+      if (py) all.add(py);
+      if (isPrimary) { primary.add(n); if (py) primary.add(py); }
+    };
+    const members = parts(label);
+    const single = members.length <= 1;
+    pushToken(label, true);
+    pushToken(String(label || '').replace(/\//g, '、'), true);
+    for (const m of members) {
+      for (const a of expandPersonAliases(m)) {
+        pushToken(a, single);
+        for (const sib of (map.get(normSearch(a)) || [])) pushToken(sib, single);
+      }
+    }
+    for (const ex of extraTexts) pushToken(ex, false);
+    return { rawLower: normSearch(label), primary, haystack: [...all].join('\n') };
+  }
+  function matchStudentSearch(entry, rawQuery) {
+    const q = normSearch(rawQuery);
+    if (!q) return true;
+    if (entry.haystack.includes(q)) return true;
+    const tokens = q.split(/[\s&＆/／、,，]+/).filter(Boolean);
+    return tokens.length > 0 && tokens.every(t => entry.haystack.includes(t));
+  }
+  function rankStudentSearch(entry, rawQuery) {
+    const q = normSearch(rawQuery);
+    if (!q) return 0;
+    if (entry.rawLower === q || entry.primary.has(q)) return 0;
+    if (entry.rawLower.includes(q)) return 1;
+    return 2;
+  }
+  function matchLessonQuery(l, rawQuery) {
+    const q = normSearch(rawQuery);
+    if (!q) return true;
+    const no = lessonNo(l.title);
+    const d = String(l.lesson_date || ''), mdSlash = md(d);
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(d);
+    const dateVariants = m ? [d, mdSlash, `${+m[2]}-${+m[3]}`, `${+m[2]}.${+m[3]}`, `${m[2]}${m[3]}`, `${+m[2]}月${+m[3]}日`] : [mdSlash];
+    const subj = String(l.subject || ''), subjNorm = subjectOf(subj);
+    const hay = normSearch([l.title || '', subj, subjNorm, l.learner || '', no ? `l${no}` : '', ...dateVariants].join('\n'))
+      + '\n' + pinyinInitials([l.title || '', subj, subjNorm, l.learner || ''].join(' '));
+    if (hay.includes(q)) return true;
+    const tokens = q.split(/\s+/).filter(Boolean);
+    return tokens.length > 0 && tokens.every(t => hay.includes(t));
+  }
+  function matchWordQuery(r, rawQuery) {
+    const q = normSearch(rawQuery);
+    if (!q) return true;
+    const hay = normSearch([r.word || '', r.pos || '', r.meaning || '', r.extra || '', r.subject || '', subjectOf(r.subject), r.learner || ''].join('\n'));
+    if (hay.includes(q)) return true;
+    const tokens = q.split(/\s+/).filter(Boolean);
+    return tokens.length > 0 && tokens.every(t => hay.includes(t));
+  }
+  function prepSearchInput(el, placeholder, ariaLabel) {
+    el.type = 'search';
+    el.placeholder = placeholder;
+    el.setAttribute('aria-label', ariaLabel || placeholder);
+    el.setAttribute('autocorrect', 'off');
+    el.setAttribute('autocapitalize', 'none');
+    el.setAttribute('autocomplete', 'off');
+    el.spellcheck = false;
+    return el;
+  }
+  const isImeComposing = e => !!(e?.isComposing || e?.keyCode === 229);
   const isAsciiToken = s => /^[\x00-\x7F]+$/.test(s);
   function aliasMatch(a, b) {
     const x = String(a || '').trim(), y = String(b || '').trim();
@@ -1371,14 +1521,24 @@
   }
   const latestOf = ls => ls.map(l => l.lesson_date || '').sort().pop() || '';
   function renderLearners() {
-    const top = make('div', 'fb-card'), search = make('input'); search.type = 'search'; search.className = 'fb-search'; search.placeholder = '搜索学生或班级'; search.style.width = '100%';
+    const top = make('div', 'fb-card'), search = prepSearchInput(make('input'), '搜索学生或班级（支持英文、小写、拼音首字母）', '搜索学生或班级'); search.className = 'fb-search'; search.style.width = '100%';
     const bulk = btn('fb-btn', '批量导入反馈', () => openBulk('')); top.classList.add('fb-row'); search.style.flex = '1'; search.style.width = 'auto';
     top.append(search, bulk); root.append(top);
     const grid = make('div', 'fb-learners'); root.append(grid);
     const groups = new Map(); index.forEach(l => { if (!groups.has(l.learner)) groups.set(l.learner, []); groups.get(l.learner).push(l); });
+    const aliasMap = buildDataAliasMap();
+    const searchIndex = new Map([...groups.keys()].map(k => [k, buildLearnerSearchEntry(k, [], aliasMap)]));
     const paint = () => {
-      grid.textContent = ''; const q = search.value.trim();
-      [...groups.entries()].filter(([k]) => !q || k.includes(q)).sort((a, b) => latestOf(b[1]).localeCompare(latestOf(a[1]))).forEach(([k, ls]) => {
+      grid.textContent = ''; const rawQ = search.value.trim();
+      const matched = [...groups.entries()]
+        .filter(([k]) => matchStudentSearch(searchIndex.get(k), rawQ))
+        .sort((a, b) => (rawQ ? rankStudentSearch(searchIndex.get(a[0]), rawQ) - rankStudentSearch(searchIndex.get(b[0]), rawQ) : 0)
+          || latestOf(b[1]).localeCompare(latestOf(a[1])));
+      if (!matched.length && rawQ) {
+        grid.append(make('div', 'vq-empty', '没有找到匹配「' + rawQ + '」的学生或班级'));
+        return;
+      }
+      matched.forEach(([k, ls]) => {
         const bySubject = new Map(); ls.forEach(l => { const s = subjectOf(l.subject); if (!bySubject.has(s)) bySubject.set(s, []); bySubject.get(s).push(l); });
         const gaps = [...bySubject.values()].reduce((n, x) => n + gapsOf(x).length, 0);
         const card = btn('fb-learner', '', () => { learnerOpen = k; learnerSubject = ''; renderPanel(); });
@@ -1387,7 +1547,7 @@
         grid.append(card);
       });
     };
-    search.oninput = paint; paint();
+    search.oninput = search.onsearch = paint; paint();
   }
   const weekday = d => d ? ' 周' + '日一二三四五六'[new Date(d + 'T12:00:00').getDay()] : '';
   // Words panel shared by view, edit and add: recognised live from the text.
@@ -1986,8 +2146,7 @@
   async function openAddQuizStudent() {
     const day = curDay();
     const o = overlay('添加抽背学生');
-    const search = make('input'); search.type = 'search'; search.className = 'fb-search'; search.style.width = '100%';
-    search.placeholder = '搜索学生姓名，或输入新名字直接添加…';
+    const search = prepSearchInput(make('input'), '搜索学生姓名、英文名或拼音首字母，或输入新名字添加…', '搜索或添加抽背学生'); search.className = 'fb-search'; search.style.width = '100%';
     const listWrap = make('div', 'vx-add-list');
     o.body.append(search, listWrap);
     o.foot.append(btn('fb-btn', '关闭', () => o.close()));
@@ -2024,7 +2183,11 @@
       if (members.length === 1) noteStudent(row[0], 0, '', '今日任务');
     }
     for (const card of studyCardsFor(day)) noteStudent(card.studentName, 0, '', '今日自习');
-    const allEntries = [...stats.values()].sort((a, b) => {
+    const aliasMap = buildDataAliasMap();
+    const allEntries = [...stats.values()].map(entry => ({
+      ...entry,
+      searchEntry: buildLearnerSearchEntry(entry.name, [...entry.sources], aliasMap)
+    })).sort((a, b) => {
       const sa = shownNow.has(a.name) ? 1 : 0, sb = shownNow.has(b.name) ? 1 : 0;
       if (sa !== sb) return sa - sb;
       if (b.latest !== a.latest) return b.latest.localeCompare(a.latest);
@@ -2047,11 +2210,10 @@
     };
     const paint = () => {
       listWrap.textContent = '';
-      const rawQ = search.value.trim(), q = rawQ.toLowerCase();
-      const matches = allEntries.filter(e => !q || e.name.toLowerCase().includes(q) || [...e.sources].some(s => s.toLowerCase().includes(q)));
-      if (rawQ && !allEntries.some(e => e.name.toLowerCase() === displayStudent(rawQ).toLowerCase())) {
-        listWrap.append(btn('fb-btn pri vx-add-create', '＋ 添加「' + displayStudent(rawQ) + '」到今日抽背', () => pickStudent(rawQ)));
-      }
+      const rawQ = search.value.trim();
+      const matches = allEntries
+        .filter(e => matchStudentSearch(e.searchEntry, rawQ))
+        .sort((a, b) => (rawQ ? rankStudentSearch(a.searchEntry, rawQ) - rankStudentSearch(b.searchEntry, rawQ) : 0));
       if (!matches.length && !rawQ) {
         listWrap.append(make('div', 'vq-empty', '输入学生姓名快速添加到今日抽背列表'));
         return;
@@ -2071,10 +2233,13 @@
         item.onclick = () => pickStudent(entry.name);
         listWrap.append(item);
       });
+      if (rawQ && !allEntries.some(e => normSearch(e.name) === normSearch(displayStudent(rawQ)))) {
+        listWrap.append(btn('fb-btn pri vx-add-create', '＋ 添加「' + displayStudent(rawQ) + '」到今日抽背', () => pickStudent(rawQ)));
+      }
     };
-    search.oninput = paint;
+    search.oninput = search.onsearch = paint;
     search.onkeydown = e => {
-      if (e.key === 'Enter' && search.value.trim()) {
+      if (e.key === 'Enter' && !isImeComposing(e) && search.value.trim()) {
         e.preventDefault();
         const firstBtn = listWrap.querySelector('button.vx-add-item, button.vx-add-create');
         if (firstBtn) firstBtn.click(); else pickStudent(search.value.trim());
@@ -2535,7 +2700,7 @@
     let mode = 'lesson', filter = 'all', subject = '';
     const bankBar = make('div', 'vx-banks');
     const modes = make('div', 'fb-tabs'); modes.style.marginBottom = '10px';
-    const search = make('input'); search.type = 'search'; search.className = 'fb-search'; search.style.width = '100%'; search.style.marginBottom = '8px';
+    const search = prepSearchInput(make('input'), '搜索课程标题或日期（如 L53、10/22）', '搜索课程或单词'); search.className = 'fb-search'; search.style.width = '100%'; search.style.marginBottom = '8px';
     const sel = make('select'); sel.className = 'fb-search'; sel.onchange = () => { subject = sel.value; paint(); };
     const filters = make('div', 'vx-filters'), list = make('div');
     o.body.append(bankBar, modes, search, filters, list);
@@ -2647,21 +2812,21 @@
       modes.textContent = '';
       [['lesson', '按课选'], ['all', '全部单词']].forEach(([k, t]) => modes.append(btn(mode === k ? 'on' : '', t, () => { mode = k; search.value = ''; paint(); })));
       filters.textContent = ''; list.textContent = '';
-      const q = search.value.trim().toLowerCase(), day = curDay();
+      const rawQ = search.value.trim(), q = normSearch(rawQ), day = curDay();
       const {activeLearners, activeLib} = activeScope();
       if (!activeLearners.length) {
-        search.placeholder = mode === 'lesson' ? '搜索课程标题或日期（如 L53、10/22）' : '搜索单词或中文';
+        search.placeholder = mode === 'lesson' ? '搜索课程标题、学科或日期（如 L53、10/22、sat）' : '搜索单词、词性或中文';
         list.append(make('div', 'vq-empty', all.length ? '先从上方选择一个词库' : '这个学生还没有单词库。到「课堂反馈」收集反馈后会自动生成。'));
         return;
       }
       if (mode === 'lesson') {
-        search.placeholder = '搜索课程标题或日期（如 L53、10/22）';
+        search.placeholder = '搜索课程标题、学科或日期（如 L53、10/22、sat）';
         // Grouped by subject like the feedback page; the subject of the latest lesson opens first.
         // Words known only from a quiz record (that lesson's feedback is missing) appear as one block per quiz date.
         const orphans = new Map();
         activeLib.filter(r => !r.lesson_id).forEach(r => { const k = r.learner + '|' + subjectOf(r.subject) + '|' + (r.lesson_date || ''); if (!orphans.has(k)) orphans.set(k, {id: 'quiz:' + k, pseudo: true, learner: r.learner, subject: r.subject, lesson_date: r.lesson_date, title: '', rows: []}); orphans.get(k).rows.push(r); });
         const lessons = [...index.filter(l => activeLearners.includes(l.learner)), ...orphans.values()]
-          .filter(l => !q || String(l.title || '').toLowerCase().includes(q) || md(l.lesson_date).includes(q) || String(l.subject || '').includes(q))
+          .filter(l => matchLessonQuery(l, rawQ))
           .sort((a, b) => String(b.lesson_date || '').localeCompare(String(a.lesson_date || '')));
         if (!lessons.length) { list.append(make('div', 'vq-empty', '没有符合的课')); return; }
         const groups = new Map(); lessons.forEach(l => { const k = subjectOf(l.subject); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(l); });
@@ -2674,7 +2839,7 @@
         });
         return;
       }
-      search.placeholder = '搜索单词或中文';
+      search.placeholder = '搜索单词、词性或中文';
       const subjects = [...new Set(activeLib.map(r => subjectOf(r.subject)))];
       if (subject && !subjects.includes(subject)) subject = '';
       sel.textContent = '';
@@ -2682,13 +2847,13 @@
       sel.value = subject;
       const fbtn = (k, label) => btn('fb-btn' + (filter === k ? ' on' : ''), label, () => { filter = k; paint(); });
       filters.append(fbtn('all', '全部 ' + activeLib.length), fbtn('wrong', '错过的'), fbtn('due', '到期复习'), sel);
-      const rows = activeLib.filter(r => (!q || r.word.toLowerCase().includes(q) || String(r.meaning || '').includes(q)) && (!subject || subjectOf(r.subject) === subject)
+      const rows = activeLib.filter(r => matchWordQuery(r, rawQ) && (!subject || subjectOf(r.subject) === subject)
         && (filter === 'all' || (filter === 'wrong' && (r.wrong_count || 0) > 0) || (filter === 'due' && r.due_date && r.due_date <= day)));
       rows.slice(0, 400).forEach(r => list.append(wordRow(r)));
       if (rows.length > 400) list.append(make('div', 'vq-empty', '只显示前 400 个，搜索可以缩小范围'));
       if (!rows.length) list.append(make('div', 'vq-empty', '没有符合的单词'));
     };
-    search.oninput = paint; paintBanks(); paint(); recount();
+    search.oninput = search.onsearch = paint; paintBanks(); paint(); recount();
     o.foot.append(count, btn('fb-btn pri', '加入清单', async () => {
       const keep = items.filter(x => !x.vocab_id || chosen.has(x.vocab_id)).map(x => { const r = selectable.get(x.vocab_id), from = chosenFrom.get(x.vocab_id); return r && from ? {...x, ...fromRow(r, from)} : x; });
       const have = new Set(keep.map(x => x.vocab_id).filter(Boolean));
@@ -2907,6 +3072,6 @@
     let tries = 0; const wait = setInterval(() => { if (client() || ++tries > 60) { clearInterval(wait); mode = 'pending'; dayActiveLoaded.clear(); if (open) renderPanel(); else void updateBadge(); decorateQuiz(); document.querySelectorAll('.vq').forEach(v => fillLists(v, v.dataset.student)); } }, 1000);
   }
   globalThis.wayonVocab = {parseFeedback, lessonNo, subjectOf, learnersFor};
-  Object.assign(globalThis.wayonVocab, {captureQuizExtra, applyQuizExtra, extraQuizStudents, openAddQuizStudent, decorateQuiz});
+  Object.assign(globalThis.wayonVocab, {captureQuizExtra, applyQuizExtra, extraQuizStudents, openAddQuizStudent, decorateQuiz, pinyinInitials, buildLearnerSearchEntry, matchStudentSearch, matchLessonQuery, matchWordQuery});
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once: true}); else start();
 })();

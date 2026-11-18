@@ -12,6 +12,79 @@ const EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-
 const FILTERS = [['all', '全部'], ['on', '打卡中'], ['off', '打卡暂停']];
 const VIEWS = [['person', '按学员'], ['attendance', '全部随课'], ['checkin', '全部打卡']];
 const ONE_TASK = '一项任务只填一条；多项任务请分别添加。';
+const PERSON_ALIAS_GROUPS = [
+  ['卢泰戈', 'Tiger', '泰戈'],
+  ['郭璟', 'Jack', 'guojing'],
+  ['叶雅蕙', 'Amber'],
+  ['徐畅', 'Amy'],
+  ['吴洋亿', 'George'],
+  ['何昊隆', 'Dino'],
+  ['Iven', 'Ivan'],
+  ['李洪睿', '朱洪睿', 'John'],
+  ['胡博文', 'Ares'],
+  ['陈昭卓', 'James'],
+  ['丁嘉宝', '嘉宝'],
+  ['聂彦如', '彦如'],
+  ['陈书进', '书进'],
+  ['潘韬薄', '韬薄'],
+  ['陈芊妤', '芊妤'],
+  ['朱宸萱', '宸萱'],
+  ['陈雨轩', '雨轩'],
+];
+const PY_BOUNDARIES = [
+  ['a', '阿'], ['b', '八'], ['c', '嚓'], ['d', '哒'], ['e', '妸'], ['f', '发'], ['g', '旮'],
+  ['h', '哈'], ['j', '讥'], ['k', '咔'], ['l', '垃'], ['m', '妈'], ['n', '拿'], ['o', '噢'],
+  ['p', '啪'], ['q', '期'], ['r', '然'], ['s', '撒'], ['t', '塌'], ['w', '挖'], ['x', '昔'],
+  ['y', '压'], ['z', '匝']
+];
+const PY_POLY = { 曾: 'z', 沈: 's', 仇: 'q', 单: 's', 查: 'z', 解: 'x', 区: 'o', 覃: 'q', 翟: 'z', 褚: 'c', 朴: 'p', 阚: 'k', 缪: 'm', 盛: 's', 藏: 'z' };
+let pyCollator;
+function pyCharInitial(ch) {
+  if (PY_POLY[ch]) return PY_POLY[ch];
+  if (!/[\u4e00-\u9fff]/.test(ch)) return '';
+  if (pyCollator === undefined) {
+    try { pyCollator = new Intl.Collator('zh-CN-u-co-pinyin'); } catch { pyCollator = null; }
+  }
+  if (!pyCollator || pyCollator.compare(ch, PY_BOUNDARIES[0][1]) < 0) return '';
+  for (let i = PY_BOUNDARIES.length - 1; i >= 0; i--) {
+    if (pyCollator.compare(ch, PY_BOUNDARIES[i][1]) >= 0) return PY_BOUNDARIES[i][0];
+  }
+  return '';
+}
+const normSearch = value => String(value ?? '').normalize('NFKC').toLowerCase().trim();
+function pinyinInitials(value) {
+  let out = '';
+  for (const ch of normSearch(value)) {
+    if (/[a-z0-9]/.test(ch)) out += ch;
+    else out += pyCharInitial(ch);
+  }
+  return out;
+}
+export function entityMatchesQuery(entity, rawQuery, extraTexts = []) {
+  const q = normSearch(rawQuery);
+  if (!q) return true;
+  const labels = [entity?.name || '', ...(entity?.rawLabels || [])];
+  const memberTokens = new Set();
+  for (const raw of labels) {
+    for (const part of String(raw || '').replace(/[【】「」\[\]()（）]/g, ' ').split(/[&＆/／、,，\s\-]+/)) {
+      const p = part.trim();
+      if (!p) continue;
+      memberTokens.add(p.toLowerCase());
+      for (const m of p.matchAll(/[A-Za-z][A-Za-z0-9'.-]*/g)) if (m[0].length >= 2) memberTokens.add(m[0].toLowerCase());
+      const zh = p.replace(/[A-Za-z0-9_.\-\s'’]+/g, '').trim();
+      if (zh.length >= 2) memberTokens.add(zh.toLowerCase());
+    }
+  }
+  const aliases = [];
+  for (const grp of PERSON_ALIAS_GROUPS) {
+    if (grp.some(g => memberTokens.has(g.toLowerCase()))) aliases.push(...grp);
+  }
+  const partsAll = [...labels, entity?.system || '', entity?.systemLabel || '', ...aliases, ...extraTexts];
+  const hay = partsAll.map(normSearch).filter(Boolean).join('\n') + '\n' + partsAll.map(pinyinInitials).filter(Boolean).join('\n');
+  if (hay.includes(q)) return true;
+  const tokens = q.split(/[\s&＆/／、,，]+/).filter(Boolean);
+  return tokens.length > 0 && tokens.every(t => hay.includes(t));
+}
 
 // These are projections of the catalog, never replacement business records.
 export function attendanceItems(payload, entity) {
@@ -234,14 +307,13 @@ export async function mountRules({ document, client, container, onClose }) {
 
   // ---- Left: every learner/class, never paged or folded.
   function visibleEntities() {
-    const query = state.query.trim().toLocaleLowerCase();
+    const query = state.query.trim();
     return entities().filter(entity => {
       const status = entityStatus(entity, state.draft);
       if (state.filter === 'on' && !['on', 'mixed'].includes(status)) return false;
       if (state.filter === 'off' && !['off', 'mixed'].includes(status)) return false;
       if (!query) return true;
-      const text = [entity.name, ...entity.rawLabels, ...items(entity, 'attendance').map(item => item.text), ...items(entity, 'checkin').map(item => item.text)].join(' ');
-      return text.toLocaleLowerCase().includes(query);
+      return entityMatchesQuery(entity, query, [...items(entity, 'attendance').map(item => item.text), ...items(entity, 'checkin').map(item => item.text)]);
     });
   }
   function renderRoster() {
@@ -444,7 +516,7 @@ export async function mountRules({ document, client, container, onClose }) {
     const ready = !!state.owner && !!state.draft;
     if (ready && !(state.selected && selectedEntity(state.selected))) state.selected = visibleEntities()[0]?.key || entities()[0]?.key || null;
     root.innerHTML = `<header class="topbar"><span class="brand">Wayon</span><h1 class="page-title">任务规则</h1>${ready ? `<div class="view-seg" role="group" aria-label="视图">${VIEWS.map(([key, text]) => `<button type="button" class="${state.view === key ? 'active' : ''}" data-action="view" data-view="${key}" aria-pressed="${state.view === key}">${text}</button>`).join('')}</div>` : ''}<div class="header-actions"><button type="button" class="icon-btn" data-action="reload" title="重新读取规则" aria-label="重新读取规则">↻</button>${ready ? '<button type="button" class="icon-btn" data-action="specials" title="全部特殊安排" aria-label="管理全部特殊安排">⋯</button>' : ''}<button type="button" class="icon-btn" data-action="close" aria-label="关闭任务规则">${CLOSE}</button></div></header>
-      ${ready ? `<div class="studio-body ${state.showDetail ? 'show-detail' : ''}"><aside class="roster-pane" aria-label="学员和班级"><label class="search"><span class="sr-only">搜索</span><input type="search" data-field="search" aria-label="搜索姓名或任务" placeholder="搜索姓名或任务" value="${escape(state.query)}"></label><div class="filter-chips" role="group" aria-label="筛选">${FILTERS.map(([key, text]) => `<button type="button" class="chip ${state.filter === key ? 'active' : ''}" data-action="filter" data-filter="${key}" aria-pressed="${state.filter === key}">${text}</button>`).join('')}</div><div class="roster-count" aria-live="polite"></div><ul class="roster-list"></ul></aside><main class="detail-pane content" aria-label="规则内容"></main></div>`
+      ${ready ? `<div class="studio-body ${state.showDetail ? 'show-detail' : ''}"><aside class="roster-pane" aria-label="学员和班级"><label class="search"><span class="sr-only">搜索</span><input type="search" data-field="search" aria-label="搜索姓名或任务" placeholder="搜索姓名、拼音或任务" autocorrect="off" autocapitalize="none" autocomplete="off" spellcheck="false" value="${escape(state.query)}"></label><div class="filter-chips" role="group" aria-label="筛选">${FILTERS.map(([key, text]) => `<button type="button" class="chip ${state.filter === key ? 'active' : ''}" data-action="filter" data-filter="${key}" aria-pressed="${state.filter === key}">${text}</button>`).join('')}</div><div class="roster-count" aria-live="polite"></div><ul class="roster-list"></ul></aside><main class="detail-pane content" aria-label="规则内容"></main></div>`
         : `<main class="content" aria-label="规则内容">${state.owner ? `<div class="empty-state"><p>${state.nonOwner ? `当前账号${state.email ? '（' + escape(state.email) + '）' : ''}没有本人规则库权限，请退出后用本人账号登录。` : '规则未能读取。'}</p><div style="display:inline-flex;gap:8px;margin-top:8px;justify-content:center"><button type="button" class="button" data-action="reload">重试读取</button><button type="button" class="button ghost" data-action="signout">退出登录</button></div></div>` : '<form class="login-form"><h2>登录后查看任务规则</h2><label class="field">邮箱<input name="email" type="email" autocomplete="username" required></label><label class="field">密码<input name="password" type="password" autocomplete="current-password" required></label><button type="submit" class="button primary">登录</button></form>'}</main>`}
       <footer class="footer"><div class="save-state" role="status" aria-live="polite"></div><div class="footer-actions">${ready ? '<button type="button" class="button ghost" data-action="diff">查看变更</button><button type="button" class="button ghost" data-action="discard">放弃</button><button type="button" class="button primary" data-action="save">保存修改</button>' : ''}</div></footer><dialog class="drawer-backdrop" aria-labelledby="rules-drawer-title"></dialog><div class="toast" role="status" aria-live="polite" hidden></div>`;
     dialog = q('dialog');
@@ -747,13 +819,19 @@ export async function mountRules({ document, client, container, onClose }) {
       }
       return;
     }
-    if (target.dataset?.field === 'new-subject' && event.key === 'Enter' && !event.isComposing) { event.preventDefault(); q('[data-action="confirm-subject"]')?.click(); return; }
+    if (target.dataset?.field === 'new-subject' && event.key === 'Enter' && !event.isComposing && event.keyCode !== 229) { event.preventDefault(); q('[data-action="confirm-subject"]')?.click(); return; }
     if (target.classList?.contains('roster-item') && (event.key === 'ArrowDown' || event.key === 'ArrowUp')) {
       event.preventDefault();
       const buttons = [...root.querySelectorAll('.roster-item')], at = buttons.indexOf(target), next = buttons[at + (event.key === 'ArrowDown' ? 1 : -1)];
       if (next) selectEntity(next.dataset.person, { focusRoster: true });
     }
     if (target.dataset?.field === 'search' && event.key === 'ArrowDown') { event.preventDefault(); root.querySelector('.roster-item')?.focus(); }
+  });
+  root.addEventListener('search', event => {
+    if (state.busy) return;
+    if (event.target?.dataset?.field === 'search' && state.query !== event.target.value) {
+      state.query = event.target.value; renderRoster(); if (state.view !== 'person') renderDetail();
+    }
   });
   root.addEventListener('input', event => {
     if (state.busy) return;
