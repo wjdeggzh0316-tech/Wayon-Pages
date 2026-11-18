@@ -1801,6 +1801,8 @@
   const dayActiveQuiz = new Map();       // day -> Set<student>
   const dayActiveLoaded = new Map();     // day -> owner|mode key
   async function loadDayActiveQuizStudents(day) {
+    const earlyTag = (mode === 'cloud' || mode === 'preview') ? (activeOwner || 'preview') + '|' + mode : '';
+    if (earlyTag && dayActiveLoaded.get(day) === earlyTag) return;
     await ready();
     if (mode !== 'cloud' && mode !== 'preview') return;
     const tag = (activeOwner || 'preview') + '|' + mode;
@@ -1829,8 +1831,10 @@
           if (r?.student) active.add(displayStudent(r.student));
         }
       }
+      const prev = dayActiveQuiz.get(day);
+      const changed = !prev || prev.size !== active.size || [...active].some(x => !prev.has(x));
       dayActiveQuiz.set(day, active);
-      if (day === curDay()) syncExtraQuizCards();
+      if (changed && day === curDay()) syncExtraQuizCards();
     } catch { dayActiveLoaded.delete(day); }
   }
   function scheduledQuizSet(day) {
@@ -1970,7 +1974,8 @@
         return;
       }
       const src = el.querySelector('.vq-extra-source');
-      if (src) src.textContent = byName.get(name).reason;
+      const nextReason = byName.get(name).reason;
+      if (src && src.textContent !== nextReason) src.textContent = nextReason;
     });
     const existing = new Set([...box.querySelectorAll('.vq-extra')].map(el => el.dataset?.extraStudent || el.querySelector(':scope > .vq')?.dataset?.student).filter(Boolean));
     for (const entry of desired) {
@@ -2225,14 +2230,19 @@
           const k = isPre ? "pre" : "post";
           const label = isPre ? "课前" : "课后";
           const isDone = Boolean(q[k]);
-          chkBtn.className = "vq-check" + (isDone ? " on" : "");
-          chkBtn.textContent = (isDone ? "✓ " : "") + label + (isDone ? "已抽" : "未抽");
-          chkBtn.title = label + (isDone ? "已抽背，点一下取消" : "未抽背，点一下标记");
+          const nextCls = "vq-check" + (isDone ? " on" : "");
+          const nextTxt = (isDone ? "✓ " : "") + label + (isDone ? "已抽" : "未抽");
+          const nextTitle = label + (isDone ? "已抽背，点一下取消" : "未抽背，点一下标记");
+          if (chkBtn.className !== nextCls) chkBtn.className = nextCls;
+          if (chkBtn.textContent !== nextTxt) chkBtn.textContent = nextTxt;
+          if (chkBtn.title !== nextTitle) chkBtn.title = nextTitle;
           const rawBtn = qrow && [...qrow.querySelectorAll("button.qchk")].find(b => /pre/.test(b.id) === isPre);
           if (rawBtn) {
-            rawBtn.setAttribute("aria-pressed", String(isDone));
-            rawBtn.className = "mark qchk" + (isDone ? " on" : "");
-            rawBtn.textContent = (isDone ? "✅ " : "☐ ") + label;
+            const nextRawCls = "mark qchk" + (isDone ? " on" : "");
+            const nextRawTxt = (isDone ? "✅ " : "☐ ") + label;
+            if (rawBtn.getAttribute("aria-pressed") !== String(isDone)) rawBtn.setAttribute("aria-pressed", String(isDone));
+            if (rawBtn.className !== nextRawCls) rawBtn.className = nextRawCls;
+            if (rawBtn.textContent !== nextRawTxt) rawBtn.textContent = nextRawTxt;
           }
         });
       });
@@ -2240,23 +2250,24 @@
       if (note) {
         const allChecks = [...g.querySelectorAll(".vq-check")];
         const doneN = allChecks.filter(b => b.classList.contains("on")).length;
-        note.textContent = "· " + (doneN === 0 ? "未抽背" : doneN === allChecks.length ? "已抽背" : allChecks.map(b => b.textContent.replace(/^✓\s*/, "")).join(" · "));
+        const nextNote = "· " + (doneN === 0 ? "未抽背" : doneN === allChecks.length ? "已抽背" : allChecks.map(b => b.textContent.replace(/^✓\s*/, "")).join(" · "));
+        if (note.textContent !== nextNote) note.textContent = nextNote;
       }
     });
     syncExtraQuizCards();
     const n = qr.filter(r => qget(qk(r)).pre && qget(qk(r)).post).length;
     const countEl = document.getElementById("count");
-    if (countEl) countEl.textContent = n + " / " + qr.length + " 课前课后都抽了";
+    const nextCount = n + " / " + qr.length + " 课前课后都抽了";
+    if (countEl && countEl.textContent !== nextCount) countEl.textContent = nextCount;
     const fillEl = document.getElementById("fill");
-    if (fillEl) fillEl.style.width = (qr.length ? (n / qr.length * 100) : 0) + "%";
+    const nextWidth = (qr.length ? (n / qr.length * 100) : 0) + "%";
+    if (fillEl && fillEl.style.width !== nextWidth) fillEl.style.width = nextWidth;
     const metaEl = document.querySelector(".quiz .head .meta");
     if (metaEl) {
-      if (qr.length) {
-        const pre = qr.filter(r => qget(qk(r)).pre).length, post = qr.filter(r => qget(qk(r)).post).length;
-        metaEl.textContent = "课前 " + pre + " / " + qr.length + " · 课后 " + post + " / " + qr.length + "（这节课前课后都抽了 = 变绿）";
-      } else {
-        metaEl.textContent = "今天暂无排定线下正课 · 可添加临时复习抽背的学生";
-      }
+      const nextMeta = qr.length
+        ? (() => { const pre = qr.filter(r => qget(qk(r)).pre).length, post = qr.filter(r => qget(qk(r)).post).length; return "课前 " + pre + " / " + qr.length + " · 课后 " + post + " / " + qr.length + "（这节课前课后都抽了 = 变绿）"; })()
+        : "今天暂无排定线下正课 · 可添加临时复习抽背的学生";
+      if (metaEl.textContent !== nextMeta) metaEl.textContent = nextMeta;
     }
   };
   async function fillLists(vq, student, cachedLists) {
@@ -2322,12 +2333,14 @@
     const extraCard = vq.closest?.('.vq-card');
     if (extraCard?.classList?.contains('vq-extra')) {
       const stPill = extraCard.querySelector('.vq-extra-status');
+      const nextSt = doneNow ? '✓ 今日已抽' : '复习待抽';
       if (stPill) {
         stPill.classList.toggle('on', doneNow);
-        stPill.textContent = doneNow ? '✓ 今日已抽' : '复习待抽';
+        if (stPill.textContent !== nextSt) stPill.textContent = nextSt;
       }
       const foldNote = extraCard.querySelector('.vq-fold-note');
-      if (foldNote) foldNote.textContent = doneNow ? '· 今日已抽' : '· 未抽背';
+      const nextNote = doneNow ? '· 今日已抽' : '· 未抽背';
+      if (foldNote && foldNote.textContent !== nextNote) foldNote.textContent = nextNote;
     }
     const showResult = res => {
       const last = overlay('抽背结果'); last.body.append(make('pre', 'fb-body', resultText(res.payload)));
@@ -2827,27 +2840,35 @@
   }
 
   // ---------- Sidebar button and mounting ----------
+  let mountObserver = null, mounting = false;
   function close() { open = false; if (root) root.hidden = true; delete document.body.dataset.feedbackOpen; const b = document.getElementById('nav-feedback'); b?.classList.remove('on'); b?.setAttribute('aria-pressed', 'false'); }
   function mount() {
-    const tabs = document.getElementById('tabs'), list = document.getElementById('list');
-    if (tabs && list) {
-      if (!root) { root = make('section'); root.id = 'feedback-panel'; root.hidden = !open; root.setAttribute('aria-label', '课堂反馈'); list.before(root); }
-      const notice = list.parentNode && [...list.parentNode.children].find(e => e.classList.contains('wayon-sync-notice'));
-      if (notice && root.compareDocumentPosition(notice) & Node.DOCUMENT_POSITION_FOLLOWING) notice.after(root);
-      let b = document.getElementById('nav-feedback');
-      if (!b) {
-        b = make('button', 'wayon-icon-control' + (open ? ' on' : '')); b.id = 'nav-feedback'; b.type = 'button'; b.title = '课堂反馈'; b.setAttribute('aria-label', '课堂反馈'); b.setAttribute('aria-pressed', String(open));
-        if (lastBadgeTodo) b.dataset.todo = lastBadgeTodo;
-        b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5 M8 8h8 M8 12h5"/></svg>';
-        b.onclick = () => { open = true; document.body.dataset.feedbackOpen = 'true'; root.hidden = false; b.classList.add('on'); b.setAttribute('aria-pressed', 'true'); renderPanel(); };
-        const memo = document.getElementById('nav-memo'); if (memo) memo.before(b); else tabs.append(b);
-      } else {
-        if (lastBadgeTodo && b.dataset.todo !== lastBadgeTodo) b.dataset.todo = lastBadgeTodo;
-        else if (!lastBadgeTodo && b.dataset.todo) delete b.dataset.todo;
-        if (open && !b.classList.contains('on')) { b.classList.add('on'); b.setAttribute('aria-pressed', 'true'); }
+    if (mounting) return;
+    mounting = true;
+    try {
+      const tabs = document.getElementById('tabs'), list = document.getElementById('list');
+      if (tabs && list) {
+        if (!root) { root = make('section'); root.id = 'feedback-panel'; root.hidden = !open; root.setAttribute('aria-label', '课堂反馈'); list.before(root); }
+        const notice = list.parentNode && [...list.parentNode.children].find(e => e.classList.contains('wayon-sync-notice'));
+        if (notice && root.compareDocumentPosition(notice) & Node.DOCUMENT_POSITION_FOLLOWING) notice.after(root);
+        let b = document.getElementById('nav-feedback');
+        if (!b) {
+          b = make('button', 'wayon-icon-control' + (open ? ' on' : '')); b.id = 'nav-feedback'; b.type = 'button'; b.title = '课堂反馈'; b.setAttribute('aria-label', '课堂反馈'); b.setAttribute('aria-pressed', String(open));
+          if (lastBadgeTodo) b.dataset.todo = lastBadgeTodo;
+          b.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5 M8 8h8 M8 12h5"/></svg>';
+          b.onclick = () => { open = true; document.body.dataset.feedbackOpen = 'true'; root.hidden = false; b.classList.add('on'); b.setAttribute('aria-pressed', 'true'); renderPanel(); };
+          const memo = document.getElementById('nav-memo'); if (memo) memo.before(b); else tabs.append(b);
+        } else {
+          if (lastBadgeTodo && b.dataset.todo !== lastBadgeTodo) b.dataset.todo = lastBadgeTodo;
+          else if (!lastBadgeTodo && b.dataset.todo) delete b.dataset.todo;
+          if (open && !b.classList.contains('on')) { b.classList.add('on'); b.setAttribute('aria-pressed', 'true'); }
+        }
       }
+      decorateQuiz();
+    } finally {
+      mountObserver?.takeRecords?.();
+      mounting = false;
     }
-    decorateQuiz();
   }
   function start() {
     if (typeof globalThis.render === 'function' && !globalThis._wayonOrigRender) {
@@ -2859,7 +2880,8 @@
     }
     mount();
     document.addEventListener('click', e => { const nav = e.target.closest?.('#tabs button'); if (open && nav && nav.id !== 'nav-feedback') close(); }, true);
-    new MutationObserver(mount).observe(document.body, {childList: true, subtree: true});
+    mountObserver = new MutationObserver(mount);
+    mountObserver.observe(document.body, {childList: true, subtree: true});
     window.addEventListener('online', () => void flushVocabBackups(activeOwner));
     const refreshAfterAuthOrData = () => {
       const prevOwner = activeOwner;
