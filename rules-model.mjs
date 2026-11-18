@@ -305,7 +305,8 @@ export function previewRules(
       hasClass &&
       (profile.system === "sat" ||
         subjects.some((x) => /SAT|语法/.test(x) || x === "数学")) &&
-      !/郭璟|Jack/i.test(name)
+      (!/郭璟|Jack|George|吴洋亿|Charlotte/i.test(name) ||
+        inspection.kind !== "vocab")
     ) {
       mode = "manual";
       reason = "此课程由老师处理，不自动向系统发布";
