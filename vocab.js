@@ -1338,7 +1338,7 @@
   }
 
   // ---------- 课堂反馈 panel ----------
-  let open = false, root = null, view = 'today', learnerOpen = null, collectDay = '', learnerSubject = '';
+  let open = false, root = null, view = 'today', learnerOpen = null, collectDay = '', learnerSubject = '', learnerQuery = '', panelRenderSeq = 0;
   const stateText = () => ({cloud: '已连接云端', preview: '本机预览数据（不会上传）', signedout: '请先登录工作台', none: '云端未连接'}[mode] || '正在连接…');
   function sessionsFor(day) {
     let all = {}; try { all = DATA._sess || {}; } catch {}
@@ -1346,16 +1346,21 @@
   }
   async function renderPanel() {
     if (!root) return;
+    const seq = ++panelRenderSeq;
+    const wasSearchFocused = !!(document.activeElement && root.contains?.(document.activeElement) && document.activeElement.type === 'search');
     root.textContent = '';
     const head = make('div', 'fb-head'); head.append(make('h2', '', '课堂反馈'));
     const tabs = make('div', 'fb-tabs');
-    [['today', '今日收集'], ['all', '全部反馈']].forEach(([k, label]) => { const b = btn(view === k ? 'on' : '', label, () => { view = k; learnerOpen = null; renderPanel(); }); tabs.append(b); });
+    [['today', '今日收集'], ['all', '全部反馈']].forEach(([k, label]) => { const b = btn(view === k ? 'on' : '', label, () => { if (view !== k) learnerQuery = ''; view = k; learnerOpen = null; renderPanel(); }); tabs.append(b); });
     head.append(tabs);
     const note = make('span', 'fb-note', stateText()); head.append(note); root.append(head);
-    await ready(); note.textContent = stateText(); note.classList.toggle('warn', mode !== 'cloud');
+    await ready();
+    if (seq !== panelRenderSeq || !root) return;
+    note.textContent = stateText(); note.classList.toggle('warn', mode !== 'cloud');
     if (mode !== 'cloud' && mode !== 'preview') { root.append(make('div', 'fb-card', '课堂反馈存在你本人的云端，登录工作台后才能查看和保存。')); return; }
-    try { await lessonIndex(); } catch (e) { root.append(make('div', 'fb-card', '读取失败：' + (e.message || e))); return; }
-    if (view === 'today') renderToday(); else if (learnerOpen) renderLearner(learnerOpen); else renderLearners();
+    try { await lessonIndex(); } catch (e) { if (seq === panelRenderSeq && root) root.append(make('div', 'fb-card', '读取失败：' + (e.message || e))); return; }
+    if (seq !== panelRenderSeq || !root) return;
+    if (view === 'today') renderToday(); else if (learnerOpen) renderLearner(learnerOpen); else renderLearners(wasSearchFocused);
     void updateBadge();
   }
   function resolveLearner(who, learners) {
@@ -1520,8 +1525,9 @@
     return missing;
   }
   const latestOf = ls => ls.map(l => l.lesson_date || '').sort().pop() || '';
-  function renderLearners() {
+  function renderLearners(restoreFocus = false) {
     const top = make('div', 'fb-card'), search = prepSearchInput(make('input'), '搜索学生或班级（支持英文、小写、拼音首字母）', '搜索学生或班级'); search.className = 'fb-search'; search.style.width = '100%';
+    search.value = learnerQuery;
     const bulk = btn('fb-btn', '批量导入反馈', () => openBulk('')); top.classList.add('fb-row'); search.style.flex = '1'; search.style.width = 'auto';
     top.append(search, bulk); root.append(top);
     const grid = make('div', 'fb-learners'); root.append(grid);
@@ -1529,6 +1535,7 @@
     const aliasMap = buildDataAliasMap();
     const searchIndex = new Map([...groups.keys()].map(k => [k, buildLearnerSearchEntry(k, [], aliasMap)]));
     const paint = () => {
+      learnerQuery = search.value;
       grid.textContent = ''; const rawQ = search.value.trim();
       const matched = [...groups.entries()]
         .filter(([k]) => matchStudentSearch(searchIndex.get(k), rawQ))
@@ -1548,6 +1555,10 @@
       });
     };
     search.oninput = search.onsearch = paint; paint();
+    if (restoreFocus) {
+      search.focus();
+      try { search.setSelectionRange?.(search.value.length, search.value.length); } catch {}
+    }
   }
   const weekday = d => d ? ' 周' + '日一二三四五六'[new Date(d + 'T12:00:00').getDay()] : '';
   // Words panel shared by view, edit and add: recognised live from the text.
@@ -2186,7 +2197,7 @@
     const aliasMap = buildDataAliasMap();
     const allEntries = [...stats.values()].map(entry => ({
       ...entry,
-      searchEntry: buildLearnerSearchEntry(entry.name, [...entry.sources], aliasMap)
+      searchEntry: buildLearnerSearchEntry(entry.name, [], aliasMap)
     })).sort((a, b) => {
       const sa = shownNow.has(a.name) ? 1 : 0, sb = shownNow.has(b.name) ? 1 : 0;
       if (sa !== sb) return sa - sb;
@@ -3006,7 +3017,7 @@
 
   // ---------- Sidebar button and mounting ----------
   let mountObserver = null, mounting = false;
-  function close() { open = false; if (root) root.hidden = true; delete document.body.dataset.feedbackOpen; const b = document.getElementById('nav-feedback'); b?.classList.remove('on'); b?.setAttribute('aria-pressed', 'false'); }
+  function close() { open = false; learnerQuery = ''; if (root) root.hidden = true; delete document.body.dataset.feedbackOpen; const b = document.getElementById('nav-feedback'); b?.classList.remove('on'); b?.setAttribute('aria-pressed', 'false'); }
   function mount() {
     if (mounting) return;
     mounting = true;
