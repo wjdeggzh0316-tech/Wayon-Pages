@@ -59,7 +59,7 @@ function frequency(row) {
   return row['重复'] === '每周固定几天' ? '每周' + (row['周几'] || []).map(day => String(day).replace(/^周/, '')).join('、') : row['重复'] === '随课/每天' ? '有课日' : row['重复'] || '未设频率';
 }
 function rowSummary(row) {
-  return [frequency(row), row['形式'] || '', row['date:下次日期:start'] ? dateLabel(row['date:下次日期:start']) + '起' : '', row['date:重复截止:start'] ? '至' + dateLabel(row['date:重复截止:start']) : '', completed(row) ? '本次已人工确认完成' : ''].filter(Boolean).join(' · ');
+  return [frequency(row), row['仅无课日'] ? '仅无课日' : '', row['形式'] || '', row['date:下次日期:start'] ? dateLabel(row['date:下次日期:start']) + '起' : '', row['date:重复截止:start'] ? '至' + dateLabel(row['date:重复截止:start']) : '', completed(row) ? '本次已人工确认完成' : ''].filter(Boolean).join(' · ');
 }
 
 // Plain-language change list. It only reads the two payloads.
@@ -105,7 +105,7 @@ export function describeChanges(before = {}, after = {}) {
     for (const line of manualChanges(old, next, taskLines(old['任务内容']), taskLines(next['任务内容']))) push(name, '打卡：' + line);
     const status = row => row['状态'] === '进行中' ? '正在进行' : row['状态'] || '未设';
     if (old['状态'] !== next['状态']) push(name, '打卡：' + status(old) + ' → ' + status(next));
-    const fields = [['频率', frequency], ['形式', row => row['形式'] || '未设'], ['开始日期', row => dateLabel(row['date:下次日期:start']) || '未设'], ['结束日期', row => dateLabel(row['date:重复截止:start']) || '未设'], ['单词方式', row => row['单词布置方式'] || '跟随任务内容'], ['阅读方式', row => row['特殊阅读规则'] || '跟随默认'], ['备注', row => row['备注'] || '无']];
+    const fields = [['频率', frequency], ['有课安排', row => row['仅无课日'] ? '仅无课日' : '含上课日'], ['形式', row => row['形式'] || '未设'], ['开始日期', row => dateLabel(row['date:下次日期:start']) || '未设'], ['结束日期', row => dateLabel(row['date:重复截止:start']) || '未设'], ['单词方式', row => row['单词布置方式'] || '跟随任务内容'], ['阅读方式', row => row['特殊阅读规则'] || '跟随默认'], ['备注', row => row['备注'] || '无']];
     for (const [label, read] of fields) if (read(old) !== read(next)) push(name, '打卡' + label + '：' + read(old) + ' → ' + read(next));
   }
   const oldOverrides = (before.overrides || []).map(canonical), newOverrides = (after.overrides || []).map(canonical);
@@ -305,6 +305,7 @@ export async function mountRules({ document, client, container, onClose }) {
     const id = escape(row.id), days = row['周几'] || [];
     return `<div class="row-settings" data-row="${id}">
       <label class="field"><span>频率</span><select data-field="row-repeat" data-row="${id}">${options([['每天', '每天'], ['每周固定几天', '每周固定几天'], ['随课/每天', '有课日（历史规则）']], row['重复'] || '每天')}</select></label>
+      <label class="field"><span>有课安排</span><select data-field="row-noclass" data-row="${id}">${options([['1', '仅无课日（有课只走随课）'], ['', '有课也执行（含上课日）']], row['仅无课日'] ? '1' : '')}</select></label>
       <div class="field wide" ${row['重复'] === '每周固定几天' ? '' : 'hidden'}><span>执行日</span><div class="weekday-picker" role="group" aria-label="每周执行日">${WEEKDAYS.map(day => `<button type="button" class="${days.includes(day) ? 'active' : ''}" data-action="weekday" data-row="${id}" data-day="${day}" aria-pressed="${days.includes(day)}">${day.slice(1)}</button>`).join('')}</div></div>
       <label class="field"><span>开始日期</span><input type="date" data-field="row-start" data-row="${id}" value="${escape(String(row['date:下次日期:start'] || '').slice(0, 10))}"></label>
       <label class="field"><span>结束日期（含当天）</span><input type="date" data-field="row-end" data-row="${id}" value="${escape(String(row['date:重复截止:start'] || '').slice(0, 10))}"></label>
@@ -514,7 +515,7 @@ export async function mountRules({ document, client, container, onClose }) {
     let rule;
     if (pending.scope === 'attendance') rule = addAttendance(entity, text, pending.subject);
     else {
-      rule = { id: uuid(), 学员: entity.rawLabels.find(label => (state.draft.frequency_rows || []).some(row => row['学员'] === label)) || entity.rawLabels[0], system: entity.system, 任务: entity.name + '-打卡任务', 任务内容: text, 状态: entityStatus(entity, state.draft) === 'off' ? '暂停' : '进行中', _canonical_state: true, 形式: '线上', 重复: '每天', 周几: [] };
+      rule = { id: uuid(), 学员: entity.rawLabels.find(label => (state.draft.frequency_rows || []).some(row => row['学员'] === label)) || entity.rawLabels[0], system: entity.system, 任务: entity.name + '-打卡任务', 任务内容: text, 状态: entityStatus(entity, state.draft) === 'off' ? '暂停' : '进行中', _canonical_state: true, 形式: '线上', 重复: '每天', 周几: [], 仅无课日: true };
       state.draft.frequency_rows ??= [];
       state.draft.frequency_rows.push(rule);
     }
@@ -561,6 +562,10 @@ export async function mountRules({ document, client, container, onClose }) {
       const key = kind === 'row-start' ? 'date:下次日期:start' : 'date:重复截止:start';
       if (String(row[key] || '').slice(0, 10) === value) return;
       if (value) row[key] = value; else delete row[key];
+    } else if (kind === 'row-noclass') {
+      const next = value === '1';
+      if (Boolean(row['仅无课日']) === next) return;
+      if (next) row['仅无课日'] = true; else delete row['仅无课日'];
     } else if (kind === 'row-form') { if (value === row['形式']) return; row['形式'] = value; }
     else if (kind === 'row-vocab') { if (value === (row['单词布置方式'] || '跟随任务内容')) return; if (value === '跟随任务内容') delete row['单词布置方式']; else row['单词布置方式'] = value; }
     else if (kind === 'row-reading') { if (value === (row['特殊阅读规则'] || '跟随默认')) return; if (value === '跟随默认') delete row['特殊阅读规则']; else row['特殊阅读规则'] = value; }

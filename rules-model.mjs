@@ -240,6 +240,12 @@ export function validateDraft(payload, base = {}) {
     if (row["重复"] === "每周固定几天" && !(row["周几"] || []).length)
       errors.push(label + "：请选择执行日");
     if (
+      row["仅无课日"] !== undefined &&
+      row["仅无课日"] !== null &&
+      typeof row["仅无课日"] !== "boolean"
+    )
+      errors.push(label + "：打卡有课日配置无效");
+    if (
       row["date:下次日期:start"] &&
       row["date:重复截止:start"] &&
       row["date:下次日期:start"].slice(0, 10) >
@@ -353,6 +359,7 @@ export function previewRules(
     const reason = frequencyReason(row, day);
     if ((row["形式"] === "线下" || row["重复"] === "随课/每天") && !hasClass)
       continue;
+    if (row["仅无课日"] && hasClass) continue;
     for (const text of expandedLines(row, day)) {
       if (reason) {
         result.push({ text, mode: "blocked", reason, source: "定期任务" });
