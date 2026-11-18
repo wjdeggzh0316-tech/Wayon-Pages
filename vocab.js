@@ -688,7 +688,10 @@
     }
     return t;
   }
-  const displayStudent = s => plainName(globalThis.wayonDisplayName?.(s) || stripCourseSuffix(s) || s);
+  const displayStudent = s => {
+    const shown = globalThis.wayonDisplayName?.(s);
+    return plainName(stripCourseSuffix(shown || s) || shown || s);
+  };
   function expandPersonAliases(raw) {
     const base = stripCourseSuffix(raw);
     const out = new Set();
@@ -968,6 +971,19 @@
       .vq-result-info{gap:6px 10px}.vq-result-info .vq-tally{flex-basis:100%}
     }
     .vq-items{margin:10px 0 0}
+    .vq-add-student{order:5;min-height:32px;height:32px;padding:0 12px;border-radius:9px;font-size:12.5px;font-weight:550;background:var(--card);color:var(--fg);border:1px solid var(--line-strong);white-space:nowrap}
+    .vq-add-student:hover{border-color:var(--accent);color:var(--accent)}
+    .vq-extra-source{font-size:12.5px;color:var(--muted)}
+    .vq-extra-status{display:inline-flex;align-items:center;cursor:default}
+    .vq-remove-extra{height:30px;min-height:30px;padding:0 10px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;white-space:nowrap}
+    .vq-remove-extra:hover{border-color:var(--bad-border);background:var(--bad-bg);color:var(--bad-dark)}
+    .vx-add-list{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+    .vx-add-item{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;text-align:left;padding:11px 14px;border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--fg);font:inherit;cursor:pointer}
+    .vx-add-item:hover:not(:disabled){border-color:var(--accent)}
+    .vx-add-item:disabled{opacity:.6;cursor:default}
+    .vx-add-item b{font-size:15px;font-weight:600}
+    .vx-add-item span{font-size:12px;color:var(--muted)}
+    .vx-add-create{width:100%;margin-top:8px}
     .vq-clear{border:0!important;background:transparent!important;color:var(--muted);font:inherit;font-size:12px;cursor:pointer;min-height:28px;padding:0 6px}
     .vq-paste{display:flex;gap:8px;margin-top:8px}.vq-paste textarea{flex:1;min-height:0!important;margin:0!important}
     .vq-paste button{min-height:38px;padding:0 14px;border:1px solid var(--line);border-radius:8px;background:var(--card);font:inherit;font-size:13px;cursor:pointer}
@@ -1733,12 +1749,361 @@
   // ---------- 单词抽背: three editable lists per student inside the existing quiz view ----------
   const vqTab = new Map();   // student -> selected phase (presentation only)
   const curDay = () => { try { return cur; } catch { return today(); } };
+  const pageMode = () => document.body?.getAttribute?.('data-mode') || '';
+  const pageData = () => {
+    try { if (typeof DATA !== 'undefined' && DATA) return DATA; } catch {}
+    return (typeof window !== 'undefined' ? window.DATA : null) || globalThis.DATA || {};
+  };
+  const pageDoneState = day => {
+    try { if (day === curDay() && typeof st === 'object' && st) return st; } catch {}
+    try { return JSON.parse(localStorage.getItem('wayon-done-' + day) || '{}') || {}; } catch { return {}; }
+  };
+  const notifyChecks = day => {
+    try { if (typeof push === 'function' && day === curDay()) { push(); return; } } catch {}
+    try { globalThis.checkCloud?.observe?.(day); } catch {}
+  };
+  const quizExtraKey = day => 'wayon-quiz-extra-' + day;
+  const readQuizExtra = day => {
+    try {
+      const raw = JSON.parse(localStorage.getItem(quizExtraKey(day)) || '{}');
+      return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {};
+    } catch { return {}; }
+  };
+  const writeQuizExtra = (day, map) => {
+    try { localStorage.setItem(quizExtraKey(day), JSON.stringify(map || {})); } catch {}
+  };
+  function saveQuizExtra(day, student, value) {
+    const name = displayStudent(student);
+    if (!name) return;
+    const map = readQuizExtra(day);
+    map[name] = value;
+    writeQuizExtra(day, map);
+    notifyChecks(day);
+  }
+  function captureQuizExtra(day) {
+    const out = {};
+    for (const [name, val] of Object.entries(readQuizExtra(day))) {
+      if (name && (val === true || val === false)) out[JSON.stringify(['quiz-extra', name])] = val;
+    }
+    return out;
+  }
+  function applyQuizExtra(day, fields) {
+    const map = {};
+    for (const [raw, val] of Object.entries(fields || {})) {
+      let k; try { k = JSON.parse(raw); } catch { continue; }
+      if (Array.isArray(k) && k.length === 2 && k[0] === 'quiz-extra' && typeof k[1] === 'string' && (val === true || val === false)) {
+        map[k[1]] = val;
+      }
+    }
+    writeQuizExtra(day, map);
+    if (day === curDay()) syncExtraQuizCards();
+  }
+  const dayActiveQuiz = new Map();       // day -> Set<student>
+  const dayActiveLoaded = new Map();     // day -> owner|mode key
+  async function loadDayActiveQuizStudents(day) {
+    await ready();
+    if (mode !== 'cloud' && mode !== 'preview') return;
+    const tag = (activeOwner || 'preview') + '|' + mode;
+    if (dayActiveLoaded.get(day) === tag) return;
+    dayActiveLoaded.set(day, tag);
+    const active = new Set();
+    try {
+      if (mode === 'preview') {
+        const prefix = 'wayon-vocab-lists-' + day + '|';
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (!k?.startsWith(prefix)) continue;
+          const stName = displayStudent(k.slice(prefix.length));
+          const obj = JSON.parse(localStorage.getItem(k) || '{}') || {};
+          if (stName && ['课前', '课后', '补充'].some(p => Array.isArray(obj[p]) && obj[p].length)) active.add(stName);
+        }
+      } else {
+        const [listsRes, sessRes] = await Promise.all([
+          client().from('wayon_vocab_lists').select('student,items').eq('day', day),
+          client().from('wayon_vocab_sessions').select('student,state').eq('day', day).in('state', ['draft', 'completed'])
+        ]);
+        for (const r of (listsRes?.data || [])) {
+          if (r?.student && Array.isArray(r.items) && r.items.length) active.add(displayStudent(r.student));
+        }
+        for (const r of (sessRes?.data || [])) {
+          if (r?.student) active.add(displayStudent(r.student));
+        }
+      }
+      dayActiveQuiz.set(day, active);
+      if (day === curDay()) syncExtraQuizCards();
+    } catch { dayActiveLoaded.delete(day); }
+  }
+  function scheduledQuizSet(day) {
+    const set = new Set();
+    try {
+      if (day === curDay() && typeof quizRows === 'function') {
+        for (const r of quizRows(pageData()?.[day] || [])) {
+          const name = displayStudent(r[0]);
+          if (name) set.add(name);
+        }
+      } else {
+        for (const s of (pageData()?._sess?.[day] || [])) {
+          if (!Array.isArray(s) || s.length < 5 || s[4] !== '线下') continue;
+          String(s[0] || '').split(/[&＆/／、]/).map(x => displayStudent(x)).filter(Boolean).forEach(n => set.add(n));
+        }
+      }
+    } catch {}
+    return set;
+  }
+  function studyCardsFor(day) {
+    try { if (typeof study !== 'undefined' && typeof study?.cards === 'function') return study.cards(day) || []; } catch {}
+    try {
+      const fields = JSON.parse(localStorage.getItem('wayon-study-v1:' + day) || '{}') || {};
+      const cards = [];
+      for (const [raw, meta] of Object.entries(fields)) {
+        let k; try { k = JSON.parse(raw); } catch { continue; }
+        if (!Array.isArray(k) || k[0] !== 'study-card' || k.length !== 2 || !meta || meta.archivedAt || typeof meta.studentName !== 'string') continue;
+        const tasks = [];
+        for (const [tr, task] of Object.entries(fields)) {
+          let tk; try { tk = JSON.parse(tr); } catch { continue; }
+          if (Array.isArray(tk) && tk[0] === 'study-task' && tk.length === 3 && tk[1] === k[1] && typeof task?.text === 'string') tasks.push(task);
+        }
+        cards.push({ id: k[1], studentName: meta.studentName, tasks });
+      }
+      return cards;
+    } catch { return []; }
+  }
+  function taskHasVisibleQuiz(data, day, rowName, tasks) {
+    const targetNames = parts(displayStudent(rowName));
+    const sessions = (data?._sess?.[day] || []).filter(s =>
+      String(s[0] || '').split(/[&＆/／、]/).some(n => {
+        const dn = displayStudent(n);
+        return dn && targetNames.some(t => aliasMatch(dn, t));
+      })
+    );
+    return (tasks || []).some(t => {
+      const label = typeof t === 'string' ? t : t?.[0] || '';
+      if (!/抽背|默写/.test(label)) return false;
+      if (label === '课堂生词抽背' && sessions.length && !sessions.some(s => s[4] !== '线上')) return false;
+      return true;
+    });
+  }
+  function extraQuizStudents(day) {
+    const scheduled = scheduledQuizSet(day);
+    const extraMap = readQuizExtra(day);
+    const data = pageData();
+    const doneState = pageDoneState(day);
+    const picked = new Map();
+    const add = (rawName, reason, force = false) => {
+      const name = displayStudent(rawName);
+      if (!name || scheduled.has(name)) return;
+      if (!force && extraMap[name] === false) return;
+      if (!picked.has(name)) picked.set(name, { student: name, reason });
+    };
+    for (const [name, val] of Object.entries(extraMap)) {
+      if (val === true) add(name, '手动添加抽背', true);
+    }
+    for (const row of (Array.isArray(data?.[day]) ? data[day] : [])) {
+      const rName = row?.[0];
+      if (!rName) continue;
+      const tasks = Array.isArray(doneState?.[rName]?.tk) ? doneState[rName].tk : (row?.[3] || []);
+      if (taskHasVisibleQuiz(data, day, rName, tasks)) {
+        String(rName).split(/[&＆/／、]/).forEach(part => add(part, '今日任务含抽背'));
+      }
+    }
+    for (const card of studyCardsFor(day)) {
+      if ((card.tasks || []).some(t => /抽背|默写/.test(t?.text || ''))) {
+        add(card.studentName, '今日自习含抽背');
+      }
+    }
+    for (const stName of (dayActiveQuiz.get(day) || [])) {
+      add(stName, '今日已有词单');
+    }
+    return [...picked.values()];
+  }
+  function attachFoldAndLists(g, head, student, note, meta, readFoldsFn, onRemove) {
+    const day = curDay();
+    const foldKey = day + '|' + student, folded = readFoldsFn();
+    const fold = make('button', 'vq-fold'); fold.type = 'button'; fold.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
+    const setFold = on => { g.classList.toggle('vq-collapsed', on); fold.setAttribute('aria-expanded', String(!on)); fold.title = on ? '展开' : '收起'; fold.setAttribute('aria-label', (on ? '展开 ' : '收起 ') + student); };
+    fold.onclick = e => { e.stopPropagation(); const on = !g.classList.contains('vq-collapsed'); setFold(on); const f = readFoldsFn(); if (on) f[foldKey] = 1; else delete f[foldKey]; try { localStorage.setItem('wayon-vq-folds', JSON.stringify(f)); } catch {} };
+    head.append(note, meta, fold); setFold(!!folded[foldKey]);
+    head.addEventListener('click', e => { if (g.classList.contains('vq-collapsed') && !e.target.closest('button:not(.vq-fold)')) fold.click(); });
+    const vq = make('div', 'vq'); vq.dataset.student = student;
+    if (onRemove) vq.dataset.extra = '1';
+    head.after(vq);
+    void fillLists(vq, student);
+    return g;
+  }
   // One compact card per student: name · course · time and the existing 课前/课后 checks as text pills,
   // then the three lists as tabs with their actions, then the chosen words.
   const readFolds = () => { try { return JSON.parse(localStorage.getItem('wayon-vq-folds') || '{}') || {}; } catch { return {}; } };
+  function createExtraQuizCard(entry) {
+    const { student, reason } = entry;
+    const g = make('div', 'qgroup vq-card vq-extra');
+    g.dataset.extraStudent = student;
+    const head = make('div', 'qhead');
+    head.append(make('span', 'vq-student-name', student));
+    const note = make('span', 'vq-fold-note', '· 未抽背');
+    const meta = make('div', 'vq-meta');
+    const line = make('span', 'vq-session');
+    const srcSpan = make('span', 'vq-extra-source', reason);
+    const stPill = make('span', 'vq-check vq-extra-status', '复习待抽');
+    const rmBtn = make('button', 'vq-remove-extra'); rmBtn.type = 'button'; rmBtn.title = '从今日抽背列表移除';
+    rmBtn.append(make('span', '', '移除'));
+    rmBtn.onclick = e => {
+      e?.stopPropagation?.();
+      saveQuizExtra(curDay(), student, false);
+      syncExtraQuizCards();
+      flash('已将 ' + student + ' 移出今日抽背列表');
+    };
+    line.append(srcSpan, stPill, rmBtn);
+    meta.append(line);
+    g.append(head);
+    return attachFoldAndLists(g, head, student, note, meta, readFolds, true);
+  }
+  function syncExtraQuizCards() {
+    const box = document.querySelector('#list .quiz');
+    if (!box) return;
+    const day = box.dataset?.day || curDay();
+    const desired = extraQuizStudents(day);
+    const byName = new Map(desired.map(e => [e.student, e]));
+    box.querySelectorAll('.vq-extra').forEach(el => {
+      const name = el.dataset?.extraStudent || el.querySelector(':scope > .vq')?.dataset?.student;
+      if (!name || !byName.has(name)) {
+        el.remove();
+        return;
+      }
+      const src = el.querySelector('.vq-extra-source');
+      if (src) src.textContent = byName.get(name).reason;
+    });
+    const existing = new Set([...box.querySelectorAll('.vq-extra')].map(el => el.dataset?.extraStudent || el.querySelector(':scope > .vq')?.dataset?.student).filter(Boolean));
+    for (const entry of desired) {
+      if (existing.has(entry.student)) continue;
+      box.append(createExtraQuizCard(entry));
+    }
+  }
+  async function openAddQuizStudent() {
+    const day = curDay();
+    const o = overlay('添加抽背学生');
+    const search = make('input'); search.type = 'search'; search.className = 'fb-search'; search.style.width = '100%';
+    search.placeholder = '搜索学生姓名，或输入新名字直接添加…';
+    const listWrap = make('div', 'vx-add-list');
+    o.body.append(search, listWrap);
+    o.foot.append(btn('fb-btn', '关闭', () => o.close()));
+    try { if (mode === 'cloud' || mode === 'preview') await lessonIndex(); } catch {}
+    const scheduled = scheduledQuizSet(day);
+    const extraShown = new Set(extraQuizStudents(day).map(e => e.student));
+    const shownNow = new Set([...scheduled, ...extraShown]);
+    const data = pageData();
+    const stats = new Map();
+    const noteStudent = (raw, cnt = 0, date = '', src = '') => {
+      const name = displayStudent(raw);
+      if (!name) return;
+      const curStats = stats.get(name) || { name, count: 0, latest: '', sources: new Set() };
+      curStats.count += cnt;
+      if (date && date > curStats.latest) curStats.latest = date;
+      if (src) curStats.sources.add(src);
+      stats.set(name, curStats);
+    };
+    const byBankCount = new Map(), byBankLatest = new Map();
+    for (const l of (index || [])) {
+      if (!l?.learner) continue;
+      byBankCount.set(l.learner, (byBankCount.get(l.learner) || 0) + 1);
+      const d = String(l.lesson_date || '');
+      if (d > (byBankLatest.get(l.learner) || '')) byBankLatest.set(l.learner, d);
+    }
+    for (const l of allLearners()) {
+      const c = byBankCount.get(l) || 0, d = byBankLatest.get(l) || '';
+      const members = parts(l);
+      if (members.length <= 1) noteStudent(l, c, d, '反馈词库');
+      else members.forEach(m => noteStudent(m, c, d, '班课词库 · ' + l.replace(/\//g, '、')));
+    }
+    for (const row of (Array.isArray(data?.[day]) ? data[day] : [])) {
+      const members = parts(row?.[0]);
+      if (members.length === 1) noteStudent(row[0], 0, '', '今日任务');
+    }
+    for (const card of studyCardsFor(day)) noteStudent(card.studentName, 0, '', '今日自习');
+    const allEntries = [...stats.values()].sort((a, b) => {
+      const sa = shownNow.has(a.name) ? 1 : 0, sb = shownNow.has(b.name) ? 1 : 0;
+      if (sa !== sb) return sa - sb;
+      if (b.latest !== a.latest) return b.latest.localeCompare(a.latest);
+      if (b.count !== a.count) return b.count - a.count;
+      return a.name.localeCompare(b.name, 'zh');
+    });
+    const pickStudent = studentName => {
+      const cleanName = displayStudent(studentName);
+      if (!cleanName) return;
+      if (!scheduled.has(cleanName)) saveQuizExtra(day, cleanName, true);
+      o.close();
+      decorateQuiz();
+      syncExtraQuizCards();
+      const targetCard = [...document.querySelectorAll('#list .quiz .vq-card')].find(c => {
+        const s = c.dataset?.extraStudent || c.querySelector(':scope > .vq')?.dataset?.student;
+        return s === cleanName;
+      });
+      targetCard?.scrollIntoView?.({ behavior: 'smooth', block: 'nearest' });
+      flash(scheduled.has(cleanName) ? cleanName + ' 已在今日排课列表' : '已添加抽背学生：' + cleanName);
+    };
+    const paint = () => {
+      listWrap.textContent = '';
+      const rawQ = search.value.trim(), q = rawQ.toLowerCase();
+      const matches = allEntries.filter(e => !q || e.name.toLowerCase().includes(q) || [...e.sources].some(s => s.toLowerCase().includes(q)));
+      if (rawQ && !allEntries.some(e => e.name.toLowerCase() === displayStudent(rawQ).toLowerCase())) {
+        listWrap.append(btn('fb-btn pri vx-add-create', '＋ 添加「' + displayStudent(rawQ) + '」到今日抽背', () => pickStudent(rawQ)));
+      }
+      if (!matches.length && !rawQ) {
+        listWrap.append(make('div', 'vq-empty', '输入学生姓名快速添加到今日抽背列表'));
+        return;
+      }
+      matches.slice(0, 60).forEach(entry => {
+        const already = shownNow.has(entry.name);
+        const item = make('button', 'vx-add-item'); item.type = 'button';
+        const left = make('div');
+        left.append(make('b', '', entry.name));
+        const subParts = [];
+        if (entry.count) subParts.push(entry.count + ' 节');
+        if (entry.latest) subParts.push('最近 ' + md(entry.latest));
+        if (!subParts.length && entry.sources.size) subParts.push([...entry.sources][0]);
+        if (subParts.length) left.append(make('div', 'fb-meta', subParts.join(' · ')));
+        const right = make('span', already ? 'fb-pill' : 'fb-pill ok', already ? '已在列表' : '添加');
+        item.append(left, right);
+        item.onclick = () => pickStudent(entry.name);
+        listWrap.append(item);
+      });
+    };
+    search.oninput = paint;
+    search.onkeydown = e => {
+      if (e.key === 'Enter' && search.value.trim()) {
+        e.preventDefault();
+        const firstBtn = listWrap.querySelector('button.vx-add-item, button.vx-add-create');
+        if (firstBtn) firstBtn.click(); else pickStudent(search.value.trim());
+      }
+    };
+    paint();
+    search.focus();
+  }
+  function ensureQuizBox() {
+    let box = document.querySelector('#list .quiz');
+    if (!box) {
+      if (pageMode() !== 'quiz') return null;
+      const host = document.getElementById('list');
+      if (!host || host.querySelector('.sub')) return null;
+      box = make('div', 'quiz');
+      box.dataset.day = curDay();
+      const head = make('div', 'head');
+      head.append(make('h2', '', '📝 单词抽背记录'), make('div', 'meta', '今天暂无排定线下正课 · 可添加临时复习抽背的学生'));
+      box.append(head);
+      host.append(box);
+    }
+    return box;
+  }
   function decorateQuiz() {
-    const box = document.querySelector('#list .quiz'); if (!box) return;
-    box.querySelectorAll('.qgroup').forEach(g => {
+    const box = ensureQuizBox(); if (!box) return;
+    if (!box.dataset.day) box.dataset.day = curDay();
+    const quizHead = box.querySelector(':scope > .head');
+    if (quizHead && !quizHead.querySelector('.vq-add-student')) {
+      const addBtn = btn('fb-btn vq-add-student', '', () => void openAddQuizStudent(), '添加抽背学生');
+      addBtn.id = 'vq-add-student';
+      addBtn.append(make('span', '', '＋ 添加学生'));
+      quizHead.append(addBtn);
+    }
+    box.querySelectorAll('.qgroup:not(.vq-extra)').forEach(g => {
       if (g.querySelector(':scope > .vq')) return;
       const head = g.querySelector('.qhead'), rows = [...g.querySelectorAll(':scope > .qrow')];
       if (!head || !rows.length) return;   // a finished, folded student stays folded
@@ -1763,7 +2128,7 @@
       const updateQuizProgress = () => {
         try {
           if (typeof quizRows === "function" && typeof qget === "function" && typeof qk === "function") {
-            const qr = quizRows(window.DATA?.[curDay()] || []);
+            const qr = quizRows(pageData()?.[curDay()] || []);
             const n = qr.filter(r => qget(qk(r)).pre && qget(qk(r)).post).length;
             const countEl = document.getElementById("count");
             if (countEl) countEl.textContent = n + " / " + qr.length + " 课前课后都抽了";
@@ -1771,8 +2136,12 @@
             if (fillEl) fillEl.style.width = (qr.length ? (n / qr.length * 100) : 0) + "%";
             const metaEl = document.querySelector(".quiz .head .meta");
             if (metaEl) {
-              const pre = qr.filter(r => qget(qk(r)).pre).length, post = qr.filter(r => qget(qk(r)).post).length;
-              metaEl.textContent = "课前 " + pre + " / " + qr.length + " · 课后 " + post + " / " + qr.length + "（这节课前课后都抽了 = 变绿）";
+              if (qr.length) {
+                const pre = qr.filter(r => qget(qk(r)).pre).length, post = qr.filter(r => qget(qk(r)).post).length;
+                metaEl.textContent = "课前 " + pre + " / " + qr.length + " · 课后 " + post + " / " + qr.length + "（这节课前课后都抽了 = 变绿）";
+              } else {
+                metaEl.textContent = "今天暂无排定线下正课 · 可添加临时复习抽背的学生";
+              }
             }
           }
         } catch {}
@@ -1820,25 +2189,22 @@
         });
         meta.append(line);
       });
-      // Any card can be folded to its one header line, quizzed or not; remembered per day on this device.
-      const foldKey = curDay() + '|' + student, folded = readFolds();
-      const fold = make('button', 'vq-fold'); fold.type = 'button'; fold.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
-      const setFold = on => { g.classList.toggle('vq-collapsed', on); fold.setAttribute('aria-expanded', String(!on)); fold.title = on ? '展开' : '收起'; fold.setAttribute('aria-label', (on ? '展开 ' : '收起 ') + student); };
-      fold.onclick = e => { e.stopPropagation(); const on = !g.classList.contains('vq-collapsed'); setFold(on); const f = readFolds(); if (on) f[foldKey] = 1; else delete f[foldKey]; try { localStorage.setItem('wayon-vq-folds', JSON.stringify(f)); } catch {} };
       const checks = [...meta.querySelectorAll('.vq-check')], doneN = checks.filter(b => b.classList.contains('on')).length;
       const note = make('span', 'vq-fold-note', '· ' + (doneN === 0 ? '未抽背' : doneN === checks.length ? '已抽背' : checks.map(b => b.textContent.replace(/^✓\s*/, '')).join(' · ')));
-      head.append(note, meta, fold); setFold(!!folded[foldKey]);
-      head.addEventListener('click', e => { if (g.classList.contains('vq-collapsed') && !e.target.closest('button:not(.vq-fold)')) fold.click(); });   // the whole folded line opens it
-      const vq = make('div', 'vq'); vq.dataset.student = student; head.after(vq);
-      void fillLists(vq, student);
+      attachFoldAndLists(g, head, student, note, meta, readFolds, false);
     });
+    syncExtraQuizCards();
+    void loadDayActiveQuizStudents(curDay());
   }
   globalThis.wayonVocabSync = function() {
-    if (typeof quizRows !== "function" || typeof qget !== "function" || typeof qk !== "function") return;
-    const qr = quizRows(window.DATA?.[curDay()] || []);
+    if (typeof quizRows !== "function" || typeof qget !== "function" || typeof qk !== "function") {
+      syncExtraQuizCards();
+      return;
+    }
+    const qr = quizRows(pageData()?.[curDay()] || []);
     const box = document.querySelector("#list .quiz");
     if (!box) return;
-    box.querySelectorAll(".vq-card").forEach(g => {
+    box.querySelectorAll(".vq-card:not(.vq-extra)").forEach(g => {
       const head = g.querySelector(".qhead");
       const student = g.querySelector(":scope > .vq")?.dataset.student || plainName(head?.childNodes[0]?.textContent || head?.textContent || "").split(/\s/)[0];
       if (!student) return;
@@ -1877,6 +2243,7 @@
         note.textContent = "· " + (doneN === 0 ? "未抽背" : doneN === allChecks.length ? "已抽背" : allChecks.map(b => b.textContent.replace(/^✓\s*/, "")).join(" · "));
       }
     });
+    syncExtraQuizCards();
     const n = qr.filter(r => qget(qk(r)).pre && qget(qk(r)).post).length;
     const countEl = document.getElementById("count");
     if (countEl) countEl.textContent = n + " / " + qr.length + " 课前课后都抽了";
@@ -1884,8 +2251,12 @@
     if (fillEl) fillEl.style.width = (qr.length ? (n / qr.length * 100) : 0) + "%";
     const metaEl = document.querySelector(".quiz .head .meta");
     if (metaEl) {
-      const pre = qr.filter(r => qget(qk(r)).pre).length, post = qr.filter(r => qget(qk(r)).post).length;
-      metaEl.textContent = "课前 " + pre + " / " + qr.length + " · 课后 " + post + " / " + qr.length + "（这节课前课后都抽了 = 变绿）";
+      if (qr.length) {
+        const pre = qr.filter(r => qget(qk(r)).pre).length, post = qr.filter(r => qget(qk(r)).post).length;
+        metaEl.textContent = "课前 " + pre + " / " + qr.length + " · 课后 " + post + " / " + qr.length + "（这节课前课后都抽了 = 变绿）";
+      } else {
+        metaEl.textContent = "今天暂无排定线下正课 · 可添加临时复习抽背的学生";
+      }
     }
   };
   async function fillLists(vq, student, cachedLists) {
@@ -1947,6 +2318,16 @@
       } finally {
         globalThis._wayonSuppressRender = false;
       }
+    }
+    const extraCard = vq.closest?.('.vq-card');
+    if (extraCard?.classList?.contains('vq-extra')) {
+      const stPill = extraCard.querySelector('.vq-extra-status');
+      if (stPill) {
+        stPill.classList.toggle('on', doneNow);
+        stPill.textContent = doneNow ? '✓ 今日已抽' : '复习待抽';
+      }
+      const foldNote = extraCard.querySelector('.vq-fold-note');
+      if (foldNote) foldNote.textContent = doneNow ? '· 今日已抽' : '· 未抽背';
     }
     const showResult = res => {
       const last = overlay('抽背结果'); last.body.append(make('pre', 'fb-body', resultText(res.payload)));
@@ -2485,10 +2866,12 @@
       mode = 'pending';
       void ready().then(nextMode => {
         if (nextMode !== 'cloud' && nextMode !== 'preview') activeOwner = null;
-        if (prevOwner && activeOwner !== prevOwner) { index = null; bodies.clear(); customWords.clear(); vocabCache.clear(); listCache.clear(); ignored = null; }
+        if (prevOwner && activeOwner !== prevOwner) { index = null; bodies.clear(); customWords.clear(); vocabCache.clear(); listCache.clear(); ignored = null; dayActiveQuiz.clear(); }
+        dayActiveLoaded.clear();
         void updateBadge();
         const editingFeedback = open && root?.querySelector('.fb-edit, .fb-paste, .fb-word-edit, .fb-wedit');
         if (open && !editingFeedback) renderPanel();
+        decorateQuiz();
         document.querySelectorAll('.vq').forEach(v => { if (v.dataset.student && !v.contains(document.activeElement)) void fillLists(v, v.dataset.student); });
       });
     };
@@ -2499,8 +2882,9 @@
     });
     setInterval(() => { if (!document.hidden) void updateBadge(); }, 300000);   // a lesson ending turns into a reminder without a reload
     document.addEventListener('visibilitychange', () => { if (!document.hidden) { void flushVocabBackups(activeOwner); void updateBadge(); } });
-    let tries = 0; const wait = setInterval(() => { if (client() || ++tries > 60) { clearInterval(wait); mode = 'pending'; if (open) renderPanel(); else void updateBadge(); document.querySelectorAll('.vq').forEach(v => fillLists(v, v.dataset.student)); } }, 1000);
+    let tries = 0; const wait = setInterval(() => { if (client() || ++tries > 60) { clearInterval(wait); mode = 'pending'; dayActiveLoaded.clear(); if (open) renderPanel(); else void updateBadge(); decorateQuiz(); document.querySelectorAll('.vq').forEach(v => fillLists(v, v.dataset.student)); } }, 1000);
   }
   globalThis.wayonVocab = {parseFeedback, lessonNo, subjectOf, learnersFor};
+  Object.assign(globalThis.wayonVocab, {captureQuizExtra, applyQuizExtra, extraQuizStudents, openAddQuizStudent, decorateQuiz});
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once: true}); else start();
 })();
