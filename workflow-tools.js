@@ -13,7 +13,7 @@
 .wayon-workbench .workspace-sub-bar{align-items:flex-start;gap:8px}
 .wayon-workbench #workflow-tools{margin-left:auto;align-items:center;position:relative}
 .wayon-workbench #workflow-checks{position:static;flex:none}
-.wayon-workbench #workflow-checks[hidden],.wayon-workbench #schedule-refresh[hidden],body.wayon-workbench:not([data-mode="notice"]) #schedule-refresh,body.wayon-workbench[data-aircon-open] #schedule-refresh,body.wayon-workbench[data-memo-open] #schedule-refresh,body.wayon-workbench[data-feedback-open] #schedule-refresh{display:none!important}
+.wayon-workbench #workflow-checks[hidden],.wayon-workbench #schedule-refresh[hidden],body.wayon-workbench:not([data-mode="notice"]) #schedule-refresh,body.wayon-workbench[data-aircon-open] #schedule-refresh,body.wayon-workbench[data-memo-open] #schedule-refresh,body.wayon-workbench[data-feedback-open] #schedule-refresh,body.wayon-workbench[data-mocks-open] #schedule-refresh{display:none!important}
 .wayon-workbench #workflow-checks>summary{list-style:none}
 .wayon-workbench #workflow-checks>summary::-webkit-details-marker{display:none}
 .wayon-workbench #workflow-checks[open]>summary{color:var(--accent);border-color:var(--accent)}
@@ -165,7 +165,7 @@
   };
   const syncScheduleVisibility=()=>{
     const ds=document.body.dataset||{};
-    scheduleBtn.hidden=!(ds.mode==='notice'&&!ds.airconOpen&&!ds.memoOpen&&!ds.feedbackOpen);
+    scheduleBtn.hidden=!(ds.mode==='notice'&&!ds.airconOpen&&!ds.memoOpen&&!ds.feedbackOpen&&!ds.mocksOpen);
   };
   const configureRefresh=()=>{
     syncScheduleVisibility();
@@ -194,7 +194,7 @@
     if(status.parentNode!==checksPanel)checksPanel.append(status);
   };
   new MutationObserver(mount).observe(document.body,{childList:true,subtree:true});
-  new MutationObserver(syncScheduleVisibility).observe(document.body,{attributes:true,attributeFilter:['data-mode','data-aircon-open','data-memo-open','data-feedback-open']});
+  new MutationObserver(syncScheduleVisibility).observe(document.body,{attributes:true,attributeFilter:['data-mode','data-aircon-open','data-memo-open','data-feedback-open','data-mocks-open']});
   mount();
   // One read per page load; this does not start a refresh or poll a backend.
   fetch('completion-refresh-status.json?v='+Date.now(),{cache:'no-store',credentials:'omit'}).then(r=>r.ok?r.json():null).then(value=>{

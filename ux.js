@@ -29,7 +29,7 @@
   const md = d => { const p = String(d).split('-'); return Number(p[1]) + '月' + Number(p[2]) + '日'; };
 
   const NAV = {'nav-today': ['今天', '今天的任务'], 'nav-notice': ['通知', '课程通知与空调加时'], 'nav-rooms': ['教室', '教室使用'],
-    'nav-feedback': ['反馈', '课堂反馈'], 'nav-memo': ['备忘', '备忘录'], 'wayon-rules-btn': ['规则', '任务规则']};
+    'nav-feedback': ['反馈', '课堂反馈'], 'nav-memo': ['备忘', '备忘录'], 'nav-mocks': ['模考', '模考链接'], 'wayon-rules-btn': ['规则', '任务规则']};
   const TAB = {'tab-plan': ['安排', '任务安排：复制发群'], 'tab-done': ['完成', '完成记录：勾选完成情况'],
     'tab-quiz': ['抽背', '课前 / 课后抽背'], 'tab-chasing': ['待催', '待催作业']};
   const STATE = {sent: ['已布置', 'ok'], waiting: ['上批未完成', 'wait'], not_sent: ['未布置', 'todo'], decision: ['待老师安排', 'wait'], check: ['需核对', 'bad']};
@@ -79,6 +79,7 @@
     .ux-st-row em[data-kind=ok]{color:#1a7f37}.ux-st-row em[data-kind=todo]{color:#b35900}.ux-st-row em[data-kind=wait]{color:#8a6100}.ux-st-row em[data-kind=bad]{color:var(--bad,#d93025)}
     .ux-st-empty{color:var(--muted,#888);font-size:13.5px;padding:6px 0}.ux-st-note{margin-top:16px;font-size:12px;color:var(--muted,#888)}
     @media(min-width:1024px){
+      .wayon-workbench .sidebar{padding-bottom:150px}
       .wayon-workbench .main-content{display:flex;flex-wrap:wrap;align-items:center;align-content:flex-start;column-gap:10px}
       .wayon-workbench .main-content>*{flex:0 0 100%;min-width:0;box-sizing:border-box}
       .wayon-workbench .main-content>.workspace-top-bar,.wayon-workbench .main-content>.workspace-sub-bar{display:contents}
@@ -89,13 +90,19 @@
       .wayon-workbench .main-content #study-slot .meta{display:none}
     }
     @media(max-width:1023px){
+      body.wayon-workbench .sidebar .nav-section{flex:1 1 auto;min-width:0}
+      body.wayon-workbench #tabs{max-width:100%;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+      body.wayon-workbench #tabs::-webkit-scrollbar{display:none}
+      body.wayon-workbench .sidebar-footer{flex:0 0 auto}
       .wayon-workbench #subtabs button.ux-labelled{padding:0 10px!important}
       .wayon-workbench .workspace-sub-bar #study-slot .meta{display:none}
     }
     @media(max-width:599px){
-      .wayon-workbench .sidebar{padding:6px 8px!important;gap:4px!important}
-      .wayon-workbench #tabs{gap:2px!important}.wayon-workbench .sidebar-footer{gap:4px!important}
-      .wayon-workbench #tabs button.ux-labelled,.wayon-workbench #wayon-rules-btn.ux-labelled{width:44px!important;min-width:44px!important;position:relative!important;left:auto!important;right:auto!important}
+      body.wayon-workbench .sidebar{padding:6px 6px!important;gap:4px!important}
+      body.wayon-workbench .sidebar .nav-section{flex:1 1 auto!important;min-width:0!important;max-width:100%!important}
+      body.wayon-workbench #tabs{gap:1px!important;width:100%!important;max-width:100%!important;overflow-x:auto!important;scrollbar-width:none;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;padding:4px 0 0!important;margin-top:-4px}
+      body.wayon-workbench .sidebar-footer{flex:0 0 auto!important;gap:4px!important}
+      body.wayon-workbench #tabs button.ux-labelled,body.wayon-workbench #wayon-rules-btn.ux-labelled{flex:0 0 auto;scroll-snap-align:start;width:44px!important;min-width:44px!important;position:relative!important;left:auto!important;right:auto!important}
       .wayon-workbench .main-content{display:flex;flex-wrap:wrap;align-items:center;gap:0 8px}
       .wayon-workbench .main-content>*{flex:0 0 100%;min-width:0;box-sizing:border-box}
       .wayon-workbench .main-content>.workspace-top-bar,.wayon-workbench .main-content>.workspace-sub-bar{display:contents}
@@ -341,7 +348,7 @@
   function probe() {
     const active = document.activeElement;
     if (probing || !page.mode || page.mode === 'classroom' || document.body.dataset.airconOpen || document.body.dataset.memoOpen
-        || document.body.dataset.feedbackOpen || $('dialog[open], .vx-overlay') || (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName))) return;
+        || document.body.dataset.feedbackOpen || document.body.dataset.mocksOpen || $('dialog[open], .vx-overlay') || (active && /^(INPUT|TEXTAREA|SELECT)$/.test(active.tagName))) return;
     probing = true;
     // 待催 is counted by its own rule without drawing the view.
     const views = ['plan', 'done', 'quiz', ...(typeof globalThis.wayonChasingDue === 'function' ? [] : ['chasing']), 'notice'];
@@ -689,7 +696,7 @@
     if (probing) return;
     // The cloud copy has just been applied: count every view once on it, then let the numbers show.
     if (!cloudCounted && cloudReady()) { readyAt ||= Date.now(); if (cloudComplete()) { probe(); cloudCounted = probed > 0 && Date.now() - probed < 50; } }
-    if (page.mode && !document.body.dataset.airconOpen && !document.body.dataset.memoOpen && !document.body.dataset.feedbackOpen) readCount(page.mode);
+    if (page.mode && !document.body.dataset.airconOpen && !document.body.dataset.memoOpen && !document.body.dataset.feedbackOpen && !document.body.dataset.mocksOpen) readCount(page.mode);
     try { decorateNav(); decorateCards(); decorateNotice(); decorateChasing(); reopen(); brandMark(); } catch (e) { console.warn('ux:', e); }
   }
   const schedule = () => { if (!queued && !probing) { queued = true; requestAnimationFrame(apply); } };
@@ -704,7 +711,7 @@
     new MutationObserver(records => {
       if (records.some(r => inNav(r.target))) {
         try {
-          if (page.mode && !document.body.dataset.airconOpen && !document.body.dataset.memoOpen && !document.body.dataset.feedbackOpen) readCount(page.mode);
+          if (page.mode && !document.body.dataset.airconOpen && !document.body.dataset.memoOpen && !document.body.dataset.feedbackOpen && !document.body.dataset.mocksOpen) readCount(page.mode);
           decorateNav();
         } catch (e) { console.warn('ux nav:', e); }
       }
