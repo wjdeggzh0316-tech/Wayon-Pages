@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>正在跳转到 Wayon 工作台…</title>
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
+<link rel="apple-touch-icon" href="./favicon-180.png">
+<link rel="canonical" href="https://wayon-edu.github.io/">
+<meta http-equiv="refresh" content="0;url=https://wayon-edu.github.io/">
+<script>
+(() => {
+  const base = 'https://wayon-edu.github.io/';
+  const raw = location.pathname.replace(/^\/Wayon-Pages\/?/i, '').replace(/^\/+/, '');
+  const target = base + raw + location.search + location.hash;
+  location.replace(target);
+})();
+</script>
+<style>
+  body { margin: 48px 24px; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; color: #1d1d1f; background: #f5f5f7; text-align: center; }
+  a { color: #0071e3; text-decoration: none; font-weight: 500; }
+</style>
+</head>
+<body>
+  <p>Wayon 工作台已迁至新域名，正在自动跳转…</p>
+  <p><a id="dest" href="https://wayon-edu.github.io/">点击立即打开 https://wayon-edu.github.io/</a></p>
+  <script>
+    (() => {
+      const base = 'https://wayon-edu.github.io/';
+      const raw = location.pathname.replace(/^\/Wayon-Pages\/?/i, '').replace(/^\/+/, '');
+      const target = base + raw + location.search + location.hash;
+      const a = document.getElementById('dest');
+      if (a) { a.href = target; a.textContent = '点击立即打开 ' + target; }
+    })();
+  </script>
+</body>
+</html>

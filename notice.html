@@ -1,162 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
 <meta charset="utf-8">
-<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png"><link rel="apple-touch-icon" href="./favicon-180.png">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Wayon 课程通知 11/20</title>
-<style>
-/* 本页由 wayon_agent.py sync-notes 自动生成（模板在代码 NOTICE_PAGE_TEMPLATE），不要手改 */
-:root{
-  --bg:#f3f5f4; --card:#ffffff; --fg:#17211d; --muted:#5d6b65; --line:#d6ddd9;
-  --accent:#1f5fa8; --done:#1d7a4c; --done-bg:#e3f3ea; --code-bg:#f0f3f1;
-  --sans:"PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",system-ui,sans-serif;
-  --mono:"SF Mono",Menlo,Consolas,"PingFang SC","Microsoft YaHei",monospace;
-}
-@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
-  --bg:#121815; --card:#1b2420; --fg:#e7eeea; --muted:#9aaaa2; --line:#2e3a35;
-  --accent:#7db4f0; --done:#63cf97; --done-bg:#1c3529; --code-bg:#151c19; color-scheme:dark } }
-:root[data-theme="dark"]{
-  --bg:#121815; --card:#1b2420; --fg:#e7eeea; --muted:#9aaaa2; --line:#2e3a35;
-  --accent:#7db4f0; --done:#63cf97; --done-bg:#1c3529; --code-bg:#151c19; color-scheme:dark }
-body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.5;padding-inline:16px;padding-block:20px 40px}
-.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
-header{display:flex;flex-direction:column;gap:10px}
-h1{font-size:22px;margin:0;font-weight:650}
-.sub{color:var(--muted);font-size:13px}
-.bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-.track{flex:1;min-width:140px;height:10px;border-radius:5px;background:var(--line);overflow:hidden}
-.fill{height:100%;background:var(--done);width:0;transition:width .25s}
-.count{font-variant-numeric:tabular-nums;font-weight:650;font-size:16px}
-button{font:inherit;cursor:pointer;border-radius:6px;border:1px solid var(--line);background:var(--card);color:var(--fg);padding:6px 12px}
-button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.list{display:flex;flex-direction:column;gap:10px}
-.item{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
-.item.done{background:var(--done-bg);border-color:var(--done)}
-.head{display:flex;align-items:center;justify-content:space-between;gap:8px 10px;flex-wrap:wrap}
-.name{font-weight:700;font-size:16px;line-height:1.4;flex:1 1 100%;min-width:0;word-break:break-word}
-.time{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;flex:1 1 auto;margin-right:auto}
-.state{font-size:12px;color:var(--done);font-weight:600;white-space:nowrap}
-.copy{background:var(--accent);border-color:var(--accent);color:#ffffff;font-weight:600;white-space:nowrap;padding:6px 12px}
-.item.done .copy{background:transparent;color:var(--done);border-color:var(--done)}
-.undo{font-size:12px;padding:4px 8px;color:var(--muted);white-space:nowrap}
-pre{margin:0;background:var(--code-bg);border-radius:6px;padding:10px 12px;font-family:var(--mono);font-size:13px;line-height:1.6;white-space:pre-wrap;word-break:break-word;user-select:all}
-@media (min-width: 640px){.name{flex:1 1 auto;min-width:260px}}
-@media (max-width: 480px){body{padding-inline:12px;padding-block:14px 32px}.item{padding:10px 12px}h1{font-size:20px}}
-@media (prefers-reduced-motion: reduce){.fill{transition:none}}
-</style>
-<div class="wrap">
-  <header>
-    <div>
-      <h1>明日课程提醒 · <span id="d"></span></h1>
-      <div class="sub">点「复制」后卡片变绿并记下时间。</div>
-      <div class="sub">📌 课程通知已并入工作台「通知」板块：<a href="./index.html">打开工作台</a></div>
-      <div class="sub" id="sync"></div>
-    </div>
-    <div class="bar">
-      <div class="track"><div class="fill" id="fill"></div></div>
-      <div class="count" id="count"></div>
-      <button id="reset" type="button">全部重置</button>
-    </div>
-  </header>
-  <div class="list" id="list"></div>
-</div>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>正在跳转到 Wayon 工作台…</title>
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
+<link rel="apple-touch-icon" href="./favicon-180.png">
+<link rel="canonical" href="https://wayon-edu.github.io/notice.html">
+<meta http-equiv="refresh" content="0;url=https://wayon-edu.github.io/notice.html">
 <script>
-const DATE = "2026/11/20";
-const ROWS = [["郭璟Jack-SAT", "08:30-10:30", "【明日课程提醒】2026/11/20⏰\n\n时间：\n11月20日 08:30-10:30（北京时间）\n11月19日 19:30-21:30（美东时间）\n课程： SAT阅读\n老师： 元园\n学生： 郭璟Jack-SAT\n形式： 线上"], ["黄子珊", "10:40-12:40", "【明日课程提醒】2026/11/20⏰\n\n时间： 11月20日 10:40-12:40\n课程： 写作\n老师： 任玥蓉\n学生： 黄子珊\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"], ["「汪梓培」雅思1v1", "10:40-12:40", "【明日课程提醒】2026/11/20⏰\n\n时间： 11月20日 10:40-12:40\n课程： 写作\n老师： 徐梓淞\n学生： 汪梓培\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 校长室"], ["「李培生」雅思1v1", "10:40-12:40", "【明日课程提醒】2026/11/20⏰\n\n时间： 11月20日 10:40-12:40\n课程： 口语\n老师： 王银屏\n学生： 李培生\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 2号教室"], ["黄号然", "13:30-15:30", "【明日课程提醒】2026/11/20⏰\n\n时间： 11月20日 13:30-15:30\n课程： SAT语法\n老师： 任玥蓉\n学生： 黄号然\n形式： 线下\n地点： 大冲商务中心C座1108\n教室： 3号教室"]]; // [卡片名, 上课时间, 通知全文]
-const KEY = "wayon-copied-" + DATE;
-let st = {};
-try { st = JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e) {}
-const save = () => { try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e) {} push(); };
-const list = document.getElementById("list");
-document.getElementById("d").textContent = DATE;
-function pureName(value){
-  let text = String(value || "").trim().replace(/（自习）|\(自习\)/g, "").trim();
-  const head = text.match(/^((?:\d+[.、．]\s*)?)(?:【([^】]+)】|「([^」]+)」|\[([^\]]+)\])(?=\s*(?:$|[-－—]?\s*(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语|高中|初中|小学|1\s*v\s*1|一对一|1对1)))/i);
-  if (head) text = head[1] + (head[2] || head[3] || head[4]);
-  return text.replace(/[【】「」]/g, "").trim().replace(/(?:[-－—]\s*)?(?:(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语)?\s*(?:1\s*v\s*1|一对一|1对1)(?:课程|班)?|高中同步课程|初中同步课程|小学同步课程|英语能力提升课程|(?:雅思|托福|SAT|GRE|英语)(?:基础|强化|冲刺|提高|进阶)?(?:课程|班))$/i, "").replace(/\s*[-－—]\s*(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语|高中|语法).*$/i, "").trim();
-}
-function noticeText(body, rawKey){
-  const raw = String(rawKey || "").trim();
-  const bracket = raw.match(/^(?:【([^】]+)】|「([^」]+)」|\[([^\]]+)\])\s*(?:[-－—]?\s*(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语|高中|初中|小学|1\s*v\s*1|一对一|1对1))/i);
-  const person = bracket && (bracket[1] || bracket[2] || bracket[3]);
-  return String(body || "").split("\n").map((line, index) => {
-    if (index === 0) line = line.replace(/【((?:【[^】]*】|[^【】])+)】/, (_, n) => n === "明日课程提醒" ? "【明日课程提醒】" : "【" + pureName(n) + "】");
-    return line.replace(/^(\s*学生[：:]\s*)(.+)$/, (_, prefix, n) => {
-      const d = pureName(n);
-      if (person && d.startsWith(person) && /^(?:雅思|托福|SAT|GRE|IELTS|TOEFL|英语)$/i.test(d.slice(person.length))) return prefix + person;
-      return prefix + d;
-    });
-  }).join("\n");
-}
-function copyNoticeText(value, ok, fail){
-  let copied = false;
-  try {
-    const tmp = document.createElement("textarea");
-    tmp.value = value; tmp.setAttribute("readonly", ""); tmp.style.position = "fixed"; tmp.style.left = "-9999px";
-    document.body.append(tmp); tmp.focus(); tmp.select();
-    copied = document.execCommand("copy") === true;
-    tmp.remove();
-  } catch(e) { copied = false; }
-  if (copied) ok();
-  else if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) navigator.clipboard.writeText(value).then(ok, fail);
-  else fail();
-}
-function render(){
-  list.textContent = "";
-  let n = 0;
-  ROWS.forEach((r, i) => {
-    const done = st[r[0]]; if (done) n++;
-    const el = document.createElement("div"); el.className = "item" + (done ? " done" : "");
-    const head = document.createElement("div"); head.className = "head";
-    const name = document.createElement("div"); name.className = "name"; name.textContent = (i+1) + ". " + pureName(r[0]);
-    const time = document.createElement("div"); time.className = "time"; time.textContent = r[1];
-    head.append(name, time);
-    if (done){ const s = document.createElement("div"); s.className = "state"; s.textContent = "✓ 已复制 " + done; head.append(s); }
-    const bodyText = noticeText(r[2], r[0]);
-    const pre = document.createElement("pre"); pre.textContent = bodyText;
-    const b = document.createElement("button"); b.type = "button"; b.className = "copy"; b.id = "copy-" + i;
-    b.textContent = done ? "再复制一次" : "复制";
-    b.onclick = () => {
-      const mark = () => { st[r[0]] = new Date().toLocaleTimeString("zh-CN",{timeZone:"Asia/Shanghai",hour12:false,hour:"2-digit",minute:"2-digit"}); save(); render(); };
-      const sel = () => { const g = getSelection(), rg = document.createRange(); rg.selectNodeContents(pre); g.removeAllRanges(); g.addRange(rg); b.textContent = "已选中，按 ⌘C 复制"; };
-      copyNoticeText(bodyText, mark, sel);
-    };
-    head.append(b);
-    if (done){ const u = document.createElement("button"); u.type = "button"; u.className = "undo"; u.textContent = "撤销"; u.onclick = () => { delete st[r[0]]; save(); render(); }; head.append(u); }
-    el.append(head, pre); list.append(el);
-  });
-  document.getElementById("count").textContent = n + " / " + ROWS.length + " 已复制";
-  document.getElementById("fill").style.width = (ROWS.length ? n / ROWS.length * 100 : 0) + "%";
-}
-document.getElementById("reset").onclick = () => { st = {}; save(); render(); };
-render();
-// 云端同步（2026-10-05）：在 claude.ai 打开时「已复制」存到 artifact 数据库（集合 wayon_notice，文档 = 日期），多设备同一份。
-let DB = null, wq = Promise.resolve(), wt = 0;
-const DOC = "wayon_notice/" + DATE.split("/").join("-");
-const syncEl = document.getElementById("sync");
-const setSync = t => { syncEl.textContent = t; };
-setSync("「已复制」状态只保存在这台设备的浏览器里。");
-function push(){
-  if (!DB) return;
-  const body = {copied: JSON.stringify(st), at: new Date().toISOString()};
-  clearTimeout(wt);
-  wt = setTimeout(() => {
-    wq = wq.then(() => DB.doc(DOC).set(body))
-      .then(() => setSync("☁️ 已同步到云端：手机、电脑打开都是同一份。"),
-            e => setSync("⚠️ 云端保存失败（" + ((e && e.code) || "unknown") + "），这台设备上已保存。"));
-  }, 300);
-}
-if (typeof claude !== "undefined" && claude && claude.use) {
-  claude.use("db").then(db => {
-    if (!db) return;
-    DB = db; setSync("☁️ 云端同步已开启：手机、电脑打开都是同一份。");
-    DB.doc(DOC).onSnapshot(snap => {
-      if (!snap.exists) { if (Object.keys(st).length) push(); return; }
-      if (snap.metadata && snap.metadata.hasPendingWrites) return;
-      let ns = {}; try { ns = JSON.parse((snap.data() || {}).copied || "{}") || {}; } catch(e) {}
-      if (JSON.stringify(ns) === JSON.stringify(st)) return;
-      st = ns; try { localStorage.setItem(KEY, JSON.stringify(st)); } catch(e) {}
-      render();
-    }, e => setSync("⚠️ 云端同步中断（" + ((e && e.code) || "unknown") + "），刷新页面可重连。"));
-  }, () => {});
-}
+(() => {
+  const base = 'https://wayon-edu.github.io/';
+  const raw = location.pathname.replace(/^\/Wayon-Pages\/?/i, '').replace(/^\/+/, '');
+  const target = base + raw + location.search + location.hash;
+  location.replace(target);
+})();
 </script>
-<!--WAYON-SCHEDULE-HEALTH--><div role="status" style="padding:8px;color:#854d0e;background:#fef3c7;font-size:13px">2026-11-20 课表核对时间：2026-11-19T11:36:43.947552+08:00</div><!--/WAYON-SCHEDULE-HEALTH-->
+<style>
+  body { margin: 48px 24px; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; color: #1d1d1f; background: #f5f5f7; text-align: center; }
+  a { color: #0071e3; text-decoration: none; font-weight: 500; }
+</style>
+</head>
+<body>
+  <p>Wayon 工作台已迁至新域名，正在自动跳转…</p>
+  <p><a id="dest" href="https://wayon-edu.github.io/notice.html">点击立即打开 https://wayon-edu.github.io/notice.html</a></p>
+  <script>
+    (() => {
+      const base = 'https://wayon-edu.github.io/';
+      const raw = location.pathname.replace(/^\/Wayon-Pages\/?/i, '').replace(/^\/+/, '');
+      const target = base + raw + location.search + location.hash;
+      const a = document.getElementById('dest');
+      if (a) { a.href = target; a.textContent = '点击立即打开 ' + target; }
+    })();
+  </script>
+</body>
+</html>

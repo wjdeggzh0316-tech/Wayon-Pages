@@ -1,122 +1,37 @@
 <!doctype html>
 <html lang="zh-CN">
 <head>
-  <meta charset="utf-8"><link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png"><link rel="apple-touch-icon" href="./favicon-180.png">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Wayon · 任务规则</title>
-  <style>
-    body {
-      margin: 0;
-      background: #f5f5f7;
-      color: #1d1d1f;
-      font: 15px -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", "PingFang SC", sans-serif;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
-    }
-    header {
-      background: #fff;
-      padding: 16px 24px;
-      border-bottom: 1px solid rgba(0,0,0,0.08);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .brand-link {
-      font-size: 20px;
-      font-weight: 700;
-      color: #1d1d1f;
-      text-decoration: none;
-      letter-spacing: -0.03em;
-    }
-    .back-link {
-      font-size: 13px;
-      color: #0071e3;
-      text-decoration: none;
-    }
-    .back-link:hover {
-      text-decoration: underline;
-    }
-    main {
-      flex: 1;
-      max-width: 1480px;
-      width: 100%;
-      margin: 20px auto;
-      padding: 0 16px 40px;
-      box-sizing: border-box;
-    }
-    #rules-standalone-root {
-      background: #fff;
-      border: 1px solid rgba(0,0,0,0.1);
-      border-radius: 20px;
-      overflow: hidden;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.03);
-      min-height: 0;
-    }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>正在跳转到 Wayon 工作台…</title>
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
+<link rel="apple-touch-icon" href="./favicon-180.png">
+<link rel="canonical" href="https://wayon-edu.github.io/rules.html">
+<meta http-equiv="refresh" content="0;url=https://wayon-edu.github.io/rules.html">
+<script>
+(() => {
+  const base = 'https://wayon-edu.github.io/';
+  const raw = location.pathname.replace(/^\/Wayon-Pages\/?/i, '').replace(/^\/+/, '');
+  const target = base + raw + location.search + location.hash;
+  location.replace(target);
+})();
+</script>
+<style>
+  body { margin: 48px 24px; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; color: #1d1d1f; background: #f5f5f7; text-align: center; }
+  a { color: #0071e3; text-decoration: none; font-weight: 500; }
+</style>
 </head>
 <body>
-  <header>
-    <a href="./" class="brand-link">Wayon</a>
-    <a href="./" class="back-link">← 返回教学工作台</a>
-  </header>
-  <main>
-    <div id="rules-standalone-root">
-      <div style="padding:48px 20px;text-align:center;color:#666">
-        <p style="font-size:15px;margin:0 0 8px">正在连接统一规则库…</p>
-      </div>
-    </div>
-  </main>
-  <script type="module">
-    // Loading only: a failure never writes rules; it shows a visible error and a retry.
-    const root = document.getElementById('rules-standalone-root');
-    const within = (promise, ms) => Promise.race([promise, new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT')), ms))]);
-    const loadSdk = async () => {
-      const sources = [
-        './supabase-js-2.49.4.mjs',
-        'https://esm.sh/@supabase/supabase-js@2.49.4',
-        'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/+esm',
-        'https://unpkg.com/@supabase/supabase-js@2.49.4/dist/module/index.js'
-      ];
-      let last;
-      for (const source of sources) {
-        try { return await within(import(source), 15000); } catch (error) { last = error; }
-      }
-      throw last || new Error('SDK_UNAVAILABLE');
-    };
-    const showLoading = () => {
-      root.innerHTML = '<div style="padding:48px 20px;text-align:center;color:#666"><p style="font-size:15px;margin:0 0 8px" role="status">正在连接统一规则库…</p></div>';
-    };
-    const showError = () => {
-      root.innerHTML = '<div style="padding:40px 20px;text-align:center" role="alert">'
-        + '<p style="font-size:16px;font-weight:600;color:#d93025;margin:0 0 8px">无法载入任务规则</p>'
-        + '<p style="font-size:13px;color:#666;margin:0 0 16px">网络或云端暂时连不上；规则没有任何改动。请检查网络后重试。</p>'
-        + '<button type="button" id="rules-retry" style="min-height:40px;padding:8px 20px;border:0;border-radius:10px;background:#0071e3;color:#fff;font:inherit;cursor:pointer">重试</button></div>';
-      document.getElementById('rules-retry').onclick = load;
-    };
-    async function load() {
-      showLoading();
-      try {
-        const [{ mountRules }, sdk, response] = await Promise.all([
-          within(import('./rules-editor.mjs?v=20261118-05'), 15000),
-          loadSdk(),
-          within(fetch('./checks-public-config.json', { cache: 'no-store' }), 15000)
-        ]);
-        if (!response.ok) throw new Error('CONFIG_UNAVAILABLE');
-        const config = await response.json();
-        const client = sdk.createClient(config.url, config.key);
-        await mountRules({
-          document,
-          client,
-          container: root,
-          onClose: () => { window.location.href = './'; }
-        });
-      } catch (error) {
-        console.error('Failed to load rules page:', error);
-        showError();
-      }
-    }
-    load();
+  <p>Wayon 工作台已迁至新域名，正在自动跳转…</p>
+  <p><a id="dest" href="https://wayon-edu.github.io/rules.html">点击立即打开 https://wayon-edu.github.io/rules.html</a></p>
+  <script>
+    (() => {
+      const base = 'https://wayon-edu.github.io/';
+      const raw = location.pathname.replace(/^\/Wayon-Pages\/?/i, '').replace(/^\/+/, '');
+      const target = base + raw + location.search + location.hash;
+      const a = document.getElementById('dest');
+      if (a) { a.href = target; a.textContent = '点击立即打开 ' + target; }
+    })();
   </script>
 </body>
 </html>

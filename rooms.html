@@ -1,86 +1,37 @@
-<!doctype html><html lang="zh-CN"><meta charset="utf-8"><link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png"><link rel="apple-touch-icon" href="./favicon-180.png"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Wayon Rooms</title><style>body{font:15px -apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif;background:#f5f5f7;color:#1d1d1f;padding:24px}</style>
-<p id="status" role="status">Loading rooms…</p><button id="retry" hidden>Retry</button>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>正在跳转到 Wayon 工作台…</title>
+<link rel="icon" type="image/png" sizes="32x32" href="./favicon-32.png">
+<link rel="apple-touch-icon" href="./favicon-180.png">
+<link rel="canonical" href="https://wayon-edu.github.io/rooms.html">
+<meta http-equiv="refresh" content="0;url=https://wayon-edu.github.io/rooms.html">
 <script>
 (() => {
- async function load(){try{
-  const response=await fetch('./classroom.html?room-release='+Date.now(),{cache:'no-store'});
-  if(!response.ok)throw Error('ROOM_UNAVAILABLE');
-  let html=await response.text();
-  let entries=[];
-  try{
-   const reservations=await fetch('./room-reservations.json?room-release='+Date.now(),{cache:'no-store'});
-   if(reservations.ok){
-    const data=await reservations.json();
-    if(Array.isArray(data?.bookings))entries=data.bookings;
-   }
-  }catch(_){}
-  const marker='const ALL = (', a=html.indexOf(marker)+marker.length, z=html.indexOf(').days || {};',a);
-  if(a<marker.length || z<a)throw Error('ROOM_DATA_INVALID');
-  const payload=JSON.parse(html.slice(a,z)), days=payload.days;
-  const base=days[Object.keys(days).sort().pop()];
-  if(!base?.rows || !base?.segs)throw Error('ROOM_DATA_INVALID');
-  let skippedBookings=0;
-  const validDay=s=>{
-   if(typeof s!=='string'||!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;
-   const [y,m,d]=s.split('-').map(Number),dt=new Date(Date.UTC(y,m-1,d));
-   return m>=1&&m<=12&&d>=1&&dt.getUTCFullYear()===y&&dt.getUTCMonth()===m-1&&dt.getUTCDate()===d;
-  };
-  const toMin=s=>{
-   if(typeof s!=='string'||!/^\d{2}:\d{2}$/.test(s))return NaN;
-   const h=+s.slice(0,2),m=+s.slice(3,5);
-   return h>=0&&h<=23&&m>=0&&m<=59?h*60+m:NaN;
-  };
-  const validEntries=[];
-  for(const b of entries){
-   const st=toMin(b?.start), et=toMin(b?.end);
-   if(!b || typeof b!=='object' ||
-      !validDay(b.day) ||
-      typeof b.room!=='string' || !base.rows.includes(b.room) ||
-      !Number.isFinite(st) || !Number.isFinite(et) || st>=et ||
-      typeof b.label!=='string' ||
-      typeof b.course!=='string'){
-    skippedBookings++;
-    continue;
-   }
-   validEntries.push(b);
-  }
-  for(const b of validEntries){
-   if(!days[b.day]) days[b.day]={iso:b.day,rows:base.rows,segs:base.segs,cells:base.rows.map(()=>base.segs.map(()=>[])),teachers:[],online:[],unknown:[],missing:true,booking_preview:true};
-   const day=days[b.day], ri=day.rows.indexOf(b.room);
-   const segStop=seg=>seg[0]==='D'?'21:30':seg[2];
-   let targets=day.segs.map((_,si)=>si).filter(si=>b.start<segStop(day.segs[si])&&b.end>day.segs[si][1]);
-   if(!targets.length){
-    const mid=(toMin(b.start)+toMin(b.end))/2, dist=si=>Math.min(Math.abs(mid-toMin(day.segs[si][1])),Math.abs(mid-toMin(day.segs[si][2])));
-    targets=[day.segs.map((_,si)=>si).sort((p,q)=>dist(p)-dist(q))[0]];
-   }
-   targets.forEach(si=>{
-    const seg=day.segs[si];
-    const span=x=>x[3]||seg[1]+'-'+seg[2];
-    const courseTag=b.course+'（课表外）';
-    // The reservation file is newer than the baked page: it replaces a borrowed entry at the same room and time.
-    const rows=day.cells[ri][si].filter(x=>x?.[0]!=='课表待更新' && !(/（课表外）$/.test(String(x?.[1]||'')) && span(x)===b.start+'-'+b.end && !validEntries.some(e=>e.day===b.day&&e.room===b.room&&e.start===b.start&&e.end===b.end&&e.label===x[0]&&e.course+'（课表外）'===x[1])));
-    if(!rows.some(x=>x[0]===b.label && x[1]===courseTag && span(x)===b.start+'-'+b.end))rows.push([b.label,courseTag,'',b.start+'-'+b.end]);
-    day.cells[ri][si]=rows;
-   });
-  }
-  html=html.slice(0,a)+JSON.stringify(payload).replace(/<\//g,'<\\/')+html.slice(z);
-  if(skippedBookings>0){
-   const warn='<span class="miss" id="booking-warning" style="font-size:12px;margin-left:8px;font-weight:600" role="status" title="预留数据异常">⚠️ '+skippedBookings+'条借用预留格式异常已忽略</span>';
-   html=html.replace('<b>教室使用</b>','<b>教室使用</b>'+warn);
-  }
-  html=html.replace('.sort().slice(0, 3).forEach(d =>','.sort().slice(0, 7).forEach(d =>');
-  html=html.replace('这天还没生成','课表待更新；已显示借用预留');
-  html=html.replace('.days || {};\\nconst $','.days || {};\nconst $');
-  html=html.replace(/import\(\s*(['"])\.\/checks-sync\.mjs(?:\?[^'"]*)?\1\s*\)/g,()=>"import('./checks-sync.mjs?room-release="+Date.now()+"')");
-  if(!html.includes('function roomBlockVisible(')){
-    html=html.replace('function render() {',"// A lesson card appears in its first occupied slot; raw occupancy remains intact.\nfunction roomBlockVisible(x, ri, si) {\n  if (ri === HALL || !x || !/^\\d{2}:\\d{2}-\\d{2}:\\d{2}$/.test(x[3] || '')) return true;\n  for (let previous = 0; previous < si; previous++) {\n    if (items(ri, previous).some(other => other && same(other, x))) return false;\n  }\n  return true;\n}\n"+'function render() {');
-    html=html.replace("arr.forEach((x, i) => c.append(block(x, ri, si, i)));","arr.forEach((x, i) => { if (roomBlockVisible(x, ri, si)) c.append(block(x, ri, si, i)); });");
-  }
-  const layout='<script src="./room-layout.js?release='+Date.now()+'"><'+'/script>';
-  html=html.replace('</head>',layout+'</head>');
-  document.open();document.write(html);document.close();
- }catch{document.getElementById('status').textContent='Could not load rooms. Saved records are unchanged.';document.getElementById('retry').hidden=false;}}
- document.getElementById('retry').onclick=load;void load();
+  const base = 'https://wayon-edu.github.io/';
+  const raw = location.pathname.replace(/^\/Wayon-Pages\/?/i, '').replace(/^\/+/, '');
+  const target = base + raw + location.search + location.hash;
+  location.replace(target);
 })();
-</script></html>
+</script>
+<style>
+  body { margin: 48px 24px; font: 15px/1.6 -apple-system, BlinkMacSystemFont, "PingFang SC", sans-serif; color: #1d1d1f; background: #f5f5f7; text-align: center; }
+  a { color: #0071e3; text-decoration: none; font-weight: 500; }
+</style>
+</head>
+<body>
+  <p>Wayon 工作台已迁至新域名，正在自动跳转…</p>
+  <p><a id="dest" href="https://wayon-edu.github.io/rooms.html">点击立即打开 https://wayon-edu.github.io/rooms.html</a></p>
+  <script>
+    (() => {
+      const base = 'https://wayon-edu.github.io/';
+      const raw = location.pathname.replace(/^\/Wayon-Pages\/?/i, '').replace(/^\/+/, '');
+      const target = base + raw + location.search + location.hash;
+      const a = document.getElementById('dest');
+      if (a) { a.href = target; a.textContent = '点击立即打开 ' + target; }
+    })();
+  </script>
+</body>
+</html>
