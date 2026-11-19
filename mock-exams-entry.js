@@ -2,8 +2,10 @@
 // with a one-click colleague share link and zero interference from workbench sync/translation.
 (() => {
   if (globalThis.wayonMockExams || typeof document === 'undefined') return;
-  const STAMP = '20261118-06';
+  const STAMP = '20261119-01';
   const IFRAME_SRC = './mock-exams.html?embed=1&v=' + STAMP;
+  const MIN_FRAME_HEIGHT = 360;
+  const MAX_FRAME_HEIGHT = 50000;
   const COPY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
   const CHECK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 13l4 4L19 7"/></svg>';
   const NAV_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10L12 5 2 10l10 5 10-5z M6 12v5c0 1.6 2.7 3 6 3s6-1.4 6-3v-5 M22 10v5"/></svg>';
@@ -22,7 +24,7 @@
   };
 
   let open = false, root = null, frame = null, fallbackBox = null, fallbackInput = null;
-  let mountObserver = null, mounting = false, copyTimer = 0, lastStatusMsg = '';
+  let mountObserver = null, mounting = false, copyTimer = 0, lastStatusMsg = '', lastFrameHeight = 0;
 
   const style = make('style');
   style.id = 'wayon-mocks-style';
@@ -31,8 +33,8 @@
     body[data-mocks-open] #tabs button:not(#nav-mocks){background:transparent!important;color:var(--fg-secondary)!important}
     body[data-mocks-open] #list,body[data-mocks-open] .workspace-top-bar,body[data-mocks-open] .workspace-sub-bar,body[data-mocks-open] #aircon-panel,body[data-mocks-open] #memo-panel,body[data-mocks-open] #feedback-panel,body[data-mocks-open] .sidebar-footer .bar{display:none!important}
     body[data-aircon-open] #mocks-panel,body[data-memo-open] #mocks-panel,body[data-feedback-open] #mocks-panel{display:none!important}
-    body[data-mocks-open] .main-content{padding-top:14px!important;padding-bottom:16px!important}
-    #mocks-panel{display:flex;flex-direction:column;gap:10px;width:100%;min-width:0}
+    body[data-mocks-open] .main-content{padding-top:16px!important;padding-bottom:24px!important}
+    #mocks-panel{display:flex;flex-direction:column;gap:8px;width:100%;min-width:0}
     #mocks-panel[hidden]{display:none!important}
     .mocks-bar{display:flex;align-items:center;justify-content:space-between;gap:10px 14px;flex-wrap:wrap;min-width:0}
     .mocks-title{margin:0;font-size:22px;line-height:1.25;letter-spacing:-.025em;font-weight:650;color:var(--fg);text-wrap:balance}
@@ -54,12 +56,12 @@
     .mocks-fallback{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line-strong);border-radius:10px;background:var(--card);font-size:12px;color:var(--muted)}
     .mocks-fallback[hidden]{display:none!important}
     .mocks-fallback input{flex:1 1 220px;min-width:0;min-block-size:36px;padding:6px 10px;border:1px solid var(--line-strong);border-radius:8px;background:var(--code-bg);color:var(--fg);font:inherit;font-size:14px}
-    .mocks-frame{display:block;width:100%;height:calc(100dvh - 196px);min-height:460px;border:1px solid var(--line,rgba(30,30,40,.09));border-radius:14px;background:var(--bg,#f5f5f7)}
+    .mocks-frame{display:block;width:calc(100% + 12px);margin-inline:-6px;height:600px;min-height:360px;border:0;border-radius:0;background:transparent;overflow:hidden;overflow:clip}
     @media(pointer:coarse),(max-width:599px){
       .mocks-title{font-size:20px}
       .mocks-btn{min-inline-size:44px;min-block-size:44px;padding:0 12px;font-size:13px}
       .mocks-fallback input{min-block-size:44px;font-size:16px}
-      .mocks-frame{height:calc(100dvh - 178px);min-height:420px;border-radius:12px}
+      .mocks-frame{min-height:360px;border-radius:0}
     }
     @media(prefers-reduced-motion:reduce){
       .mocks-btn{transition:none}
@@ -138,14 +140,82 @@
     return ok;
   }
 
+  function frameTargetOrigin() {
+    const origin = globalThis.location?.origin;
+    return origin && origin !== 'null' ? origin : '*';
+  }
+
+  function applyFrameHeight(rawHeight) {
+    if (!frame) return false;
+    const n = Number(rawHeight);
+    if (!Number.isFinite(n) || n <= 0 || n > MAX_FRAME_HEIGHT) return false;
+    const next = Math.max(MIN_FRAME_HEIGHT, Math.ceil(n) + 2);
+    if (next === lastFrameHeight && frame.style.height === next + 'px') return true;
+    lastFrameHeight = next;
+    frame.style.height = next + 'px';
+    return true;
+  }
+
+  function measureFrameSameOrigin() {
+    if (!frame) return 0;
+    try {
+      const doc = frame.contentDocument;
+      if (!doc) return 0;
+      const page = doc.querySelector?.('.page');
+      if (page) {
+        const rectH = page.getBoundingClientRect?.().height || 0;
+        const scrollH = page.scrollHeight || 0;
+        const offsetH = page.offsetHeight || 0;
+        const h = Math.ceil(Math.max(rectH, scrollH, offsetH));
+        if (h > 0) return h;
+      }
+      const bodyH = doc.body?.scrollHeight || 0;
+      if (bodyH > 0) return Math.ceil(bodyH);
+    } catch {}
+    return 0;
+  }
+
+  function requestFrameMeasure() {
+    if (!open || !frame || !frame.contentWindow) return;
+    try {
+      frame.contentWindow.postMessage({type: 'wayon-mocks-measure'}, frameTargetOrigin());
+    } catch {}
+  }
+
+  function syncFrameTheme() {
+    if (!frame || !frame.contentWindow) return;
+    const theme = document.documentElement?.getAttribute?.('data-theme');
+    if (theme !== 'dark' && theme !== 'light') return;
+    try {
+      frame.contentWindow.postMessage({type: 'wayon-theme', theme}, frameTargetOrigin());
+    } catch {}
+  }
+
   function fitFrame() {
     if (!open || !frame) return;
-    const rect = frame.getBoundingClientRect?.();
-    const vh = globalThis.innerHeight || document.documentElement?.clientHeight || 0;
-    if (rect && Number.isFinite(rect.top) && rect.top > 0 && vh > 0) {
-      const avail = Math.floor(vh - rect.top - 16);
-      frame.style.height = Math.max(420, avail) + 'px';
+    const measured = measureFrameSameOrigin();
+    if (measured > 0) {
+      applyFrameHeight(measured);
+      return;
     }
+    requestFrameMeasure();
+    if (!lastFrameHeight) {
+      const rect = frame.getBoundingClientRect?.();
+      const vh = globalThis.innerHeight || document.documentElement?.clientHeight || 0;
+      if (rect && Number.isFinite(rect.top) && rect.top >= 0 && vh > 0) {
+        const avail = Math.floor(vh - rect.top - 24);
+        frame.style.height = Math.max(MIN_FRAME_HEIGHT, Math.min(avail, 720)) + 'px';
+      }
+    }
+  }
+
+  function onWindowMessage(e) {
+    if (!frame || !e || !e.data || typeof e.data !== 'object') return;
+    if (e.data.type !== 'wayon-mocks-height') return;
+    if (!frame.contentWindow || e.source !== frame.contentWindow) return;
+    const expectedOrigin = globalThis.location?.origin;
+    if (expectedOrigin && expectedOrigin !== 'null' && e.origin !== expectedOrigin) return;
+    applyFrameHeight(e.data.height);
   }
 
   function ensureFrame() {
@@ -155,6 +225,11 @@
     frame.title = '维安教育入学模考';
     frame.src = IFRAME_SRC;
     frame.setAttribute('allow', 'clipboard-write');
+    frame.addEventListener?.('load', () => {
+      syncFrameTheme();
+      fitFrame();
+      requestFrameMeasure();
+    });
     root.append(frame);
   }
 
@@ -218,8 +293,12 @@
       b.classList.add('on');
       b.setAttribute('aria-pressed', 'true');
     }
-    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(fitFrame);
-    else fitFrame();
+    const refreshHeight = () => {
+      fitFrame();
+      requestFrameMeasure();
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(refreshHeight);
+    else refreshHeight();
   }
 
   function close() {
@@ -290,10 +369,11 @@
         if (open && (ds.airconOpen || ds.memoOpen || ds.feedbackOpen)) close();
       }).observe(document.body, {attributes: true, attributeFilter: ['data-aircon-open', 'data-memo-open', 'data-feedback-open']});
     }
+    globalThis.addEventListener?.('message', onWindowMessage);
     globalThis.addEventListener?.('resize', fitFrame);
   }
 
-  globalThis.wayonMockExams = {open: openPanel, close, isOpen: () => open, shareUrl, iframeSrc: IFRAME_SRC};
+  globalThis.wayonMockExams = {open: openPanel, close, isOpen: () => open, shareUrl, iframeSrc: IFRAME_SRC, fitFrame};
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start, {once: true});
   else start();
 })();
